@@ -1,5 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using HealthAxis.API.Enums;
+using HealthAxis.API.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.Models;
@@ -13,11 +15,11 @@ public class Doctor
     public int UserId { get; set; }
 
     [Required]
-    [StringLength(100)]
-    public string Specialisation { get; set; } = string.Empty;
+    public DoctorSpecialisation Specialisation { get; set; }
 
-    [Range(0, 60)]
-    public int ExperienceYears { get; set; }
+    [Required]
+    [PracticeStartDate(70)]
+    public DateOnly PracticeStartDate { get; set; }
 
     [Precision(18, 2)]
     [Range(0, 999999)]
@@ -31,4 +33,20 @@ public class Doctor
     public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
 
     public ICollection<HealthRecord> HealthRecords { get; set; } = new List<HealthRecord>();
+
+    [NotMapped]
+    public int YearsOfExperience => CalculateYearsOfExperience();
+
+    public int CalculateYearsOfExperience()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var years = today.Year - PracticeStartDate.Year;
+
+        if (today < PracticeStartDate.AddYears(years))
+        {
+            years--;
+        }
+
+        return years < 0 ? 0 : years;
+    }
 }

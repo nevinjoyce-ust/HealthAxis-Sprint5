@@ -40,6 +40,12 @@ public class HealthAxisDbContext : DbContext
             .HasForeignKey<Patient>(patient => patient.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<User>()
+            .Property(user => user.Role)
+            .HasConversion<string>()
+            .HasMaxLength(30)
+            .IsRequired();
+
         modelBuilder.Entity<Appointment>()
             .HasOne(appointment => appointment.Patient)
             .WithMany(patient => patient.Appointments)
@@ -52,6 +58,12 @@ public class HealthAxisDbContext : DbContext
             .HasForeignKey(appointment => appointment.DoctorId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<Appointment>()
+            .Property(appointment => appointment.Status)
+            .HasConversion<string>()
+            .HasMaxLength(30)
+            .IsRequired();
+
         modelBuilder.Entity<HealthRecord>()
             .HasOne(record => record.Patient)
             .WithMany(patient => patient.HealthRecords)
@@ -63,6 +75,13 @@ public class HealthAxisDbContext : DbContext
             .WithMany(doctor => doctor.HealthRecords)
             .HasForeignKey(record => record.DoctorId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Doctor>()
+            .Property(doctor => doctor.Specialisation)
+            .HasConversion<string>()
+            .HasMaxLength(100)
+            .IsRequired();
+
 
         modelBuilder.Entity<User>().HasData(
             new User
@@ -100,7 +119,7 @@ public class HealthAxisDbContext : DbContext
                 Id = 1,
                 UserId = 2,
                 Specialisation = "Cardiology",
-                ExperienceYears = 8,
+                Years = 8,
                 ConsultationFee = 600,
                 IsAvailable = true
             },

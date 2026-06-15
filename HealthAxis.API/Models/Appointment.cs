@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using HealthAxis.API.Enums;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HealthAxis.API.Models;
@@ -22,7 +23,7 @@ public class Appointment
 
     [Required]
     [StringLength(30)]
-    public string Status { get; set; } = "Pending";
+    public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
 
     [StringLength(250)]
     public string? CancellationReason { get; set; }

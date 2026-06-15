@@ -1,4 +1,11 @@
+using AutoMapper;
 using HealthAxis.API.Data;
+using HealthAxis.API.Mappings;
+using HealthAxis.API.Repositories;
+using HealthAxis.API.Repositories.Impl;
+using HealthAxis.API.Repositories.Interfaces;
+using HealthAxis.API.Services.Impl;
+using HealthAxis.API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +20,31 @@ builder.Services.AddSwaggerGen();
 // Add EF Core DbContext.
 builder.Services.AddDbContext<HealthAxisDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("HealthAxisDb")));
+
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+builder.Services.AddScoped<IDoctorRepository, DoctorRepository>();
+builder.Services.AddScoped<IPatientRepository, PatientRepository>();
+builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+builder.Services.AddScoped<IHealthRecordRepository, HealthRecordRepository>();
+
+builder.Services.AddScoped<IDoctorService, DoctorService>();
+builder.Services.AddScoped<IPatientService, PatientService>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<IHealthRecordService, HealthRecordService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
+
+builder.Services.AddSingleton<IMapper>(sp =>
+{
+    var config = new MapperConfiguration(
+        cfg => cfg.AddProfile<MappingProfile>(),
+        null
+    );
+
+    return config.CreateMapper();
+});
+
+
 
 var app = builder.Build();
 

@@ -1,7 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using HealthAxis.API.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.Models;
 
+[Index(nameof(Email), IsUnique = true)]
 public class User
 {
     [Key]
@@ -21,8 +24,7 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
 
     [Required]
-    [StringLength(30)]
-    public string Role { get; set; } = string.Empty;
+    public UserRole Role { get; set; }
 
     public bool IsActive { get; set; } = true;
 
