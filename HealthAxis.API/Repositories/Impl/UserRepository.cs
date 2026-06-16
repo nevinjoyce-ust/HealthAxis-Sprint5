@@ -1,6 +1,6 @@
 ﻿using HealthAxis.API.Data;
 using HealthAxis.API.Models;
-using HealthAxis.API.Repositories.Interfaces;
+using HealthAxis.API.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.Repositories.Impl;

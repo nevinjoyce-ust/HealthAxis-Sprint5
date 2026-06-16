@@ -1,6 +1,6 @@
 ﻿using HealthAxis.API.Data;
 using HealthAxis.API.Models;
-using HealthAxis.API.Repositories.Interfaces;
+using HealthAxis.API.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.Repositories.Impl;
@@ -32,5 +32,15 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
                 appointment.DoctorId == doctorId &&
                 appointment.AppointmentDate == date)
             .ToListAsync();
+    }
+
+    public async Task<Appointment?> DeleteAppointmentAsync(int appointmentId)
+    {
+        var appointment = await GetByIdAsync(appointmentId);
+        if (appointment == null) return null;
+
+        _dbSet.Remove(appointment);
+        await _context.SaveChangesAsync();
+        return appointment;
     }
 }

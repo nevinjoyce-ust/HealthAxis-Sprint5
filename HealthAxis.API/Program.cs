@@ -3,9 +3,8 @@ using HealthAxis.API.Data;
 using HealthAxis.API.Mappings;
 using HealthAxis.API.Repositories;
 using HealthAxis.API.Repositories.Impl;
-using HealthAxis.API.Repositories.Interfaces;
 using HealthAxis.API.Services.Impl;
-using HealthAxis.API.Services.Interfaces;
+using HealthAxis.API.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);

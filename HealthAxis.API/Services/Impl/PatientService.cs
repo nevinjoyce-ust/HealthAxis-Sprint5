@@ -2,8 +2,7 @@
 using HealthAxis.API.Dtos;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
-using HealthAxis.API.Repositories.Interfaces;
-using HealthAxis.API.Services.Interfaces;
+using HealthAxis.API.Services;
 
 namespace HealthAxis.API.Services.Impl;
 

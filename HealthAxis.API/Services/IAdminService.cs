@@ -1,6 +1,6 @@
 ﻿using HealthAxis.API.Dtos;
 
-namespace HealthAxis.API.Services.Interfaces;
+namespace HealthAxis.API.Services;
 
 public interface IAdminService
 {

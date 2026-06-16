@@ -22,5 +22,4 @@ public class AppointmentDto
 
     public string? CancellationReason { get; set; }
 
-    public DateTime CreatedAt { get; set; }
 }

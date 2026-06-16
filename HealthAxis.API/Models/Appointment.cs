@@ -28,8 +28,6 @@ public class Appointment
     [StringLength(250)]
     public string? CancellationReason { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
     [ForeignKey(nameof(PatientId))]
     public Patient? Patient { get; set; }
 

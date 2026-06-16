@@ -1,29 +1,15 @@
 ﻿using AutoMapper;
+using HealthAxis.API.Data;
 using HealthAxis.API.Dtos;
 using HealthAxis.API.Enums;
 using HealthAxis.API.Models;
-using HealthAxis.API.Repositories.Impl;
-using HealthAxis.API.Repositories.Interfaces;
-using HealthAxis.API.Services.Interfaces;
-usingService.GetAppointmentReportsAsync();using HealthAxis.API.Models;
-    }
-
-    private async Task<DoctorDto> MapDoctorToDtoAsync(Doctor doctor)
-{
-    var doctorDto = mapper.Map<DoctorDto>(doctor);
-
-    doctorDto.FullName = await userRepository.GetFullNameByIdAsync(doctor.UserId)
-        ?? string.Empty;
-
-    return doctorDto;
-}
-}
-using HealthAxis.API.Repositories.Interfaces;
-using HealthAxis.API.Services.Interfaces;
+using HealthAxis.API.Repositories;
+using HealthAxis.API.Services;
 
 namespace HealthAxis.API.Services.Impl;
 
 public class AdminService(
+    HealthAxisDbContext context,
     IDoctorRepository doctorRepository,
     IUserRepository userRepository,
     IAppointmentService appointmentService,
@@ -37,7 +23,8 @@ public class AdminService(
 
         foreach (var doctor in doctors)
         {
-            doctorDtos.Add(await MapDoctorToDtoAsync(doctor));
+            var doctorDto = await MapDoctorToDtoAsync(doctor);
+            doctorDtos.Add(doctorDto);
         }
 
         return doctorDtos;
@@ -52,29 +39,41 @@ public class AdminService(
             return null;
         }
 
-        var user = new User
+        await using var transaction = await context.Database.BeginTransactionAsync();
+
+        try
         {
-            FullName = dto.FullName,
-            Email = dto.Email,
-            PasswordHash = dto.Password,
-            Role = Roles.Doctor,
-            IsActive = true
-        };
+            var user = new User
+            {
+                FullName = dto.FullName,
+                Email = dto.Email,
+                PasswordHash = dto.Password, // Temporary until password hashing/JWT auth is added.
+                Role = UserRole.Doctor,
+                IsActive = true
+            };
 
-        var createdUser = await userRepository.AddAsync(user);
+            var createdUser = await userRepository.AddAsync(user);
 
-        var doctor = new Doctor
+            var doctor = new Doctor
+            {
+                UserId = createdUser.Id,
+                Specialisation = dto.Specialisation,
+                PracticeStartDate = dto.PracticeStartDate,
+                ConsultationFee = dto.ConsultationFee,
+                IsAvailable = dto.IsAvailable
+            };
+
+            var createdDoctor = await doctorRepository.AddAsync(doctor);
+
+            await transaction.CommitAsync();
+
+            return await MapDoctorToDtoAsync(createdDoctor);
+        }
+        catch
         {
-            UserId = createdUser.Id,
-            Specialisation = dto.Specialisation,
-            PracticeStartDate = dto.PracticeStartDate,
-            ConsultationFee = dto.ConsultationFee,
-            IsAvailable = dto.IsAvailable
-        };
-
-        var createdDoctor = await doctorRepository.AddAsync(doctor);
-
-        return await MapDoctorToDtoAsync(createdDoctor);
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<DoctorDto?> UpdateDoctorAsync(int id, UpdateDoctorDto dto)
@@ -86,23 +85,53 @@ public class AdminService(
             return null;
         }
 
-        doctor.Specialisation = dto.Specialisation;
-        doctor.PracticeStartDate = dto.PracticeStartDate;
-        doctor.ConsultationFee = dto.ConsultationFee;
-        doctor.IsAvailable = dto.IsAvailable;
+        await using var transaction = await context.Database.BeginTransactionAsync();
 
-        var user = await userRepository.GetByIdAsync(doctor.UserId);
-
-        if (user != null)
+        try
         {
-            user.FullName = dto.FullName;
-            await userRepository.UpdateAsync(user);
+            doctor.Specialisation = dto.Specialisation;
+            doctor.PracticeStartDate = dto.PracticeStartDate;
+            doctor.ConsultationFee = dto.ConsultationFee;
+            doctor.IsAvailable = dto.IsAvailable;
+
+            var user = await userRepository.GetByIdAsync(doctor.UserId);
+
+            if (user != null)
+            {
+                user.FullName = dto.FullName;
+                await userRepository.UpdateAsync(user);
+            }
+
+            var updatedDoctor = await doctorRepository.UpdateAsync(doctor);
+
+            await transaction.CommitAsync();
+
+            if (updatedDoctor == null)
+            {
+                return null;
+            }
+
+            return await MapDoctorToDtoAsync(updatedDoctor);
         }
-
-        await doctorRepository.UpdateAsync(doctor);
-
-        return await MapDoctorToDtoAsync(doctor);
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<List<AppointmentReportDto>> GetAppointmentReportsAsync()
     {
+        return await appointmentService.GetAppointmentReportsAsync();
+    }
+
+    private async Task<DoctorDto> MapDoctorToDtoAsync(Doctor doctor)
+    {
+        var doctorDto = mapper.Map<DoctorDto>(doctor);
+
+        doctorDto.FullName = await userRepository.GetFullNameByIdAsync(doctor.UserId)
+            ?? string.Empty;
+
+        return doctorDto;
+    }
+}

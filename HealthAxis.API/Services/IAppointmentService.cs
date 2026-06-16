@@ -1,6 +1,6 @@
 ﻿using HealthAxis.API.Dtos;
 
-namespace HealthAxis.API.Services.Interfaces;
+namespace HealthAxis.API.Services;
 
 public interface IAppointmentService
 {
@@ -10,7 +10,7 @@ public interface IAppointmentService
 
     Task<AppointmentDto?> UpdateAppointmentStatusAsync(int id, UpdateAppointmentStatusDto dto);
 
-    Task<bool> DeleteAppointmentAsync(int id);
+    Task<AppointmentDto?> DeleteAppointmentAsync(int id);
 
     Task<List<AppointmentReportDto>> GetAppointmentReportsAsync();
 }

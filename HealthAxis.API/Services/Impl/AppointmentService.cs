@@ -2,8 +2,8 @@
 using HealthAxis.API.Dtos;
 using HealthAxis.API.Enums;
 using HealthAxis.API.Models;
-using HealthAxis.API.Repositories.Interfaces;
-using HealthAxis.API.Services.Interfaces;
+using HealthAxis.API.Repositories;
+using HealthAxis.API.Services;
 
 namespace HealthAxis.API.Services.Impl;
 
@@ -49,8 +49,7 @@ public class AppointmentService(
             DoctorId = dto.DoctorId,
             AppointmentDate = dto.AppointmentDate,
             AppointmentTime = dto.AppointmentTime,
-            Status = AppointmentStatus.Pending,
-            CreatedAt = DateTime.UtcNow
+            Status = AppointmentStatus.Pending
         };
 
         var createdAppointment = await appointmentRepository.AddAsync(appointment);
@@ -75,13 +74,13 @@ public class AppointmentService(
         return await MapAppointmentToDtoAsync(appointment);
     }
 
-    public async Task<bool> DeleteAppointmentAsync(int id)
+    public async Task<AppointmentDto?> DeleteAppointmentAsync(int id)
     {
-        var deletedAppointment = await appointmentRepository.DeleteAsync(id);
+        var deletedAppointment = await appointmentRepository.DeleteAppointmentAsync(id);
+        if (deletedAppointment is null) return null;
 
-        return deletedAppointment != null;
+        return await MapAppointmentToDtoAsync(deletedAppointment);
     }
-
     public async Task<List<AppointmentReportDto>> GetAppointmentReportsAsync()
     {
         var appointments = await appointmentRepository.GetAllAsync();

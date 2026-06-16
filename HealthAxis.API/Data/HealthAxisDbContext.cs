@@ -1,4 +1,5 @@
-﻿using HealthAxis.API.Models;
+﻿using HealthAxis.API.Enums;
+using HealthAxis.API.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.Data;
@@ -90,7 +91,7 @@ public class HealthAxisDbContext : DbContext
                 FullName = "System Admin",
                 Email = "admin@healthaxis.com",
                 PasswordHash = "Admin@123",
-                Role = "Admin",
+                Role = UserRole.Admin,
                 IsActive = true
             },
             new User
@@ -99,7 +100,7 @@ public class HealthAxisDbContext : DbContext
                 FullName = "Dr. Anjali Menon",
                 Email = "anjali.menon@healthaxis.com",
                 PasswordHash = "Doctor@123",
-                Role = "Doctor",
+                Role = UserRole.Doctor,
                 IsActive = true
             },
             new User
@@ -108,7 +109,7 @@ public class HealthAxisDbContext : DbContext
                 FullName = "Dr. Rahul Nair",
                 Email = "rahul.nair@healthaxis.com",
                 PasswordHash = "Doctor@123",
-                Role = "Doctor",
+                Role = UserRole.Doctor,
                 IsActive = true
             }
         );
@@ -118,8 +119,8 @@ public class HealthAxisDbContext : DbContext
             {
                 Id = 1,
                 UserId = 2,
-                Specialisation = "Cardiology",
-                Years = 8,
+                Specialisation = DoctorSpecialisation.Cardiology    ,
+                PracticeStartDate = new DateOnly(2015, 1, 1),
                 ConsultationFee = 600,
                 IsAvailable = true
             },
@@ -127,8 +128,8 @@ public class HealthAxisDbContext : DbContext
             {
                 Id = 2,
                 UserId = 3,
-                Specialisation = "Dermatology",
-                ExperienceYears = 5,
+                Specialisation = DoctorSpecialisation.Dermatology,
+                PracticeStartDate = new DateOnly(2019, 1, 1),
                 ConsultationFee = 500,
                 IsAvailable = true
             }
