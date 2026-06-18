@@ -1,7 +1,8 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using HealthAxis.API.Enums;
 using HealthAxis.API.Validation;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.Models;
@@ -12,7 +13,11 @@ public class Doctor
     public int Id { get; set; }
 
     [Required]
-    public int UserId { get; set; }
+    public string UserId { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(100)]
+    public string FullName { get; set; } = string.Empty;
 
     [Required]
     public DoctorSpecialisation Specialisation { get; set; }
@@ -28,11 +33,9 @@ public class Doctor
     public bool IsAvailable { get; set; } = true;
 
     [ForeignKey(nameof(UserId))]
-    public User? User { get; set; }
+    public IdentityUser? User { get; set; }
 
     public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
-
-    public ICollection<HealthRecord> HealthRecords { get; set; } = new List<HealthRecord>();
 
     [NotMapped]
     public int YearsOfExperience => CalculateYearsOfExperience();

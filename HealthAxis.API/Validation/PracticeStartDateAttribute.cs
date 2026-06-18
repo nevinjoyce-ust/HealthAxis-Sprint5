@@ -2,6 +2,7 @@
 
 namespace HealthAxis.API.Validation;
 
+[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 public class PracticeStartDateAttribute : ValidationAttribute
 {
     private readonly int _maxYearsInPast;

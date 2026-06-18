@@ -1,5 +1,4 @@
-﻿using HealthAxis.API.Data;
-using HealthAxis.API.Repositories;
+using HealthAxis.API.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.Repositories.Impl;
@@ -38,10 +37,35 @@ public class Repository<T> : IRepository<T> where T : class
             entity.GetType().GetProperty("Id")?.GetValue(entity)
         );
 
-        if (exists == null) return null;
+        if (exists == null)
+        {
+            return null;
+        }
 
         _dbSet.Update(entity);
         await _context.SaveChangesAsync();
         return entity;
+    }
+
+    protected static async Task<PagedResult<TEntity>> ToPagedResultAsync<TEntity>(
+        IQueryable<TEntity> query,
+        int pageNumber,
+        int pageSize)
+    {
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PagedResult<TEntity>
+        {
+            Items = items,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+        };
     }
 }

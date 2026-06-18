@@ -1,9 +1,18 @@
-﻿using HealthAxis.API.Models;
-using HealthAxis.API.Repositories;
+using HealthAxis.API.Models;
 
 namespace HealthAxis.API.Repositories;
 
 public interface IHealthRecordRepository : IRepository<HealthRecord>
 {
-    Task<List<HealthRecord>> GetHealthRecordsByPatientIdAsync(int patientId);
+    Task<PagedResult<HealthRecord>> GetHealthRecordsByPatientIdAsync(int patientId, int pageNumber, int pageSize);
+
+    Task<PagedResult<HealthRecord>> GetHealthRecordsByPatientIdAndDoctorIdAsync(
+        int patientId,
+        int doctorId,
+        int pageNumber,
+        int pageSize);
+
+    Task<HealthRecord?> GetHealthRecordByIdWithDetailsAsync(int id);
+
+    Task<HealthRecord?> GetHealthRecordByAppointmentIdAsync(int appointmentId);
 }

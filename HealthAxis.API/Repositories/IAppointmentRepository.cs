@@ -1,14 +1,30 @@
-﻿using HealthAxis.API.Models;
-using HealthAxis.API.Repositories;
+using HealthAxis.API.Models;
 
 namespace HealthAxis.API.Repositories;
 
 public interface IAppointmentRepository : IRepository<Appointment>
 {
-    Task<List<Appointment>> GetAppointmentsByPatientIdAsync(int patientId);
+    Task<PagedResult<Appointment>> GetAllAppointmentsAsync(int pageNumber, int pageSize);
 
-    Task<List<Appointment>> GetAppointmentsByDoctorIdAsync(int doctorId);
+    Task<Appointment?> GetAppointmentByIdWithDetailsAsync(int appointmentId);
 
-    Task<List<Appointment>> GetAppointmentsByDoctorIdAndDateAsync(int doctorId, DateOnly date);
+    Task<PagedResult<Appointment>> GetAppointmentsByPatientIdAsync(int patientId, int pageNumber, int pageSize);
+
+    Task<PagedResult<Appointment>> GetAppointmentsByDoctorIdAsync(int doctorId, int pageNumber, int pageSize);
+
+    Task<PagedResult<Appointment>> GetAppointmentsByDoctorIdAndDateAsync(int doctorId, DateOnly date, int pageNumber, int pageSize);
+
+    Task<List<Appointment>> GetPendingAppointmentsAsync();
+
+    Task<bool> DoctorHasNonCancelledAppointmentAtAsync(int doctorId, DateOnly date, TimeOnly time);
+
+    Task<bool> PatientHasNonCancelledAppointmentAtAsync(int patientId, DateOnly date, TimeOnly time);
+
+    Task<bool> PatientHasNonCancelledAppointmentWithDoctorOnDateAsync(int patientId, int doctorId, DateOnly date);
+
+    Task<bool> DoctorHasConfirmedAppointmentsOnDateAsync(int doctorId, DateOnly date);
+
+    Task<List<Appointment>> GetPendingOrConfirmedAppointmentsByDoctorIdAndDateAsync(int doctorId, DateOnly date);
+
     Task<Appointment?> DeleteAppointmentAsync(int appointmentId);
 }

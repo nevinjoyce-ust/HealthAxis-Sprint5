@@ -1,62 +1,72 @@
-﻿using AutoMapper;
+using AutoMapper;
+using HealthAxis.API.Constants;
 using HealthAxis.API.Data;
 using HealthAxis.API.Dtos;
-using HealthAxis.API.Enums;
+using HealthAxis.API.Exceptions;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
-using HealthAxis.API.Services;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.Services.Impl;
 
 public class AdminService(
     HealthAxisDbContext context,
     IDoctorRepository doctorRepository,
-    IUserRepository userRepository,
     IAppointmentService appointmentService,
-    IMapper mapper) : IAdminService
+    IMapper mapper,
+    UserManager<IdentityUser> userManager) : IAdminService
 {
-    public async Task<List<DoctorDto>> GetDoctorsAsync()
+    public async Task<PagedResultDto<DoctorDto>> GetDoctorsAsync(PaginationQueryDto pagination)
     {
-        var doctors = await doctorRepository.GetAllAsync();
+        var doctors = await doctorRepository.GetAllDoctorsWithUserAsync(
+            pagination.PageNumber,
+            pagination.PageSize);
 
-        var doctorDtos = new List<DoctorDto>();
-
-        foreach (var doctor in doctors)
-        {
-            var doctorDto = await MapDoctorToDtoAsync(doctor);
-            doctorDtos.Add(doctorDto);
-        }
-
-        return doctorDtos;
+        return MapPagedResult<Doctor, DoctorDto>(doctors);
     }
 
     public async Task<DoctorDto?> CreateDoctorAsync(CreateDoctorDto dto)
     {
-        var existingUser = await userRepository.GetByEmailAsync(dto.Email);
+        var existingUser = await userManager.FindByEmailAsync(dto.Email);
 
         if (existingUser != null)
         {
-            return null;
+            throw new ConflictException(ErrorMessages.EmailAlreadyExists);
         }
 
         await using var transaction = await context.Database.BeginTransactionAsync();
 
         try
         {
-            var user = new User
+            var user = new IdentityUser
             {
-                FullName = dto.FullName,
+                UserName = dto.Email,
                 Email = dto.Email,
-                PasswordHash = dto.Password, // Temporary until password hashing/JWT auth is added.
-                Role = UserRole.Doctor,
-                IsActive = true
+                PhoneNumber = dto.PhoneNumber,
+                EmailConfirmed = true
             };
 
-            var createdUser = await userRepository.AddAsync(user);
+            var createUserResult = await userManager.CreateAsync(user, dto.Password);
+
+            if (!createUserResult.Succeeded)
+            {
+                var errors = string.Join(" ", createUserResult.Errors.Select(error => error.Description));
+                throw new BadRequestException(errors);
+            }
+
+            var addRoleResult = await userManager.AddToRoleAsync(user, AppRoles.Doctor);
+
+            if (!addRoleResult.Succeeded)
+            {
+                var errors = string.Join(" ", addRoleResult.Errors.Select(error => error.Description));
+                throw new BadRequestException(errors);
+            }
 
             var doctor = new Doctor
             {
-                UserId = createdUser.Id,
+                UserId = user.Id,
+                FullName = dto.FullName,
                 Specialisation = dto.Specialisation,
                 PracticeStartDate = dto.PracticeStartDate,
                 ConsultationFee = dto.ConsultationFee,
@@ -67,7 +77,11 @@ public class AdminService(
 
             await transaction.CommitAsync();
 
-            return await MapDoctorToDtoAsync(createdDoctor);
+            var doctorWithUser = await doctorRepository.GetDoctorByIdWithUserAsync(createdDoctor.Id);
+
+            return doctorWithUser == null
+                ? throw new NotFoundException(ErrorMessages.DoctorNotFoundAfterCreation)
+                : mapper.Map<DoctorDto>(doctorWithUser);
         }
         catch
         {
@@ -78,46 +92,30 @@ public class AdminService(
 
     public async Task<DoctorDto?> UpdateDoctorAsync(int id, UpdateDoctorDto dto)
     {
-        var doctor = await doctorRepository.GetByIdAsync(id);
+        var doctor = await doctorRepository.GetDoctorByIdAsync(id);
 
         if (doctor == null)
         {
-            return null;
+            throw new NotFoundException(ErrorMessages.DoctorNotFound);
         }
 
-        await using var transaction = await context.Database.BeginTransactionAsync();
+        doctor.FullName = dto.FullName;
+        doctor.Specialisation = dto.Specialisation;
+        doctor.PracticeStartDate = dto.PracticeStartDate;
+        doctor.ConsultationFee = dto.ConsultationFee;
 
-        try
+        var updatedDoctor = await doctorRepository.UpdateAsync(doctor);
+
+        if (updatedDoctor == null)
         {
-            doctor.Specialisation = dto.Specialisation;
-            doctor.PracticeStartDate = dto.PracticeStartDate;
-            doctor.ConsultationFee = dto.ConsultationFee;
-            doctor.IsAvailable = dto.IsAvailable;
-
-            var user = await userRepository.GetByIdAsync(doctor.UserId);
-
-            if (user != null)
-            {
-                user.FullName = dto.FullName;
-                await userRepository.UpdateAsync(user);
-            }
-
-            var updatedDoctor = await doctorRepository.UpdateAsync(doctor);
-
-            await transaction.CommitAsync();
-
-            if (updatedDoctor == null)
-            {
-                return null;
-            }
-
-            return await MapDoctorToDtoAsync(updatedDoctor);
+            throw new NotFoundException(ErrorMessages.DoctorNotFound);
         }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
+
+        var doctorWithUser = await doctorRepository.GetDoctorByIdWithUserAsync(updatedDoctor.Id);
+
+        return doctorWithUser == null
+            ? throw new NotFoundException(ErrorMessages.DoctorNotFound)
+            : mapper.Map<DoctorDto>(doctorWithUser);
     }
 
     public async Task<List<AppointmentReportDto>> GetAppointmentReportsAsync()
@@ -125,13 +123,40 @@ public class AdminService(
         return await appointmentService.GetAppointmentReportsAsync();
     }
 
-    private async Task<DoctorDto> MapDoctorToDtoAsync(Doctor doctor)
+    public async Task<List<AppointmentHealthRecordReportDto>> GetAppointmentHealthRecordReportsAsync()
     {
-        var doctorDto = mapper.Map<DoctorDto>(doctor);
+        return await context.Appointments
+            .Include(appointment => appointment.Patient)
+            .Include(appointment => appointment.Doctor)
+            .Include(appointment => appointment.HealthRecord)
+            .OrderBy(appointment => appointment.AppointmentDate)
+            .ThenBy(appointment => appointment.AppointmentTime)
+            .Select(appointment => new AppointmentHealthRecordReportDto
+            {
+                AppointmentId = appointment.Id,
+                PatientId = appointment.PatientId,
+                DoctorId = appointment.DoctorId,
+                PatientName = appointment.Patient != null ? appointment.Patient.FullName : string.Empty,
+                DoctorName = appointment.Doctor != null ? appointment.Doctor.FullName : string.Empty,
+                AppointmentDate = appointment.AppointmentDate,
+                AppointmentTime = appointment.AppointmentTime,
+                AppointmentStatus = appointment.Status,
+                HasHealthRecord = appointment.HealthRecord != null,
+                HealthRecordId = appointment.HealthRecord != null ? appointment.HealthRecord.Id : null,
+                HealthRecordVisitDate = appointment.HealthRecord != null ? appointment.HealthRecord.VisitDate : null
+            })
+            .ToListAsync();
+    }
 
-        doctorDto.FullName = await userRepository.GetFullNameByIdAsync(doctor.UserId)
-            ?? string.Empty;
-
-        return doctorDto;
+    private PagedResultDto<TDestination> MapPagedResult<TSource, TDestination>(PagedResult<TSource> pagedResult)
+    {
+        return new PagedResultDto<TDestination>
+        {
+            Items = mapper.Map<List<TDestination>>(pagedResult.Items),
+            PageNumber = pagedResult.PageNumber,
+            PageSize = pagedResult.PageSize,
+            TotalCount = pagedResult.TotalCount,
+            TotalPages = pagedResult.TotalPages
+        };
     }
 }

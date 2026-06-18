@@ -1,14 +1,16 @@
-﻿using HealthAxis.API.Dtos;
+using HealthAxis.API.Dtos;
 
 namespace HealthAxis.API.Services;
 
 public interface IPatientService
 {
-    Task<PatientDto?> GetPatientByIdAsync(int id);
+    Task<PatientDto> GetPatientByIdAsync(int id);
 
-    Task<PatientDto?> GetPatientByUserIdAsync(int userId);
+    Task<PatientDto> GetPatientByUserIdAsync(string userId);
 
-    Task<PatientDto?> UpdatePatientAsync(int id, UpdatePatientDto dto);
+    Task<PatientDto> UpdatePatientAsync(int id, UpdatePatientDto dto);
 
-    Task<List<HealthRecordDto>> GetPatientHealthRecordsAsync(int patientId);
+    Task<PagedResultDto<HealthRecordDto>> GetPatientHealthRecordsAsync(
+        int patientId,
+        PaginationQueryDto pagination);
 }

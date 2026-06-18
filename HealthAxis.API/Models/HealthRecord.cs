@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HealthAxis.API.Models;
@@ -9,10 +9,7 @@ public class HealthRecord
     public int Id { get; set; }
 
     [Required]
-    public int PatientId { get; set; }
-
-    [Required]
-    public int DoctorId { get; set; }
+    public int AppointmentId { get; set; }
 
     [Required]
     public DateOnly VisitDate { get; set; }
@@ -28,9 +25,6 @@ public class HealthRecord
     [StringLength(1000)]
     public string? Notes { get; set; }
 
-    [ForeignKey(nameof(PatientId))]
-    public Patient? Patient { get; set; }
-
-    [ForeignKey(nameof(DoctorId))]
-    public Doctor? Doctor { get; set; }
+    [ForeignKey(nameof(AppointmentId))]
+    public Appointment? Appointment { get; set; }
 }

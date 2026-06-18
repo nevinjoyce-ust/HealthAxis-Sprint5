@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using HealthAxis.API.Dtos;
 using HealthAxis.API.Models;
 
@@ -8,30 +8,65 @@ public class MappingProfile : Profile
 {
     public MappingProfile()
     {
+        CreateMap<Doctor, PublicDoctorDto>()
+            .ForMember(dest => dest.YearsOfExperience,
+                opt => opt.MapFrom(src => src.CalculateYearsOfExperience()));
+
         CreateMap<Doctor, DoctorDto>()
             .ForMember(dest => dest.YearsOfExperience,
                 opt => opt.MapFrom(src => src.CalculateYearsOfExperience()))
-            .ForMember(dest => dest.FullName,
-                opt => opt.Ignore());
+            .ForMember(dest => dest.Email,
+                opt => opt.MapFrom(src =>
+                    src.User != null && src.User.Email != null
+                        ? src.User.Email
+                        : string.Empty))
+            .ForMember(dest => dest.PhoneNumber,
+                opt => opt.MapFrom(src =>
+                    src.User != null && src.User.PhoneNumber != null
+                        ? src.User.PhoneNumber
+                        : string.Empty));
 
         CreateMap<Patient, PatientDto>()
-            .ForMember(dest => dest.FullName,
-                opt => opt.Ignore());
+            .ForMember(dest => dest.PhoneNumber,
+                opt => opt.MapFrom(src =>
+                    src.User != null && src.User.PhoneNumber != null
+                        ? src.User.PhoneNumber
+                        : string.Empty));
 
         CreateMap<Appointment, AppointmentDto>()
             .ForMember(dest => dest.PatientName,
-                opt => opt.Ignore())
+                opt => opt.MapFrom(src =>
+                    src.Patient != null
+                        ? src.Patient.FullName
+                        : string.Empty))
             .ForMember(dest => dest.DoctorName,
-                opt => opt.Ignore());
+                opt => opt.MapFrom(src =>
+                    src.Doctor != null
+                        ? src.Doctor.FullName
+                        : string.Empty));
 
         CreateMap<CreateAppointmentDto, Appointment>();
 
         CreateMap<HealthRecord, HealthRecordDto>()
+            .ForMember(dest => dest.PatientId,
+                opt => opt.MapFrom(src =>
+                    src.Appointment != null
+                        ? src.Appointment.PatientId
+                        : 0))
+            .ForMember(dest => dest.DoctorId,
+                opt => opt.MapFrom(src =>
+                    src.Appointment != null
+                        ? src.Appointment.DoctorId
+                        : 0))
             .ForMember(dest => dest.PatientName,
-                opt => opt.Ignore())
+                opt => opt.MapFrom(src =>
+                    src.Appointment != null && src.Appointment.Patient != null
+                        ? src.Appointment.Patient.FullName
+                        : string.Empty))
             .ForMember(dest => dest.DoctorName,
-                opt => opt.Ignore());
-
-        CreateMap<CreateHealthRecordDto, HealthRecord>();
+                opt => opt.MapFrom(src =>
+                    src.Appointment != null && src.Appointment.Doctor != null
+                        ? src.Appointment.Doctor.FullName
+                        : string.Empty));
     }
 }

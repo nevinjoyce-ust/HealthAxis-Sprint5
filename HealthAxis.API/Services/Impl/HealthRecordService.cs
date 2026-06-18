@@ -1,76 +1,138 @@
-﻿using AutoMapper;
+using AutoMapper;
+using HealthAxis.API.Constants;
+using HealthAxis.API.Data;
 using HealthAxis.API.Dtos;
+using HealthAxis.API.Enums;
+using HealthAxis.API.Exceptions;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
-using HealthAxis.API.Services;
 
 namespace HealthAxis.API.Services.Impl;
 
 public class HealthRecordService(
+    HealthAxisDbContext context,
     IHealthRecordRepository healthRecordRepository,
-    IPatientRepository patientRepository,
-    IDoctorRepository doctorRepository,
-    IUserRepository userRepository,
+    IAppointmentRepository appointmentRepository,
     IMapper mapper) : IHealthRecordService
 {
-    public async Task<List<HealthRecordDto>> GetHealthRecordsByPatientIdAsync(int patientId)
+    public async Task<PagedResultDto<HealthRecordDto>> GetHealthRecordsByPatientIdAsync(
+        int patientId,
+        PaginationQueryDto pagination)
     {
-        var records = await healthRecordRepository.GetHealthRecordsByPatientIdAsync(patientId);
+        var records = await healthRecordRepository.GetHealthRecordsByPatientIdAsync(
+            patientId,
+            pagination.PageNumber,
+            pagination.PageSize);
 
-        var recordDtos = new List<HealthRecordDto>();
-
-        foreach (var record in records)
-        {
-            recordDtos.Add(await MapHealthRecordToDtoAsync(record));
-        }
-
-        return recordDtos;
+        return MapPagedResult<HealthRecord, HealthRecordDto>(records);
     }
 
-    public async Task<HealthRecordDto?> GetHealthRecordByIdAsync(int id)
+    public async Task<PagedResultDto<HealthRecordDto>> GetHealthRecordsByPatientIdAndDoctorIdAsync(
+        int patientId,
+        int doctorId,
+        PaginationQueryDto pagination)
     {
-        var record = await healthRecordRepository.GetByIdAsync(id);
+        var records = await healthRecordRepository.GetHealthRecordsByPatientIdAndDoctorIdAsync(
+            patientId,
+            doctorId,
+            pagination.PageNumber,
+            pagination.PageSize);
+
+        return MapPagedResult<HealthRecord, HealthRecordDto>(records);
+    }
+
+    public async Task<HealthRecordDto> GetHealthRecordByIdAsync(int id)
+    {
+        var record = await healthRecordRepository.GetHealthRecordByIdWithDetailsAsync(id);
 
         if (record == null)
         {
-            return null;
+            throw new NotFoundException(ErrorMessages.HealthRecordNotFound);
         }
 
-        return await MapHealthRecordToDtoAsync(record);
+        return mapper.Map<HealthRecordDto>(record);
     }
 
-    public async Task<HealthRecordDto?> CreateHealthRecordAsync(CreateHealthRecordDto dto)
+    public async Task<HealthRecordDto> CreateHealthRecordAsync(CreateHealthRecordDto dto, int doctorId)
     {
-        var patient = await patientRepository.GetByIdAsync(dto.PatientId);
-        var doctor = await doctorRepository.GetByIdAsync(dto.DoctorId);
+        var appointment = await appointmentRepository.GetAppointmentByIdWithDetailsAsync(dto.AppointmentId);
 
-        if (patient == null || doctor == null)
+        if (appointment == null)
         {
-            return null;
+            throw new NotFoundException(ErrorMessages.AppointmentNotFound);
         }
 
-        var healthRecord = mapper.Map<HealthRecord>(dto);
+        if (appointment.DoctorId != doctorId)
+        {
+            throw new ForbiddenException(ErrorMessages.DoctorCanCreateHealthRecordOnlyForOwnAppointment);
+        }
 
-        var createdRecord = await healthRecordRepository.AddAsync(healthRecord);
+        if (appointment.Status != AppointmentStatus.Confirmed)
+        {
+            throw new BusinessRuleException(ErrorMessages.OnlyConfirmedAppointmentsCanBeCompleted);
+        }
 
-        return await MapHealthRecordToDtoAsync(createdRecord);
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        if (appointment.AppointmentDate != today)
+        {
+            throw new BusinessRuleException(ErrorMessages.HealthRecordCanBeCreatedOnlyOnAppointmentDate);
+        }
+
+        if (dto.VisitDate != appointment.AppointmentDate)
+        {
+            throw new BusinessRuleException(ErrorMessages.VisitDateMustMatchAppointmentDate);
+        }
+
+        var existingRecord = await healthRecordRepository.GetHealthRecordByAppointmentIdAsync(dto.AppointmentId);
+
+        if (existingRecord != null)
+        {
+            throw new ConflictException(ErrorMessages.HealthRecordAlreadyExistsForAppointment);
+        }
+
+        await using var transaction = await context.Database.BeginTransactionAsync();
+
+        try
+        {
+            var healthRecord = new HealthRecord
+            {
+                AppointmentId = dto.AppointmentId,
+                VisitDate = dto.VisitDate,
+                Diagnosis = dto.Diagnosis,
+                Prescription = dto.Prescription,
+                Notes = dto.Notes
+            };
+
+            var createdRecord = await healthRecordRepository.AddAsync(healthRecord);
+
+            appointment.Status = AppointmentStatus.Completed;
+            await appointmentRepository.UpdateAsync(appointment);
+
+            await transaction.CommitAsync();
+
+            var recordWithDetails = await healthRecordRepository.GetHealthRecordByIdWithDetailsAsync(createdRecord.Id);
+
+            return recordWithDetails == null
+                ? throw new NotFoundException(ErrorMessages.HealthRecordNotFoundAfterCreation)
+                : mapper.Map<HealthRecordDto>(recordWithDetails);
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
-    private async Task<HealthRecordDto> MapHealthRecordToDtoAsync(HealthRecord record)
+    private PagedResultDto<TDestination> MapPagedResult<TSource, TDestination>(PagedResult<TSource> pagedResult)
     {
-        var recordDto = mapper.Map<HealthRecordDto>(record);
-
-        var patient = await patientRepository.GetByIdAsync(record.PatientId);
-        var doctor = await doctorRepository.GetByIdAsync(record.DoctorId);
-
-        recordDto.PatientName = patient == null
-            ? string.Empty
-            : await userRepository.GetFullNameByIdAsync(patient.UserId) ?? string.Empty;
-
-        recordDto.DoctorName = doctor == null
-            ? string.Empty
-            : await userRepository.GetFullNameByIdAsync(doctor.UserId) ?? string.Empty;
-
-        return recordDto;
+        return new PagedResultDto<TDestination>
+        {
+            Items = mapper.Map<List<TDestination>>(pagedResult.Items),
+            PageNumber = pagedResult.PageNumber,
+            PageSize = pagedResult.PageSize,
+            TotalCount = pagedResult.TotalCount,
+            TotalPages = pagedResult.TotalPages
+        };
     }
 }

@@ -1,17 +1,16 @@
-﻿using HealthAxis.API.Enums;
 using HealthAxis.API.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.Data;
 
-public class HealthAxisDbContext : DbContext
+public class HealthAxisDbContext : IdentityDbContext<IdentityUser>
 {
     public HealthAxisDbContext(DbContextOptions<HealthAxisDbContext> options)
         : base(options)
     {
     }
-
-    public DbSet<User> Users { get; set; }
 
     public DbSet<Doctor> Doctors { get; set; }
 
@@ -21,118 +20,54 @@ public class HealthAxisDbContext : DbContext
 
     public DbSet<HealthRecord> HealthRecords { get; set; }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(ModelBuilder builder)
     {
-        base.OnModelCreating(modelBuilder);
+        base.OnModelCreating(builder);
 
-        modelBuilder.Entity<User>()
-            .HasIndex(user => user.Email)
-            .IsUnique();
-
-        modelBuilder.Entity<User>()
-            .HasOne(user => user.Doctor)
+        builder.Entity<IdentityUser>()
+            .HasOne<Doctor>()
             .WithOne(doctor => doctor.User)
             .HasForeignKey<Doctor>(doctor => doctor.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        modelBuilder.Entity<User>()
-            .HasOne(user => user.Patient)
+        builder.Entity<IdentityUser>()
+            .HasOne<Patient>()
             .WithOne(patient => patient.User)
             .HasForeignKey<Patient>(patient => patient.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        modelBuilder.Entity<User>()
-            .Property(user => user.Role)
-            .HasConversion<string>()
-            .HasMaxLength(30)
-            .IsRequired();
-
-        modelBuilder.Entity<Appointment>()
+        builder.Entity<Appointment>()
             .HasOne(appointment => appointment.Patient)
             .WithMany(patient => patient.Appointments)
             .HasForeignKey(appointment => appointment.PatientId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        modelBuilder.Entity<Appointment>()
+        builder.Entity<Appointment>()
             .HasOne(appointment => appointment.Doctor)
             .WithMany(doctor => doctor.Appointments)
             .HasForeignKey(appointment => appointment.DoctorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        modelBuilder.Entity<Appointment>()
+        builder.Entity<Appointment>()
             .Property(appointment => appointment.Status)
             .HasConversion<string>()
             .HasMaxLength(30)
             .IsRequired();
 
-        modelBuilder.Entity<HealthRecord>()
-            .HasOne(record => record.Patient)
-            .WithMany(patient => patient.HealthRecords)
-            .HasForeignKey(record => record.PatientId)
+        builder.Entity<Appointment>()
+            .HasOne(appointment => appointment.HealthRecord)
+            .WithOne(record => record.Appointment)
+            .HasForeignKey<HealthRecord>(record => record.AppointmentId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        modelBuilder.Entity<HealthRecord>()
-            .HasOne(record => record.Doctor)
-            .WithMany(doctor => doctor.HealthRecords)
-            .HasForeignKey(record => record.DoctorId)
-            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<HealthRecord>()
+            .HasIndex(record => record.AppointmentId)
+            .IsUnique();
 
-        modelBuilder.Entity<Doctor>()
+        builder.Entity<Doctor>()
             .Property(doctor => doctor.Specialisation)
             .HasConversion<string>()
             .HasMaxLength(100)
             .IsRequired();
-
-
-        modelBuilder.Entity<User>().HasData(
-            new User
-            {
-                Id = 1,
-                FullName = "System Admin",
-                Email = "admin@healthaxis.com",
-                PasswordHash = "Admin@123",
-                Role = UserRole.Admin,
-                IsActive = true
-            },
-            new User
-            {
-                Id = 2,
-                FullName = "Dr. Anjali Menon",
-                Email = "anjali.menon@healthaxis.com",
-                PasswordHash = "Doctor@123",
-                Role = UserRole.Doctor,
-                IsActive = true
-            },
-            new User
-            {
-                Id = 3,
-                FullName = "Dr. Rahul Nair",
-                Email = "rahul.nair@healthaxis.com",
-                PasswordHash = "Doctor@123",
-                Role = UserRole.Doctor,
-                IsActive = true
-            }
-        );
-
-        modelBuilder.Entity<Doctor>().HasData(
-            new Doctor
-            {
-                Id = 1,
-                UserId = 2,
-                Specialisation = DoctorSpecialisation.Cardiology    ,
-                PracticeStartDate = new DateOnly(2015, 1, 1),
-                ConsultationFee = 600,
-                IsAvailable = true
-            },
-            new Doctor
-            {
-                Id = 2,
-                UserId = 3,
-                Specialisation = DoctorSpecialisation.Dermatology,
-                PracticeStartDate = new DateOnly(2019, 1, 1),
-                ConsultationFee = 500,
-                IsAvailable = true
-            }
-        );
     }
 }

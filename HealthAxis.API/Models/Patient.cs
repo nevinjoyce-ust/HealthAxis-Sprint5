@@ -1,5 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.AspNetCore.Identity;
 
 namespace HealthAxis.API.Models;
 
@@ -9,7 +10,11 @@ public class Patient
     public int Id { get; set; }
 
     [Required]
-    public int UserId { get; set; }
+    public string UserId { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(100)]
+    public string FullName { get; set; } = string.Empty;
 
     [Required]
     public DateOnly DateOfBirth { get; set; }
@@ -19,18 +24,11 @@ public class Patient
     public string Gender { get; set; } = string.Empty;
 
     [Required]
-    [Phone]
-    [StringLength(20)]
-    public string PhoneNumber { get; set; } = string.Empty;
-
-    [Required]
     [StringLength(250)]
     public string Address { get; set; } = string.Empty;
 
     [ForeignKey(nameof(UserId))]
-    public User? User { get; set; }
+    public IdentityUser? User { get; set; }
 
     public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
-
-    public ICollection<HealthRecord> HealthRecords { get; set; } = new List<HealthRecord>();
 }

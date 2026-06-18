@@ -1,4 +1,4 @@
-﻿using HealthAxis.API.Enums;
+using HealthAxis.API.Enums;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -33,4 +33,6 @@ public class Appointment
 
     [ForeignKey(nameof(DoctorId))]
     public Doctor? Doctor { get; set; }
+
+    public HealthRecord? HealthRecord { get; set; }
 }
