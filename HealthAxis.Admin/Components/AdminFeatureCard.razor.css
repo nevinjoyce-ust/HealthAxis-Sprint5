@@ -1,0 +1,9 @@
+﻿.admin-feature-card {
+    border: 0;
+    border-radius: 0.75rem;
+}
+
+.admin-feature-card:hover {
+    transform: translateY(-2px);
+    transition: transform 0.15s ease-in-out;
+}

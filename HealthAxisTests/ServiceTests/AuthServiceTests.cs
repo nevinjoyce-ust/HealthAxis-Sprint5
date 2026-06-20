@@ -53,18 +53,7 @@ public class AuthServiceTests
         Assert.Equal(string.Empty, result.UserId);
     }
 
-    [Fact]
-    public async Task RegisterAsync_WhenRoleIsNotPatient_ShouldReturnFailure()
-    {
-        var request = CreateRegisterDto();
-        request.Role = AppRoles.Doctor;
-
-        var result = await _authService.RegisterAsync(request);
-
-        Assert.False(result.Success);
-        Assert.Equal(ErrorMessages.OnlyPatientRegistrationAllowed, result.Message);
-        Assert.Equal(string.Empty, result.UserId);
-    }
+   
 
     [Fact]
     public async Task RegisterAsync_WhenEmailAlreadyRegistered_ShouldReturnFailure()
@@ -333,7 +322,6 @@ public class AuthServiceTests
             PhoneNumber = "9999999999",
             Password = "Password@123",
             ConfirmPassword = "Password@123",
-            Role = AppRoles.Patient,
             DateOfBirth = new DateOnly(1998, 1, 1),
             Gender = "Female",
             Address = "Trivandrum"

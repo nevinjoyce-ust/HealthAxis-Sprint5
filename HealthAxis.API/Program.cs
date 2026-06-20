@@ -16,6 +16,21 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
+const string HealthAxisAdminCorsPolicy = "HealthAxisAdminCorsPolicy";
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(HealthAxisAdminCorsPolicy, policy =>
+    {
+        policy
+            .WithOrigins(
+                "https://localhost:7041",
+                "http://localhost:5291")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -162,6 +177,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors(HealthAxisAdminCorsPolicy);
 
 app.UseAuthentication();
 app.UseAuthorization();

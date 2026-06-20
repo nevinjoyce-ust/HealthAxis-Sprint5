@@ -27,7 +27,6 @@ public class RegisterDto
     [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
     public string ConfirmPassword { get; set; } = string.Empty;
 
-    public string Role { get; set; } = "Patient";
 
     [JsonRequired]
     [Required]

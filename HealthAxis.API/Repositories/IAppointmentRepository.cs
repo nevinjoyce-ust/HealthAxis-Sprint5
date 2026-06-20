@@ -27,4 +27,6 @@ public interface IAppointmentRepository : IRepository<Appointment>
     Task<List<Appointment>> GetPendingOrConfirmedAppointmentsByDoctorIdAndDateAsync(int doctorId, DateOnly date);
 
     Task<Appointment?> DeleteAppointmentAsync(int appointmentId);
+
+    Task<bool> DoctorHasConfirmedAppointmentWithPatientAsync(int doctorId, int patientId);
 }

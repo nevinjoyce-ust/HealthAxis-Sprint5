@@ -1,0 +1,46 @@
+﻿@page "/logout"
+@using HealthAxis.Admin.Components
+@using HealthAxis.Admin.Services
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Logout - HealthAxis Admin</PageTitle>
+
+<AdminPageHeader Kicker="Session"
+                 Title="Confirm Logout"
+                 Description="You are about to sign out of the HealthAxis Admin Console." />
+
+<section class="admin-card logout-card">
+    <div class="logout-icon">
+        <span class="bi bi-shield-lock" aria-hidden="true"></span>
+    </div>
+
+    <h3>Are you sure you want to log out?</h3>
+    <p class="text-muted">
+        Logging out will remove your current admin session from this browser.
+        You will need to sign in again to access the admin console.
+    </p>
+
+    <div class="form-actions">
+        <button class="btn btn-danger" type="button" @onclick="ConfirmLogoutAsync">
+            Yes, log out
+        </button>
+
+        <button class="btn btn-outline-secondary" type="button" @onclick="CancelLogout">
+            Cancel
+        </button>
+    </div>
+</section>
+
+@code {
+    private async Task ConfirmLogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        NavigationManager.NavigateTo("/login");
+    }
+
+    private void CancelLogout()
+    {
+        NavigationManager.NavigateTo("/dashboard");
+    }
+}

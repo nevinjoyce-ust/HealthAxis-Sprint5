@@ -38,7 +38,7 @@ public class HealthRecordsController(IHealthRecordService healthRecordService) :
                 return Forbid();
             }
 
-            var doctorRecords = await healthRecordService.GetHealthRecordsByPatientIdAndDoctorIdAsync(
+            var doctorRecords = await healthRecordService.GetHealthRecordsForDoctorPatientViewAsync(
                 patientId,
                 doctorId.Value,
                 pagination

@@ -1,0 +1,103 @@
+﻿@implements IDisposable
+@using HealthAxis.Admin.Services
+@inject ITokenService TokenService
+@inject NavigationManager NavigationManager
+
+<div class="sidebar-brand">
+    <div class="sidebar-logo">HA</div>
+    <div>
+        <div class="sidebar-title">HealthAxis</div>
+        <div class="sidebar-subtitle">Admin Console</div>
+    </div>
+</div>
+
+<button title="Toggle navigation" class="sidebar-toggle" @onclick="ToggleNavMenu">
+    <span class="bi bi-list" aria-hidden="true"></span>
+    Menu
+</button>
+
+<nav class="@NavMenuCssClass sidebar-nav">
+    <NavLink class="sidebar-link" href="dashboard">
+        <span class="bi bi-speedometer2" aria-hidden="true"></span>
+        Dashboard
+    </NavLink>
+
+    <NavLink class="sidebar-link" href="doctors">
+        <span class="bi bi-person-badge" aria-hidden="true"></span>
+        Doctors
+    </NavLink>
+
+    <NavLink class="sidebar-link" href="appointment-reports">
+        <span class="bi bi-clipboard2-pulse" aria-hidden="true"></span>
+        Appointment Reports
+    </NavLink>
+
+    <NavLink class="sidebar-link" href="users">
+        <span class="bi bi-people" aria-hidden="true"></span>
+        Users
+    </NavLink>
+
+    <div class="sidebar-divider"></div>
+
+    @if (_isLoggedIn)
+    {
+        <NavLink class="sidebar-link" href="logout">
+            <span class="bi bi-box-arrow-right" aria-hidden="true"></span>
+            Logout
+        </NavLink>
+    }
+    else
+    {
+        <NavLink class="sidebar-link" href="login">
+            <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span>
+            Login
+        </NavLink>
+    }
+</nav>
+
+<div class="sidebar-footer">
+    <div class="sidebar-footer-label">Sprint 3</div>
+    <div class="sidebar-footer-text">Blazor Admin UI</div>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+    private bool _isLoggedIn;
+
+    private string NavMenuCssClass => collapseNavMenu ? "sidebar-nav-collapsed" : "";
+
+    protected override void OnInitialized()
+    {
+        NavigationManager.LocationChanged += HandleLocationChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await RefreshLoginStateAsync();
+        }
+    }
+
+    private async void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        await RefreshLoginStateAsync();
+    }
+
+    private async Task RefreshLoginStateAsync()
+    {
+        var token = await TokenService.GetAccessTokenAsync();
+        _isLoggedIn = !string.IsNullOrWhiteSpace(token);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= HandleLocationChanged;
+    }
+}

@@ -464,6 +464,317 @@ public class HealthRecordServiceTests
             updatedAppointment.Id == dto.AppointmentId &&
             updatedAppointment.Status == AppointmentStatus.Completed)), Times.Once);
     }
+    [Fact]
+    public async Task GetHealthRecordsForDoctorPatientViewAsync_WhenDoctorHasConfirmedAppointment_ShouldReturnAllPatientRecords()
+    {
+        // Arrange
+        const int patientId = 10;
+        const int doctorId = 20;
+
+        var records = new List<HealthRecord>
+    {
+        new HealthRecord
+        {
+            Id = 1,
+            AppointmentId = 100,
+            VisitDate = new DateOnly(2026, 6, 20),
+            Diagnosis = "Fever",
+            Prescription = "Paracetamol",
+            Notes = "Rest advised",
+            Appointment = new Appointment
+            {
+                Id = 100,
+                PatientId = patientId,
+                DoctorId = 99
+            }
+        },
+        new HealthRecord
+        {
+            Id = 2,
+            AppointmentId = 101,
+            VisitDate = new DateOnly(2026, 6, 21),
+            Diagnosis = "Migraine",
+            Prescription = "Pain relief medicine",
+            Notes = "Follow up advised",
+            Appointment = new Appointment
+            {
+                Id = 101,
+                PatientId = patientId,
+                DoctorId = doctorId
+            }
+        }
+    };
+
+        var pagedRecords = new PagedResult<HealthRecord>
+        {
+            Items = records,
+            PageNumber = 1,
+            PageSize = 10,
+            TotalCount = 2,
+            TotalPages = 1
+        };
+
+        var mappedDtos = new List<HealthRecordDto>
+    {
+        new HealthRecordDto
+        {
+            Id = 1,
+            AppointmentId = 100,
+            PatientId = patientId,
+            DoctorId = 99,
+            VisitDate = new DateOnly(2026, 6, 20),
+            Diagnosis = "Fever",
+            Prescription = "Paracetamol",
+            Notes = "Rest advised"
+        },
+        new HealthRecordDto
+        {
+            Id = 2,
+            AppointmentId = 101,
+            PatientId = patientId,
+            DoctorId = doctorId,
+            VisitDate = new DateOnly(2026, 6, 21),
+            Diagnosis = "Migraine",
+            Prescription = "Pain relief medicine",
+            Notes = "Follow up advised"
+        }
+    };
+
+        var pagination = new PaginationQueryDto
+        {
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        _appointmentRepositoryMock
+            .Setup(repo => repo.DoctorHasConfirmedAppointmentWithPatientAsync(doctorId, patientId))
+            .ReturnsAsync(true);
+
+        _healthRecordRepositoryMock
+            .Setup(repo => repo.GetHealthRecordsByPatientIdAsync(patientId, 1, 10))
+            .ReturnsAsync(pagedRecords);
+
+        _mapperMock
+            .Setup(mapper => mapper.Map<List<HealthRecordDto>>(records))
+            .Returns(mappedDtos);
+
+        // Act
+        var result = await _healthRecordService.GetHealthRecordsForDoctorPatientViewAsync(
+            patientId,
+            doctorId,
+            pagination);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Items.Count);
+        Assert.Equal(1, result.PageNumber);
+        Assert.Equal(10, result.PageSize);
+        Assert.Equal(2, result.TotalCount);
+        Assert.Equal(1, result.TotalPages);
+
+        _healthRecordRepositoryMock.Verify(repo =>
+            repo.GetHealthRecordsByPatientIdAsync(patientId, 1, 10),
+            Times.Once);
+
+        _healthRecordRepositoryMock.Verify(repo =>
+            repo.GetHealthRecordsByPatientIdAndDoctorIdAsync(
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task GetHealthRecordsForDoctorPatientViewAsync_WhenAppointmentIsCompleted_ShouldReturnOnlyDoctorLinkedRecords()
+    {
+        // Arrange
+        const int patientId = 10;
+        const int doctorId = 20;
+
+        var records = new List<HealthRecord>
+    {
+        new HealthRecord
+        {
+            Id = 3,
+            AppointmentId = 102,
+            VisitDate = DateOnly.FromDateTime(DateTime.Today),
+            Diagnosis = "Completed appointment diagnosis",
+            Prescription = "Completed appointment prescription",
+            Notes = "Completed appointment notes",
+            Appointment = new Appointment
+            {
+                Id = 102,
+                PatientId = patientId,
+                DoctorId = doctorId,
+                Status = AppointmentStatus.Completed
+            }
+        }
+    };
+
+        var pagedRecords = new PagedResult<HealthRecord>
+        {
+            Items = records,
+            PageNumber = 1,
+            PageSize = 10,
+            TotalCount = 1,
+            TotalPages = 1
+        };
+
+        var mappedDtos = new List<HealthRecordDto>
+    {
+        new HealthRecordDto
+        {
+            Id = 3,
+            AppointmentId = 102,
+            PatientId = patientId,
+            DoctorId = doctorId,
+            VisitDate = DateOnly.FromDateTime(DateTime.Today),
+            Diagnosis = "Completed appointment diagnosis",
+            Prescription = "Completed appointment prescription",
+            Notes = "Completed appointment notes"
+        }
+    };
+
+        var pagination = new PaginationQueryDto
+        {
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        _appointmentRepositoryMock
+            .Setup(repo => repo.DoctorHasConfirmedAppointmentWithPatientAsync(doctorId, patientId))
+            .ReturnsAsync(false);
+
+        _healthRecordRepositoryMock
+            .Setup(repo => repo.GetHealthRecordsByPatientIdAndDoctorIdAsync(patientId, doctorId, 1, 10))
+            .ReturnsAsync(pagedRecords);
+
+        _mapperMock
+            .Setup(mapper => mapper.Map<List<HealthRecordDto>>(records))
+            .Returns(mappedDtos);
+
+        // Act
+        var result = await _healthRecordService.GetHealthRecordsForDoctorPatientViewAsync(
+            patientId,
+            doctorId,
+            pagination);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result.Items);
+        Assert.Equal(doctorId, result.Items[0].DoctorId);
+        Assert.Equal(AppointmentStatus.Completed, records[0].Appointment!.Status);
+
+        _appointmentRepositoryMock.Verify(repo =>
+            repo.DoctorHasConfirmedAppointmentWithPatientAsync(doctorId, patientId),
+            Times.Once);
+
+        _healthRecordRepositoryMock.Verify(repo =>
+            repo.GetHealthRecordsByPatientIdAndDoctorIdAsync(patientId, doctorId, 1, 10),
+            Times.Once);
+
+        _healthRecordRepositoryMock.Verify(repo =>
+            repo.GetHealthRecordsByPatientIdAsync(
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int>()),
+            Times.Never);
+    }
+    [Fact]
+    public async Task GetHealthRecordsForDoctorPatientViewAsync_WhenDoctorHasNoConfirmedAppointment_ShouldReturnDoctorLinkedRecords()
+    {
+        // Arrange
+        const int patientId = 10;
+        const int doctorId = 20;
+
+        var records = new List<HealthRecord>
+    {
+        new HealthRecord
+        {
+            Id = 2,
+            AppointmentId = 101,
+            VisitDate = new DateOnly(2026, 6, 21),
+            Diagnosis = "Migraine",
+            Prescription = "Pain relief medicine",
+            Notes = "Follow up advised",
+            Appointment = new Appointment
+            {
+                Id = 101,
+                PatientId = patientId,
+                DoctorId = doctorId
+            }
+        }
+    };
+
+        var pagedRecords = new PagedResult<HealthRecord>
+        {
+            Items = records,
+            PageNumber = 1,
+            PageSize = 10,
+            TotalCount = 1,
+            TotalPages = 1
+        };
+
+        var mappedDtos = new List<HealthRecordDto>
+    {
+        new HealthRecordDto
+        {
+            Id = 2,
+            AppointmentId = 101,
+            PatientId = patientId,
+            DoctorId = doctorId,
+            VisitDate = new DateOnly(2026, 6, 21),
+            Diagnosis = "Migraine",
+            Prescription = "Pain relief medicine",
+            Notes = "Follow up advised"
+        }
+    };
+
+        var pagination = new PaginationQueryDto
+        {
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        _appointmentRepositoryMock
+            .Setup(repo => repo.DoctorHasConfirmedAppointmentWithPatientAsync(doctorId, patientId))
+            .ReturnsAsync(false);
+
+        _healthRecordRepositoryMock
+            .Setup(repo => repo.GetHealthRecordsByPatientIdAndDoctorIdAsync(patientId, doctorId, 1, 10))
+            .ReturnsAsync(pagedRecords);
+
+        _mapperMock
+            .Setup(mapper => mapper.Map<List<HealthRecordDto>>(records))
+            .Returns(mappedDtos);
+
+        // Act
+        var result = await _healthRecordService.GetHealthRecordsForDoctorPatientViewAsync(
+            patientId,
+            doctorId,
+            pagination);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result.Items);
+        Assert.Equal(doctorId, result.Items[0].DoctorId);
+        Assert.Equal(1, result.PageNumber);
+        Assert.Equal(10, result.PageSize);
+        Assert.Equal(1, result.TotalCount);
+        Assert.Equal(1, result.TotalPages);
+
+        _healthRecordRepositoryMock.Verify(repo =>
+            repo.GetHealthRecordsByPatientIdAndDoctorIdAsync(patientId, doctorId, 1, 10),
+            Times.Once);
+
+        _healthRecordRepositoryMock.Verify(repo =>
+            repo.GetHealthRecordsByPatientIdAsync(
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int>()),
+            Times.Never);
+    }
 
     private static HealthAxisDbContext CreateDbContext()
     {

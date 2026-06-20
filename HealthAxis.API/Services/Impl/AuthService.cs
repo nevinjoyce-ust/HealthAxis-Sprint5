@@ -33,11 +33,6 @@ public class AuthService(
             return (false, ErrorMessages.PasswordsDoNotMatch, string.Empty);
         }
 
-        if (!string.Equals(request.Role, AppRoles.Patient, StringComparison.OrdinalIgnoreCase))
-        {
-            return (false, ErrorMessages.OnlyPatientRegistrationAllowed, string.Empty);
-        }
-
         var existingUser = await userManager.FindByEmailAsync(request.Email);
 
         if (existingUser != null)

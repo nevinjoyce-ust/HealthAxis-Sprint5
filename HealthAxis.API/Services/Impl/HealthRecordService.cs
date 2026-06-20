@@ -27,6 +27,21 @@ public class HealthRecordService(
         return MapPagedResult<HealthRecord, HealthRecordDto>(records);
     }
 
+    public async Task<PagedResultDto<HealthRecordDto>> GetHealthRecordsForDoctorPatientViewAsync(
+     int patientId,
+     int doctorId,
+     PaginationQueryDto pagination)
+    {
+        var hasConfirmedAppointment = await appointmentRepository
+            .DoctorHasConfirmedAppointmentWithPatientAsync(doctorId, patientId);
+
+        if (hasConfirmedAppointment)
+        {
+            return await GetHealthRecordsByPatientIdAsync(patientId, pagination);
+        }
+
+        return await GetHealthRecordsByPatientIdAndDoctorIdAsync(patientId, doctorId, pagination);
+    }
     public async Task<PagedResultDto<HealthRecordDto>> GetHealthRecordsByPatientIdAndDoctorIdAsync(
         int patientId,
         int doctorId,

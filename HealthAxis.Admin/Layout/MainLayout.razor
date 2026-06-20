@@ -1,0 +1,28 @@
+﻿@inherits LayoutComponentBase
+
+<div class="admin-shell">
+    <aside class="admin-sidebar">
+        <NavMenu />
+    </aside>
+
+    <section class="admin-main">
+        <header class="admin-topbar">
+            <div>
+                <p class="admin-eyebrow">HealthAxis Admin Console</p>
+                <h1 class="admin-topbar-title">Healthcare Operations Dashboard</h1>
+            </div>
+
+            <div class="admin-topbar-actions">
+                <span class="admin-environment-badge">Development</span>
+                <a class="profile-link" href="admin-profile" title="View admin profile">
+                    <span class="admin-avatar">A</span>
+                    <span class="profile-link-text">View profile</span>
+                </a>
+            </div>
+        </header>
+
+        <main class="admin-content">
+            @Body
+        </main>
+    </section>
+</div>

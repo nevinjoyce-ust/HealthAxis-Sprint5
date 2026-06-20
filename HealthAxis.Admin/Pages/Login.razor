@@ -1,0 +1,116 @@
+@page "/login"
+@layout HealthAxis.Admin.Layout.LoginLayout
+@using HealthAxis.Admin.Models
+@using HealthAxis.Admin.Services
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Admin Login - HealthAxis</PageTitle>
+
+<div class="login-shell">
+    <section class="login-hero-panel">
+        <div class="login-brand">
+            <div class="login-logo">HA</div>
+            <div>
+                <h1>HealthAxis</h1>
+                <p>Admin Console</p>
+            </div>
+        </div>
+
+        <div class="login-hero-content">
+            <p class="login-kicker">Healthcare Operations</p>
+            <h2>Manage doctors, appointments, reports, and users from one secure console.</h2>
+            <p>
+                This admin portal is designed for operational visibility and controlled access
+                to non-clinical management workflows.
+            </p>
+        </div>
+
+        <div class="login-feature-list">
+            <div>
+                <span class="bi bi-person-badge"></span>
+                Doctor management
+            </div>
+            <div>
+                <span class="bi bi-clipboard2-pulse"></span>
+                Appointment reports
+            </div>
+            <div>
+                <span class="bi bi-shield-check"></span>
+                Role-aware admin access
+            </div>
+        </div>
+    </section>
+
+    <section class="login-form-panel">
+        <div class="login-card">
+            <div class="login-card-header">
+                <p class="login-kicker">Welcome back</p>
+                <h3>Admin Sign In</h3>
+                <p>Use your admin credentials to continue.</p>
+            </div>
+
+            <EditForm Model="_loginRequest" OnValidSubmit="HandleLoginAsync">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <label class="form-label" for="email">Email</label>
+                    <InputText id="email"
+                               class="form-control login-input"
+                               @bind-Value="_loginRequest.Email" />
+                    <ValidationMessage For="@(() => _loginRequest.Email)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="password">Password</label>
+                    <InputText id="password"
+                               type="password"
+                               class="form-control login-input"
+                               @bind-Value="_loginRequest.Password" />
+                    <ValidationMessage For="@(() => _loginRequest.Password)" />
+                </div>
+
+                <button class="btn btn-primary w-100 login-button" type="submit" disabled="@_isLoading">
+                    @(_isLoading ? "Signing in..." : "Sign in")
+                </button>
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="alert alert-danger mt-3 mb-0">
+                        @_errorMessage
+                    </div>
+                }
+            </EditForm>
+        </div>
+    </section>
+</div>
+
+@code {
+    private readonly LoginRequest _loginRequest = new();
+    private bool _isLoading;
+    private string? _errorMessage;
+
+    private async Task HandleLoginAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.LoginAsync(_loginRequest);
+
+            if (result is null)
+            {
+                _errorMessage = "Invalid admin credentials, non-admin account, or API connection issue.";
+                return;
+            }
+
+            NavigationManager.NavigateTo("/dashboard");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

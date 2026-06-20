@@ -1,0 +1,78 @@
+@page "/dashboard"
+@using HealthAxis.Admin.Components
+@using HealthAxis.Admin.Services
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Dashboard - HealthAxis Admin</PageTitle>
+
+<AdminPageHeader Kicker="Overview"
+                 Title="Admin Dashboard"
+                 Description="Monitor doctors, appointments, reports, and operational activity from one place." />
+
+<div class="admin-stats-grid">
+    <AdminStatCard Label="Active Doctors" Value="18" Caption="Available for appointments" Icon="bi-person-badge" IconCssClass="stat-blue" />
+    <AdminStatCard Label="Today's Appointments" Value="42" Caption="Across all departments" Icon="bi-calendar2-check" IconCssClass="stat-green" />
+    <AdminStatCard Label="Pending Confirmations" Value="9" Caption="Needs action" Icon="bi-hourglass-split" IconCssClass="stat-orange" />
+    <AdminStatCard Label="Completed Visits" Value="27" Caption="Health records created" Icon="bi-clipboard2-pulse" IconCssClass="stat-purple" />
+</div>
+
+<div class="admin-grid-two mt-4">
+    <section class="admin-card">
+        <div class="admin-card-header">
+            <div>
+                <h3>Operational Shortcuts</h3>
+                <p>Common admin actions for HealthAxis.</p>
+            </div>
+        </div>
+
+        <div class="shortcut-list">
+            <a class="shortcut-item" href="doctors">
+                <span class="bi bi-person-plus"></span>
+                Manage doctor profiles
+            </a>
+            <a class="shortcut-item" href="appointment-reports">
+                <span class="bi bi-bar-chart"></span>
+                View appointment reports
+            </a>
+            <a class="shortcut-item" href="users">
+                <span class="bi bi-people"></span>
+                Review registered users
+            </a>
+        </div>
+    </section>
+
+    <section class="admin-card">
+        <div class="admin-card-header">
+            <div>
+                <h3>Today's Status</h3>
+                <p>Mock UI data for frontend layout practice.</p>
+            </div>
+        </div>
+
+        <div class="status-row">
+            <span>Confirmed appointments</span>
+            <StatusBadge Text="22" Variant="success" />
+        </div>
+        <div class="status-row">
+            <span>Pending appointments</span>
+            <StatusBadge Text="9" Variant="warning" />
+        </div>
+        <div class="status-row">
+            <span>Cancelled appointments</span>
+            <StatusBadge Text="4" Variant="danger" />
+        </div>
+        <div class="status-row">
+            <span>Completed appointments</span>
+            <StatusBadge Text="27" Variant="info" />
+        </div>
+    </section>
+</div>
+
+@code {
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        NavigationManager.NavigateTo("/login");
+    }
+}

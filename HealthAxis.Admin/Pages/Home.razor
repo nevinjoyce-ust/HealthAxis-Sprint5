@@ -1,0 +1,13 @@
+﻿@page "/"
+@inject NavigationManager NavigationManager
+
+<PageTitle>HealthAxis Admin</PageTitle>
+
+<p>Redirecting to login...</p>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavigationManager.NavigateTo("/login", replace: true);
+    }
+}

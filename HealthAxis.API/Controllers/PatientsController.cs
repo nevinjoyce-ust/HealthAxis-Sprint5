@@ -42,7 +42,7 @@ public class PatientsController(IPatientService patientService) : ControllerBase
     }
 
     [HttpGet("{id:int}/health-records")]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.PatientDoctor)]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.Patient)]
     public async Task<IActionResult> GetPatientHealthRecords(
         int id,
         [FromQuery] PaginationQueryDto pagination)

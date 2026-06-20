@@ -1,0 +1,96 @@
+﻿@page "/admin-profile"
+@using HealthAxis.Admin.Components
+
+<PageTitle>Admin Profile - HealthAxis Admin</PageTitle>
+
+<AdminPageHeader Kicker="Profile"
+                 Title="Admin Profile"
+                 Description="View and update your admin account details. This is currently a frontend-only form." />
+
+<section class="admin-card">
+    <div class="profile-summary">
+        <div class="profile-summary-avatar">A</div>
+        <div>
+            <h3 class="mb-1">Admin User</h3>
+            <p class="text-muted mb-0">Manage your admin login email and password.</p>
+        </div>
+    </div>
+
+    <EditForm Model="_profileForm" OnValidSubmit="SaveProfile">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="profile-form-grid">
+            <div>
+                <label class="form-label">Admin email</label>
+                <InputText class="form-control" @bind-Value="_profileForm.Email" />
+            </div>
+
+            <div>
+                <label class="form-label">Current password</label>
+                <InputText class="form-control" type="password" @bind-Value="_profileForm.CurrentPassword" />
+            </div>
+
+            <div>
+                <label class="form-label">New password</label>
+                <InputText class="form-control" type="password" @bind-Value="_profileForm.NewPassword" />
+            </div>
+
+            <div>
+                <label class="form-label">Confirm new password</label>
+                <InputText class="form-control" type="password" @bind-Value="_profileForm.ConfirmNewPassword" />
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Save profile</button>
+            <button class="btn btn-outline-secondary" type="button" @onclick="ResetForm">Reset</button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="profile-success-message">@_message</div>
+        }
+    </EditForm>
+</section>
+
+@code {
+    private AdminProfileForm _profileForm = new()
+    {
+        Email = "admin@healthaxis.com"
+    };
+
+    private string? _message;
+
+    private void SaveProfile()
+    {
+        if (!string.IsNullOrWhiteSpace(_profileForm.NewPassword) &&
+            _profileForm.NewPassword != _profileForm.ConfirmNewPassword)
+        {
+            _message = "New password and confirm password do not match.";
+            return;
+        }
+
+        _profileForm.CurrentPassword = string.Empty;
+        _profileForm.NewPassword = string.Empty;
+        _profileForm.ConfirmNewPassword = string.Empty;
+        _message = "Profile changes saved in the frontend mock state.";
+    }
+
+    private void ResetForm()
+    {
+        _profileForm = new AdminProfileForm
+        {
+            Email = "admin@healthaxis.com"
+        };
+        _message = null;
+    }
+
+    private class AdminProfileForm
+    {
+        public string Email { get; set; } = string.Empty;
+        public string CurrentPassword { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
+        public string ConfirmNewPassword { get; set; } = string.Empty;
+    }
+}

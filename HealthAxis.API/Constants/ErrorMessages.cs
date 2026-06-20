@@ -10,8 +10,6 @@ public static class ErrorMessages
 
     public const string PasswordsDoNotMatch = "Passwords do not match.";
 
-    public const string OnlyPatientRegistrationAllowed = "Only patient registration is allowed from this endpoint.";
-
     public const string EmailAlreadyRegistered = "Email is already registered.";
 
     public const string EmailAlreadyExists = "A user with this email already exists.";

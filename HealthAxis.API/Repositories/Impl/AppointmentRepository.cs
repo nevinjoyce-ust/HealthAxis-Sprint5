@@ -142,6 +142,14 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
 
         return appointment;
     }
+    public async Task<bool> DoctorHasConfirmedAppointmentWithPatientAsync(int doctorId, int patientId)
+    {
+        return await _context.Appointments
+            .AnyAsync(appointment =>
+                appointment.DoctorId == doctorId &&
+                appointment.PatientId == patientId &&
+                appointment.Status == AppointmentStatus.Confirmed);
+    }
 
     private IQueryable<Appointment> GetAppointmentsWithDetails()
     {

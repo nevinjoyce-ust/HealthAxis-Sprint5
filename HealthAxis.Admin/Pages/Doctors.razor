@@ -1,0 +1,246 @@
+﻿@page "/doctors"
+@using HealthAxis.Admin.Components
+@using HealthAxis.Admin.Models
+
+<PageTitle>Doctors - HealthAxis Admin</PageTitle>
+
+<AdminPageHeader Kicker="Doctor Management"
+                 Title="Doctors"
+                 Description="Create, edit, and review doctor profiles. Practice start date is captured in the form; experience is shown as provided by the backend/mock data."
+                 ActionText="Add Doctor"
+                 OnActionClick="ShowAddForm" />
+
+@if (_showForm)
+{
+    <section class="admin-card mb-4">
+        <div class="admin-card-header">
+            <div>
+                <h3>@(_editingDoctorId is null ? "Add Doctor" : "Edit Doctor")</h3>
+                <p>Enter the practice start date. Years of experience will be calculated by the backend later.</p>
+            </div>
+        </div>
+
+        <EditForm Model="_doctorForm" OnValidSubmit="SaveDoctor">
+            <DataAnnotationsValidator />
+            <div class="form-grid">
+                <div>
+                    <label class="form-label">Full name</label>
+                    <InputText class="form-control" @bind-Value="_doctorForm.FullName" />
+                </div>
+                <div>
+                    <label class="form-label">Specialisation</label>
+                    <InputText class="form-control" @bind-Value="_doctorForm.Specialisation" />
+                </div>
+                <div>
+                    <label class="form-label">Practice start date</label>
+                    <input class="form-control"
+                           type="date"
+                           value="@_doctorForm.PracticeStartDate.ToString("yyyy-MM-dd")"
+                           @onchange="HandlePracticeStartDateChanged" />
+                </div>
+                <div>
+                    <label class="form-label">Consultation fee</label>
+                    <InputNumber class="form-control" @bind-Value="_doctorForm.ConsultationFee" />
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Save</button>
+                <button class="btn btn-outline-secondary" type="button" @onclick="CancelForm">Cancel</button>
+            </div>
+        </EditForm>
+    </section>
+}
+
+<section class="admin-card">
+    <div class="table-responsive">
+        <table class="table admin-table doctor-table align-middle">
+            <thead>
+                <tr>
+                    <th rowspan="2">Doctor</th>
+                    <th rowspan="2">Specialisation</th>
+                    <th rowspan="2">Experience</th>
+                    <th rowspan="2">Fee</th>
+                    <th colspan="2" class="availability-group-header">Availability</th>
+                    <th rowspan="2" class="doctor-edit-header">Edit</th>
+                </tr>
+                <tr>
+                    <th class="availability-status-header">Status</th>
+                    <th class="availability-toggle-header">Toggle</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var doctor in _doctors)
+                {
+                    <tr>
+                        <td>@doctor.FullName</td>
+                        <td>@doctor.Specialisation</td>
+                        <td>@doctor.YearsOfExperience years</td>
+                        <td>₹@doctor.ConsultationFee</td>
+                        <td class="availability-status-cell">
+                            <StatusBadge Text="@(doctor.IsAvailable ? "Available" : "Unavailable")"
+                                         Variant="@(doctor.IsAvailable ? "success" : "danger")" />
+                        </td>
+                        <td class="availability-toggle-cell">
+                            <button class="btn btn-sm @GetAvailabilityButtonClass(doctor) compact-action-button"
+                                    type="button"
+                                    @onclick="() => HandleAvailabilityClick(doctor)">
+                                @(doctor.IsAvailable ? "Deactivate" : "Activate")
+                            </button>
+                        </td>
+                        <td class="doctor-edit-cell">
+                            <button class="btn btn-sm btn-outline-primary compact-edit-button"
+                                    type="button"
+                                    @onclick="() => EditDoctor(doctor)">
+                                Edit
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@if (_showDeactivateModal && _doctorPendingDeactivation is not null)
+{
+    <div class="modal-backdrop-custom">
+        <section class="confirm-modal-card">
+            <div class="confirm-modal-icon">
+                <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+            </div>
+
+            <h3>Deactivate doctor?</h3>
+            <p>
+                Are you sure you want to deactivate
+                <strong>@_doctorPendingDeactivation.FullName</strong>?
+            </p>
+            <p class="text-muted mb-0">
+                In the real API flow, this action may affect today's appointments depending on admin override rules.
+            </p>
+
+            <div class="form-actions">
+                <button class="btn btn-danger" type="button" @onclick="ConfirmDeactivateDoctor">
+                    Yes, deactivate
+                </button>
+                <button class="btn btn-outline-secondary" type="button" @onclick="CancelDeactivateDoctor">
+                    Cancel
+                </button>
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    private bool _showForm;
+    private int? _editingDoctorId;
+    private Doctor _doctorForm = new();
+
+    private bool _showDeactivateModal;
+    private Doctor? _doctorPendingDeactivation;
+
+    private readonly List<Doctor> _doctors = new()
+    {
+        new() { Id = 1, FullName = "Dr. Ananya Menon", Specialisation = "Cardiology", PracticeStartDate = new DateOnly(2014, 6, 1), YearsOfExperience = 12, ConsultationFee = 750, IsAvailable = true },
+        new() { Id = 2, FullName = "Dr. Rohan Mathew", Specialisation = "Orthopaedics", PracticeStartDate = new DateOnly(2017, 4, 15), YearsOfExperience = 9, ConsultationFee = 650, IsAvailable = true },
+        new() { Id = 3, FullName = "Dr. Meera Nair", Specialisation = "Dermatology", PracticeStartDate = new DateOnly(2019, 9, 10), YearsOfExperience = 7, ConsultationFee = 500, IsAvailable = false }
+    };
+
+    private void ShowAddForm()
+    {
+        _editingDoctorId = null;
+        _doctorForm = new Doctor
+        {
+            PracticeStartDate = DateOnly.FromDateTime(DateTime.Today),
+            IsAvailable = true
+        };
+        _showForm = true;
+    }
+
+    private void EditDoctor(Doctor doctor)
+    {
+        _editingDoctorId = doctor.Id;
+        _doctorForm = new Doctor
+        {
+            Id = doctor.Id,
+            FullName = doctor.FullName,
+            Specialisation = doctor.Specialisation,
+            PracticeStartDate = doctor.PracticeStartDate,
+            YearsOfExperience = doctor.YearsOfExperience,
+            ConsultationFee = doctor.ConsultationFee,
+            IsAvailable = doctor.IsAvailable
+        };
+        _showForm = true;
+    }
+
+    private void SaveDoctor()
+    {
+        if (_editingDoctorId is null)
+        {
+            _doctorForm.Id = _doctors.Max(d => d.Id) + 1;
+            _doctorForm.YearsOfExperience = 0;
+            _doctorForm.IsAvailable = true;
+            _doctors.Add(_doctorForm);
+        }
+        else
+        {
+            var doctor = _doctors.First(d => d.Id == _editingDoctorId);
+            doctor.FullName = _doctorForm.FullName;
+            doctor.Specialisation = _doctorForm.Specialisation;
+            doctor.PracticeStartDate = _doctorForm.PracticeStartDate;
+            doctor.ConsultationFee = _doctorForm.ConsultationFee;
+        }
+
+        CancelForm();
+    }
+
+    private void HandlePracticeStartDateChanged(ChangeEventArgs args)
+    {
+        var value = args.Value?.ToString();
+
+        if (DateOnly.TryParse(value, out var parsedDate))
+        {
+            _doctorForm.PracticeStartDate = parsedDate;
+        }
+    }
+
+    private void HandleAvailabilityClick(Doctor doctor)
+    {
+        if (doctor.IsAvailable)
+        {
+            _doctorPendingDeactivation = doctor;
+            _showDeactivateModal = true;
+            return;
+        }
+
+        doctor.IsAvailable = true;
+    }
+
+    private void ConfirmDeactivateDoctor()
+    {
+        if (_doctorPendingDeactivation is not null)
+        {
+            _doctorPendingDeactivation.IsAvailable = false;
+        }
+
+        CancelDeactivateDoctor();
+    }
+
+    private void CancelDeactivateDoctor()
+    {
+        _showDeactivateModal = false;
+        _doctorPendingDeactivation = null;
+    }
+
+    private static string GetAvailabilityButtonClass(Doctor doctor)
+    {
+        return doctor.IsAvailable ? "btn-outline-danger" : "btn-outline-success";
+    }
+
+    private void CancelForm()
+    {
+        _showForm = false;
+        _editingDoctorId = null;
+        _doctorForm = new();
+    }
+}

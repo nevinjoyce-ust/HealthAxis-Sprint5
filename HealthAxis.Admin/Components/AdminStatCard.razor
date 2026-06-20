@@ -1,0 +1,28 @@
+﻿<div class="admin-stat-card">
+    <div class="admin-stat-icon @IconCssClass">
+        <span class="bi @Icon" aria-hidden="true"></span>
+    </div>
+
+    <div>
+        <p class="admin-stat-label">@Label</p>
+        <h3>@Value</h3>
+        <p class="admin-stat-caption">@Caption</p>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Caption { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Icon { get; set; } = "bi-activity";
+
+    [Parameter]
+    public string IconCssClass { get; set; } = "stat-blue";
+}

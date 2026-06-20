@@ -8,6 +8,10 @@ public interface IHealthRecordService
         int patientId,
         PaginationQueryDto pagination);
 
+    Task<PagedResultDto<HealthRecordDto>> GetHealthRecordsForDoctorPatientViewAsync(
+        int patientId,
+        int doctorId,
+        PaginationQueryDto pagination);
     Task<PagedResultDto<HealthRecordDto>> GetHealthRecordsByPatientIdAndDoctorIdAsync(
         int patientId,
         int doctorId,

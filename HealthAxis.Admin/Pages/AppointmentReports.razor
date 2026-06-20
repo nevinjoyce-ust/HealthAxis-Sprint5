@@ -1,0 +1,55 @@
+﻿@page "/appointment-reports"
+@using HealthAxis.Admin.Components
+@using HealthAxis.Admin.Models
+
+<PageTitle>Appointment Reports - HealthAxis Admin</PageTitle>
+
+<AdminPageHeader Kicker="Reports"
+                 Title="Appointment Reports"
+                 Description="Daily appointment totals by status. This page currently uses mock frontend data." />
+
+<div class="admin-stats-grid mb-4">
+    <AdminStatCard Label="Pending" Value="18" Caption="Awaiting confirmation" Icon="bi-hourglass-split" IconCssClass="stat-orange" />
+    <AdminStatCard Label="Confirmed" Value="64" Caption="Scheduled visits" Icon="bi-check2-circle" IconCssClass="stat-green" />
+    <AdminStatCard Label="Cancelled" Value="11" Caption="Cancelled visits" Icon="bi-x-circle" IconCssClass="stat-red" />
+    <AdminStatCard Label="Completed" Value="52" Caption="Records created" Icon="bi-clipboard2-check" IconCssClass="stat-purple" />
+</div>
+
+<section class="admin-card">
+    <div class="table-responsive">
+        <table class="table admin-table align-middle">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Pending</th>
+                    <th>Confirmed</th>
+                    <th>Cancelled</th>
+                    <th>Completed</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var report in _reports)
+                {
+                    <tr>
+                        <td>@report.Date.ToString("dd MMM yyyy")</td>
+                        <td><StatusBadge Text="@report.PendingCount.ToString()" Variant="warning" /></td>
+                        <td><StatusBadge Text="@report.ConfirmedCount.ToString()" Variant="success" /></td>
+                        <td><StatusBadge Text="@report.CancelledCount.ToString()" Variant="danger" /></td>
+                        <td><StatusBadge Text="@report.CompletedCount.ToString()" Variant="info" /></td>
+                        <td><strong>@report.TotalCount</strong></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    private readonly List<AppointmentReport> _reports = new()
+    {
+        new() { Date = DateTime.Today, PendingCount = 9, ConfirmedCount = 22, CancelledCount = 4, CompletedCount = 27 },
+        new() { Date = DateTime.Today.AddDays(-1), PendingCount = 5, ConfirmedCount = 19, CancelledCount = 3, CompletedCount = 25 },
+        new() { Date = DateTime.Today.AddDays(-2), PendingCount = 4, ConfirmedCount = 23, CancelledCount = 4, CompletedCount = 20 }
+    };
+}
