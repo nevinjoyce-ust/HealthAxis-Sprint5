@@ -1,5 +1,6 @@
-using HealthAxis.API.Dtos;
-using HealthAxis.API.Enums;
+using HealthAxis.Shared.Dtos;
+using HealthAxis.Shared.Dtos.Doctor;
+using HealthAxis.Shared.Enums;
 
 namespace HealthAxis.API.Services;
 
@@ -19,3 +20,4 @@ public interface IDoctorService
         string currentRole,
         int? currentDoctorId);
 }
+

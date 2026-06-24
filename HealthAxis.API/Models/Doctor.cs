@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using HealthAxis.API.Enums;
-using HealthAxis.API.Validation;
+using HealthAxis.Shared.Enums;
+using HealthAxis.Shared.Validation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 

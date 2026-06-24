@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using HealthAxis.API.Constants;
-using HealthAxis.API.Dtos;
+using HealthAxis.Shared.Constants;
+using HealthAxis.Shared.Dtos;
+using HealthAxis.Shared.Dtos.Appointment;
 using HealthAxis.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -33,7 +35,7 @@ public class AppointmentsController(IAppointmentService appointmentService) : Co
                 return Forbid();
             }
 
-            var appointments = await appointmentService.GetAppointmentsByPatientIdAsync(patientId.Value, pagination);
+            var appointments = await appointmentService.GetAppointmentsByPatientIdAsync(patientId.Value, null, pagination);
             return Ok(appointments);
         }
 
@@ -48,7 +50,7 @@ public class AppointmentsController(IAppointmentService appointmentService) : Co
 
             var appointments = date.HasValue
                 ? await appointmentService.GetAppointmentsByDoctorIdAndDateAsync(doctorId.Value, date.Value, pagination)
-                : await appointmentService.GetAppointmentsByDoctorIdAsync(doctorId.Value, pagination);
+                : await appointmentService.GetAppointmentsByDoctorIdAsync(doctorId.Value, null, pagination);
 
             return Ok(appointments);
         }
@@ -112,15 +114,6 @@ public class AppointmentsController(IAppointmentService appointmentService) : Co
             currentRole,
             GetPatientIdFromToken(),
             GetDoctorIdFromToken());
-
-        return Ok(appointment);
-    }
-
-    [HttpDelete("{id:int}")]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.Admin)]
-    public async Task<IActionResult> DeleteAppointment(int id)
-    {
-        var appointment = await appointmentService.DeleteAppointmentAsync(id);
 
         return Ok(appointment);
     }

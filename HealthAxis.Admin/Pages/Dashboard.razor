@@ -1,78 +1,327 @@
 @page "/dashboard"
-@using HealthAxis.Admin.Components
-@using HealthAxis.Admin.Services
-@inject IAuthService AuthService
-@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = AppRoles.Admin)]
+@using HealthAxis.Shared.Constants
+@using HealthAxis.Shared.Dtos
+@using HealthAxis.Shared.Dtos.Appointment
+@using HealthAxis.Shared.Enums
+@inject IAdminDashboardService AdminDashboardService
+@inject IAdminReportService AdminReportService
 
 <PageTitle>Dashboard - HealthAxis Admin</PageTitle>
 
 <AdminPageHeader Kicker="Overview"
                  Title="Admin Dashboard"
-                 Description="Monitor doctors, appointments, reports, and operational activity from one place." />
+                 Description="Monitor doctors, patients, appointments, and operational activity from one place." />
+
+@if (_isLoadingSummary)
+{
+    <section class="admin-card mb-4">
+        <p class="mb-0">Loading dashboard summary...</p>
+    </section>
+}
+
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <div class="alert alert-danger">
+        @_errorMessage
+    </div>
+}
 
 <div class="admin-stats-grid">
-    <AdminStatCard Label="Active Doctors" Value="18" Caption="Available for appointments" Icon="bi-person-badge" IconCssClass="stat-blue" />
-    <AdminStatCard Label="Today's Appointments" Value="42" Caption="Across all departments" Icon="bi-calendar2-check" IconCssClass="stat-green" />
-    <AdminStatCard Label="Pending Confirmations" Value="9" Caption="Needs action" Icon="bi-hourglass-split" IconCssClass="stat-orange" />
-    <AdminStatCard Label="Completed Visits" Value="27" Caption="Health records created" Icon="bi-clipboard2-pulse" IconCssClass="stat-purple" />
+    <AdminStatCard Label="Active Doctors"
+                   Value="@_summary.ActiveDoctorsCount.ToString()"
+                   Caption="Available for appointments"
+                   Icon="bi-person-badge"
+                   IconCssClass="stat-blue" />
+
+    <AdminStatCard Label="Registered Patients"
+                   Value="@_summary.RegisteredPatientsCount.ToString()"
+                   Caption="Self-registered patient profiles"
+                   Icon="bi-people"
+                   IconCssClass="stat-green" />
+
+    <AdminStatCard Label="Pending Confirmations"
+                   Value="@_summary.PendingAppointmentsCount.ToString()"
+                   Caption="Needs admin action"
+                   Icon="bi-hourglass-split"
+                   IconCssClass="stat-orange" />
+
+    <AdminStatCard Label="Completed Visits"
+                   Value="@_summary.CompletedAppointmentsCount.ToString()"
+                   Caption="Completed appointments"
+                   Icon="bi-clipboard2-pulse"
+                   IconCssClass="stat-purple" />
 </div>
 
-<div class="admin-grid-two mt-4">
-    <section class="admin-card">
-        <div class="admin-card-header">
-            <div>
-                <h3>Operational Shortcuts</h3>
-                <p>Common admin actions for HealthAxis.</p>
+<section class="admin-card mt-4">
+    <div class="shortcut-list">
+        <a class="shortcut-item" href="doctors">
+            <span class="bi bi-person-badge"></span>
+            Manage doctors
+        </a>
+
+        <a class="shortcut-item" href="patients">
+            <span class="bi bi-people"></span>
+            Manage patients
+        </a>
+    </div>
+</section>
+
+<section class="admin-card mt-4">
+    <div class="admin-card-header align-items-center">
+        <div>
+            <h3>Today's Appointments</h3>
+            <p>All appointments scheduled for @Today.ToString("dd MMM yyyy").</p>
+        </div>
+
+        <a class="btn btn-sm btn-outline-primary" href="appointment-reports">
+            View All Appointments
+        </a>
+    </div>
+
+    @if (_isLoadingTodayAppointments)
+    {
+        <p>Loading today's appointments...</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table admin-table align-middle">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Patient</th>
+                        <th>Doctor</th>
+                        <th>Status</th>
+                        <th>Health Record</th>
+                        <th>Cancellation Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_todayAppointments.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                No appointments scheduled for today.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var appointment in _todayAppointments)
+                        {
+                            <tr @key="appointment.Id">
+                                <td>@appointment.AppointmentTime.ToString("hh:mm tt")</td>
+                                <td>@appointment.PatientName</td>
+                                <td>Dr. @appointment.DoctorName</td>
+                                <td>
+                                    <StatusBadge Text="@appointment.Status.ToString()"
+                                                 Variant="@GetAppointmentStatusVariant(appointment.Status)" />
+                                </td>
+                                <td>
+                                    @if (appointment.Status == AppointmentStatus.Completed && appointment.HealthRecordId is not null)
+                                    {
+                                        <span class="text-success" title="Health record exists">
+                                            Record #@appointment.HealthRecordId
+                                        </span>
+                                    }
+                                    else if (appointment.Status == AppointmentStatus.Completed)
+                                    {
+                                        <span class="text-warning">? Missing</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (string.IsNullOrWhiteSpace(appointment.CancellationReason))
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                type="button"
+                                                @onclick="() => OpenCancellationReasonModal(appointment)">
+                                            View Reason
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (_todayAppointmentPagedResult is not null && _todayAppointmentPagedResult.TotalPages > 1)
+    {
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <button class="btn btn-outline-secondary btn-sm"
+                    type="button"
+                    disabled="@(!_todayAppointmentPagedResult.HasPreviousPage || _isLoadingTodayAppointments)"
+                    @onclick="PreviousTodayAppointmentPageAsync">
+                Previous
+            </button>
+
+            <span class="text-muted">
+                Today's appointment page @_todayAppointmentPagination.PageNumber of @_todayAppointmentPagedResult.TotalPages
+            </span>
+
+            <button class="btn btn-outline-secondary btn-sm"
+                    type="button"
+                    disabled="@(!_todayAppointmentPagedResult.HasNextPage || _isLoadingTodayAppointments)"
+                    @onclick="NextTodayAppointmentPageAsync">
+                Next
+            </button>
+        </div>
+    }
+</section>
+
+@if (_showReasonModal && _appointmentReasonToView is not null)
+{
+    <div class="modal-backdrop-custom">
+        <section class="confirm-modal-card">
+            <div class="confirm-modal-icon">
+                <span class="bi bi-info-circle" aria-hidden="true"></span>
             </div>
-        </div>
 
-        <div class="shortcut-list">
-            <a class="shortcut-item" href="doctors">
-                <span class="bi bi-person-plus"></span>
-                Manage doctor profiles
-            </a>
-            <a class="shortcut-item" href="appointment-reports">
-                <span class="bi bi-bar-chart"></span>
-                View appointment reports
-            </a>
-            <a class="shortcut-item" href="users">
-                <span class="bi bi-people"></span>
-                Review registered users
-            </a>
-        </div>
-    </section>
+            <h3>Cancellation reason</h3>
+            <p>
+                Appointment with <strong>@_appointmentReasonToView.PatientName</strong>
+                at <strong>@_appointmentReasonToView.AppointmentTime.ToString("hh:mm tt")</strong>
+            </p>
 
-    <section class="admin-card">
-        <div class="admin-card-header">
-            <div>
-                <h3>Today's Status</h3>
-                <p>Mock UI data for frontend layout practice.</p>
+            <div class="mb-3 text-start">
+                <label class="form-label">Reason</label>
+                <p class="form-control-plaintext border rounded p-3 bg-light mb-0 text-wrap">
+                    @_appointmentReasonToView.CancellationReason
+                </p>
             </div>
-        </div>
 
-        <div class="status-row">
-            <span>Confirmed appointments</span>
-            <StatusBadge Text="22" Variant="success" />
-        </div>
-        <div class="status-row">
-            <span>Pending appointments</span>
-            <StatusBadge Text="9" Variant="warning" />
-        </div>
-        <div class="status-row">
-            <span>Cancelled appointments</span>
-            <StatusBadge Text="4" Variant="danger" />
-        </div>
-        <div class="status-row">
-            <span>Completed appointments</span>
-            <StatusBadge Text="27" Variant="info" />
-        </div>
-    </section>
-</div>
+            <div class="form-actions">
+                <button class="btn btn-outline-secondary" type="button" @onclick="CloseCancellationReasonModal">
+                    Close
+                </button>
+            </div>
+        </section>
+    </div>
+}
 
 @code {
-    private async Task LogoutAsync()
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+
+    private readonly PaginationQueryDto _todayAppointmentPagination = new()
     {
-        await AuthService.LogoutAsync();
-        NavigationManager.NavigateTo("/login");
+        PageNumber = 1,
+        PageSize = 10
+    };
+
+    private AdminDashboardSummaryDto _summary = new();
+    private PagedResultDto<AppointmentDto>? _todayAppointmentPagedResult;
+    private List<AppointmentDto> _todayAppointments = new();
+
+    private bool _isLoadingSummary;
+    private bool _isLoadingTodayAppointments;
+    private bool _showReasonModal;
+
+    private string? _errorMessage;
+    private AppointmentDto? _appointmentReasonToView;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardSummaryAsync();
+        await LoadTodayAppointmentsAsync();
+    }
+
+    private async Task LoadDashboardSummaryAsync()
+    {
+        _isLoadingSummary = true;
+        _errorMessage = null;
+
+        try
+        {
+            _summary = await AdminDashboardService.GetDashboardSummaryAsync();
+        }
+        catch
+        {
+            _errorMessage = "Unable to load dashboard summary.";
+        }
+        finally
+        {
+            _isLoadingSummary = false;
+        }
+    }
+
+    private async Task LoadTodayAppointmentsAsync()
+    {
+        _isLoadingTodayAppointments = true;
+        _errorMessage = null;
+
+        try
+        {
+            _todayAppointmentPagedResult = await AdminReportService.GetAppointmentReportDetailsAsync(
+                Today,
+                null,
+                _todayAppointmentPagination);
+
+            _todayAppointments = _todayAppointmentPagedResult.Items;
+        }
+        catch
+        {
+            _errorMessage = "Unable to load today's appointments.";
+        }
+        finally
+        {
+            _isLoadingTodayAppointments = false;
+        }
+    }
+
+    private async Task PreviousTodayAppointmentPageAsync()
+    {
+        if (_todayAppointmentPagination.PageNumber <= 1)
+        {
+            return;
+        }
+
+        _todayAppointmentPagination.PageNumber--;
+        await LoadTodayAppointmentsAsync();
+    }
+
+    private async Task NextTodayAppointmentPageAsync()
+    {
+        if (_todayAppointmentPagedResult?.HasNextPage != true)
+        {
+            return;
+        }
+
+        _todayAppointmentPagination.PageNumber++;
+        await LoadTodayAppointmentsAsync();
+    }
+
+    private void OpenCancellationReasonModal(AppointmentDto appointment)
+    {
+        _appointmentReasonToView = appointment;
+        _showReasonModal = true;
+    }
+
+    private void CloseCancellationReasonModal()
+    {
+        _showReasonModal = false;
+        _appointmentReasonToView = null;
+    }
+
+    private static string GetAppointmentStatusVariant(AppointmentStatus status)
+    {
+        return status switch
+        {
+            AppointmentStatus.Pending => "warning",
+            AppointmentStatus.Confirmed => "success",
+            AppointmentStatus.Cancelled => "danger",
+            AppointmentStatus.Completed => "info",
+            _ => "neutral"
+        };
     }
 }

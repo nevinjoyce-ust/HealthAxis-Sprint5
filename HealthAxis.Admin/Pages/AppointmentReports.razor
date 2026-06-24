@@ -1,19 +1,34 @@
 ﻿@page "/appointment-reports"
+@attribute [Authorize(Roles = AppRoles.Admin)]
 @using HealthAxis.Admin.Components
-@using HealthAxis.Admin.Models
+@using HealthAxis.Shared.Constants
+@using HealthAxis.Shared.Dtos
+@using HealthAxis.Shared.Dtos.Appointment
+@using HealthAxis.Shared.Enums
+@inject IAdminReportService AdminReportService
 
-<PageTitle>Appointment Reports - HealthAxis Admin</PageTitle>
+<PageTitle>Appointments - HealthAxis Admin</PageTitle>
 
-<AdminPageHeader Kicker="Reports"
-                 Title="Appointment Reports"
-                 Description="Daily appointment totals by status. This page currently uses mock frontend data." />
+<AdminPageHeader Kicker="Appointments"
+                 Title="Appointments"
+                 Description="Review appointment activity, status changes, and daily appointment totals." />
 
-<div class="admin-stats-grid mb-4">
-    <AdminStatCard Label="Pending" Value="18" Caption="Awaiting confirmation" Icon="bi-hourglass-split" IconCssClass="stat-orange" />
-    <AdminStatCard Label="Confirmed" Value="64" Caption="Scheduled visits" Icon="bi-check2-circle" IconCssClass="stat-green" />
-    <AdminStatCard Label="Cancelled" Value="11" Caption="Cancelled visits" Icon="bi-x-circle" IconCssClass="stat-red" />
-    <AdminStatCard Label="Completed" Value="52" Caption="Records created" Icon="bi-clipboard2-check" IconCssClass="stat-purple" />
-</div>
+@if (_isLoadingReports)
+{
+    <section class="admin-card mb-4">
+        <p class="mb-0">Loading appointment reports...</p>
+    </section>
+}
+
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <div class="alert alert-danger">@_errorMessage</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(_successMessage))
+{
+    <div class="alert alert-success">@_successMessage</div>
+}
 
 <section class="admin-card">
     <div class="table-responsive">
@@ -26,30 +41,369 @@
                     <th>Cancelled</th>
                     <th>Completed</th>
                     <th>Total</th>
+                    <th>Details</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var report in _reports)
+                @if (!_isLoadingReports && _reports.Count == 0)
                 {
                     <tr>
-                        <td>@report.Date.ToString("dd MMM yyyy")</td>
-                        <td><StatusBadge Text="@report.PendingCount.ToString()" Variant="warning" /></td>
-                        <td><StatusBadge Text="@report.ConfirmedCount.ToString()" Variant="success" /></td>
-                        <td><StatusBadge Text="@report.CancelledCount.ToString()" Variant="danger" /></td>
-                        <td><StatusBadge Text="@report.CompletedCount.ToString()" Variant="info" /></td>
-                        <td><strong>@report.TotalCount</strong></td>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No appointment activity found.
+                        </td>
                     </tr>
+                }
+                else
+                {
+                    @foreach (var report in _reports)
+                    {
+                        <tr @key="report.Date">
+                            <td>@report.Date.ToString("dd MMM yyyy")</td>
+                            <td><StatusBadge Text="@report.PendingCount.ToString()" Variant="warning" /></td>
+                            <td><StatusBadge Text="@report.ConfirmedCount.ToString()" Variant="success" /></td>
+                            <td><StatusBadge Text="@report.CancelledCount.ToString()" Variant="danger" /></td>
+                            <td><StatusBadge Text="@report.CompletedCount.ToString()" Variant="info" /></td>
+                            <td><strong>@report.TotalCount</strong></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary compact-edit-button"
+                                        type="button"
+                                        @onclick="() => ViewAppointmentsForDateAsync(report.Date)">
+                                    View More
+                                </button>
+                            </td>
+                        </tr>
+                    }
                 }
             </tbody>
         </table>
     </div>
 </section>
 
+@if (_reportPagedResult is not null && _reportPagedResult.TotalPages > 1)
+{
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <button class="btn btn-outline-secondary btn-sm"
+                type="button"
+                disabled="@(!_reportPagedResult.HasPreviousPage || _isLoadingReports)"
+                @onclick="PreviousReportPageAsync">
+            Previous
+        </button>
+
+        <span class="text-muted">
+            Report page @_reportPagination.PageNumber of @_reportPagedResult.TotalPages
+        </span>
+
+        <button class="btn btn-outline-secondary btn-sm"
+                type="button"
+                disabled="@(!_reportPagedResult.HasNextPage || _isLoadingReports)"
+                @onclick="NextReportPageAsync">
+            Next
+        </button>
+    </div>
+}
+
+<AdminAppointmentListModal IsOpen="_showAppointmentDetailsModal"
+                           Title="@AppointmentDetailsModalTitle"
+                           Description="Filter appointments by status and update appointment status when allowed. Health records are shown by record ID only."
+                           Appointments="_appointments"
+                           PagedResult="_appointmentPagedResult"
+                           Pagination="_appointmentPagination"
+                           IsLoading="_isLoadingAppointments"
+                           IsSavingStatus="_isSavingStatus"
+                           ShowDateColumn="false"
+                           ShowPatientColumn="true"
+                           ShowDoctorColumn="true"
+                           ShowStatusFilter="true"
+                           ShowActions="true"
+                           SelectedStatus="_selectedStatus"
+                           OnClose="CloseAppointmentDetails"
+                           OnStatusChanged="HandleStatusFilterChangedAsync"
+                           OnPreviousPage="PreviousAppointmentPageAsync"
+                           OnNextPage="NextAppointmentPageAsync"
+                           OnConfirm="ConfirmAppointmentAsync"
+                           OnCancelRequested="OpenCancelAppointmentModal" />
+
+<CancelAppointmentModal IsOpen="_showCancelModal"
+                        Appointment="_appointmentPendingCancellation"
+                        CancellationReason="_cancellationReason"
+                        CancellationReasonChanged="@((string value) => _cancellationReason = value)"
+                        IsSaving="_isSavingStatus"
+                        OnConfirm="CancelAppointmentAsync"
+                        OnClose="CloseCancelAppointmentModal" />
+
 @code {
-    private readonly List<AppointmentReport> _reports = new()
+    private readonly PaginationQueryDto _reportPagination = new()
     {
-        new() { Date = DateTime.Today, PendingCount = 9, ConfirmedCount = 22, CancelledCount = 4, CompletedCount = 27 },
-        new() { Date = DateTime.Today.AddDays(-1), PendingCount = 5, ConfirmedCount = 19, CancelledCount = 3, CompletedCount = 25 },
-        new() { Date = DateTime.Today.AddDays(-2), PendingCount = 4, ConfirmedCount = 23, CancelledCount = 4, CompletedCount = 20 }
+        PageNumber = 1,
+        PageSize = 7
     };
+
+    private readonly PaginationQueryDto _appointmentPagination = new()
+    {
+        PageNumber = 1,
+        PageSize = 10
+    };
+
+    private PagedResultDto<AppointmentReportDto>? _reportPagedResult;
+    private PagedResultDto<AppointmentDto>? _appointmentPagedResult;
+
+    private List<AppointmentReportDto> _reports = new();
+    private List<AppointmentDto> _appointments = new();
+
+    private DateOnly? _selectedDate;
+    private AppointmentStatus? _selectedStatus;
+
+    private bool _isLoadingReports;
+    private bool _isLoadingAppointments;
+    private bool _isSavingStatus;
+    private bool _showCancelModal;
+    private bool _showAppointmentDetailsModal;
+
+    private string? _errorMessage;
+    private string? _successMessage;
+    private string _cancellationReason = string.Empty;
+
+    private AppointmentDto? _appointmentPendingCancellation;
+
+    private string AppointmentDetailsModalTitle => _selectedDate is null
+        ? "Appointment details"
+        : $"Appointments for {_selectedDate.Value:dd MMM yyyy}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReportsAsync();
+    }
+
+    private async Task LoadReportsAsync()
+    {
+        _isLoadingReports = true;
+        _errorMessage = null;
+
+        try
+        {
+            _reportPagedResult = await AdminReportService.GetAppointmentReportsAsync(_reportPagination);
+            _reports = _reportPagedResult.Items;
+        }
+        catch
+        {
+            _errorMessage = "Unable to load appointment reports.";
+        }
+        finally
+        {
+            _isLoadingReports = false;
+        }
+    }
+
+    private async Task ViewAppointmentsForDateAsync(DateOnly date)
+    {
+        _selectedDate = date;
+        _selectedStatus = null;
+        _appointmentPagination.PageNumber = 1;
+        _successMessage = null;
+        _errorMessage = null;
+        _showAppointmentDetailsModal = true;
+
+        await LoadAppointmentsAsync();
+    }
+
+    private async Task LoadAppointmentsAsync()
+    {
+        if (_selectedDate is null)
+        {
+            return;
+        }
+
+        _isLoadingAppointments = true;
+        _errorMessage = null;
+
+        try
+        {
+            _appointmentPagedResult = await AdminReportService.GetAppointmentReportDetailsAsync(
+                _selectedDate.Value,
+                _selectedStatus,
+                _appointmentPagination);
+
+            _appointments = _appointmentPagedResult.Items;
+        }
+        catch
+        {
+            _errorMessage = "Unable to load appointments for the selected date.";
+        }
+        finally
+        {
+            _isLoadingAppointments = false;
+        }
+    }
+
+    private async Task HandleStatusFilterChangedAsync(AppointmentStatus? status)
+    {
+        _selectedStatus = status;
+        _appointmentPagination.PageNumber = 1;
+        await LoadAppointmentsAsync();
+    }
+
+    private async Task ConfirmAppointmentAsync(AppointmentDto appointment)
+    {
+        _isSavingStatus = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var result = await AdminReportService.UpdateAppointmentStatusAsync(
+                appointment.Id,
+                new UpdateAppointmentStatusDto { Status = AppointmentStatus.Confirmed });
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage ?? "Unable to confirm appointment.";
+                return;
+            }
+
+            if (result.Data is null)
+            {
+                _errorMessage = "Unable to confirm appointment.";
+                return;
+            }
+
+            _successMessage = "Appointment confirmed successfully.";
+            await RefreshCurrentReportAndDetailsAsync();
+        }
+        catch
+        {
+            _errorMessage = "Unable to confirm appointment.";
+        }
+        finally
+        {
+            _isSavingStatus = false;
+        }
+    }
+
+    private void OpenCancelAppointmentModal(AppointmentDto appointment)
+    {
+        _appointmentPendingCancellation = appointment;
+        _cancellationReason = string.Empty;
+        _errorMessage = null;
+        _successMessage = null;
+        _showCancelModal = true;
+    }
+
+    private async Task CancelAppointmentAsync()
+    {
+        if (_appointmentPendingCancellation is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_cancellationReason))
+        {
+            _errorMessage = "Cancellation reason is required.";
+            return;
+        }
+
+        _isSavingStatus = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var result = await AdminReportService.UpdateAppointmentStatusAsync(
+                _appointmentPendingCancellation.Id,
+                new UpdateAppointmentStatusDto
+                {
+                    Status = AppointmentStatus.Cancelled,
+                    CancellationReason = _cancellationReason.Trim()
+                });
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage ?? "Unable to cancel appointment.";
+                return;
+            }
+
+            if (result.Data is null)
+            {
+                _errorMessage = "Unable to cancel appointment.";
+                return;
+            }
+
+            _successMessage = "Appointment cancelled successfully.";
+            CloseCancelAppointmentModal();
+            await RefreshCurrentReportAndDetailsAsync();
+        }
+        catch
+        {
+            _errorMessage = "Unable to cancel appointment.";
+        }
+        finally
+        {
+            _isSavingStatus = false;
+        }
+    }
+
+    private void CloseCancelAppointmentModal()
+    {
+        _showCancelModal = false;
+        _appointmentPendingCancellation = null;
+        _cancellationReason = string.Empty;
+    }
+
+    private async Task RefreshCurrentReportAndDetailsAsync()
+    {
+        await LoadReportsAsync();
+        await LoadAppointmentsAsync();
+    }
+
+    private void CloseAppointmentDetails()
+    {
+        _showAppointmentDetailsModal = false;
+        _selectedDate = null;
+        _appointments = new();
+        _appointmentPagedResult = null;
+        _selectedStatus = null;
+    }
+
+    private async Task PreviousReportPageAsync()
+    {
+        if (_reportPagination.PageNumber <= 1)
+        {
+            return;
+        }
+
+        _reportPagination.PageNumber--;
+        await LoadReportsAsync();
+    }
+
+    private async Task NextReportPageAsync()
+    {
+        if (_reportPagedResult?.HasNextPage != true)
+        {
+            return;
+        }
+
+        _reportPagination.PageNumber++;
+        await LoadReportsAsync();
+    }
+
+    private async Task PreviousAppointmentPageAsync()
+    {
+        if (_appointmentPagination.PageNumber <= 1)
+        {
+            return;
+        }
+
+        _appointmentPagination.PageNumber--;
+        await LoadAppointmentsAsync();
+    }
+
+    private async Task NextAppointmentPageAsync()
+    {
+        if (_appointmentPagedResult?.HasNextPage != true)
+        {
+            return;
+        }
+
+        _appointmentPagination.PageNumber++;
+        await LoadAppointmentsAsync();
+    }
 }

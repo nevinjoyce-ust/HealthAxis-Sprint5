@@ -1,15 +1,12 @@
 using HealthAxis.API.Data;
-using HealthAxis.API.Enums;
+using HealthAxis.Shared.Enums;
 using HealthAxis.API.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.Repositories.Impl;
 
-public class DoctorRepository : Repository<Doctor>, IDoctorRepository
+public class DoctorRepository(HealthAxisDbContext context) : Repository<Doctor>(context), IDoctorRepository
 {
-    public DoctorRepository(HealthAxisDbContext context) : base(context)
-    {
-    }
 
     public async Task<PagedResult<Doctor>> GetAllDoctorsAsync(
         int pageNumber,
@@ -36,12 +33,39 @@ public class DoctorRepository : Repository<Doctor>, IDoctorRepository
             .FirstOrDefaultAsync(doctor => doctor.Id == id);
     }
 
-    public async Task<PagedResult<Doctor>> GetAllDoctorsWithUserAsync(int pageNumber, int pageSize)
+    public async Task<PagedResult<Doctor>> GetAllDoctorsWithUserAsync(
+        int pageNumber,
+        int pageSize,
+        string? search = null,
+        DoctorSpecialisation? specialisation = null)
     {
         var query = _context.Doctors
             .Include(doctor => doctor.User)
-            .OrderBy(doctor => doctor.Id)
             .AsQueryable();
+
+        if (specialisation.HasValue)
+        {
+            query = query.Where(doctor => doctor.Specialisation == specialisation.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchText = search.Trim();
+            var specialisationMatched = Enum.TryParse<DoctorSpecialisation>(
+                searchText,
+                ignoreCase: true,
+                out var parsedSpecialisation);
+
+            query = query.Where(doctor =>
+                doctor.FullName.Contains(searchText) ||
+                (doctor.User != null && doctor.User.Email != null && doctor.User.Email.Contains(searchText)) ||
+                (doctor.User != null && doctor.User.PhoneNumber != null && doctor.User.PhoneNumber.Contains(searchText)) ||
+                (specialisationMatched && doctor.Specialisation == parsedSpecialisation));
+        }
+
+        query = query
+            .OrderBy(doctor => doctor.FullName)
+            .ThenBy(doctor => doctor.Id);
 
         return await ToPagedResultAsync(query, pageNumber, pageSize);
     }
@@ -56,6 +80,7 @@ public class DoctorRepository : Repository<Doctor>, IDoctorRepository
     public async Task<Doctor?> GetDoctorByUserIdAsync(string userId)
     {
         return await _context.Doctors
+            .Include(doctor => doctor.User)
             .FirstOrDefaultAsync(doctor => doctor.UserId == userId);
     }
 

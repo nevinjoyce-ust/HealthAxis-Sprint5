@@ -5,12 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.Data;
 
-public class HealthAxisDbContext : IdentityDbContext<IdentityUser>
+public class HealthAxisDbContext(DbContextOptions<HealthAxisDbContext> options) : IdentityDbContext<IdentityUser>(options)
 {
-    public HealthAxisDbContext(DbContextOptions<HealthAxisDbContext> options)
-        : base(options)
-    {
-    }
 
     public DbSet<Doctor> Doctors { get; set; }
 

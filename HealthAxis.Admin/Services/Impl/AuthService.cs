@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
-using HealthAxis.Admin.Models;
+using HealthAxis.Admin.Auth;
+using HealthAxis.Shared.Dtos.Auth;
 
 namespace HealthAxis.Admin.Services.Impl;
 
@@ -8,48 +9,79 @@ public class AuthService : IAuthService
 {
     private readonly HttpClient _httpClient;
     private readonly ITokenService _tokenService;
+    private readonly CustomAuthenticationStateProvider _authStateProvider;
 
-    public AuthService(HttpClient httpClient, ITokenService tokenService)
+    public AuthService(
+        HttpClient httpClient,
+        ITokenService tokenService,
+        CustomAuthenticationStateProvider authStateProvider)
     {
         _httpClient = httpClient;
         _tokenService = tokenService;
+        _authStateProvider = authStateProvider;
     }
 
-    public async Task<AuthResponse?> LoginAsync(LoginRequest request)
+    public async Task<(AuthResponseDto? Response, string? ErrorMessage)> LoginAsync(LoginDto request)
     {
         var response = await _httpClient.PostAsJsonAsync("api/auth/login", request);
 
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
         {
-            return null;
+            return (null, "Invalid credentials.");
         }
 
         if (!response.IsSuccessStatusCode)
         {
-            return null;
+            return (null, "Unable to sign in. Please try again.");
         }
 
-        var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        var authResponse = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
 
         if (authResponse is null)
         {
-            return null;
+            return (null, "Unable to sign in. Please try again.");
         }
 
         if (!string.Equals(authResponse.Role, "Admin", StringComparison.OrdinalIgnoreCase))
         {
             await _tokenService.ClearTokensAsync();
-            return null;
+            _authStateProvider.NotifyUserLoggedOut();
+            return (null, "Invalid credentials.");
         }
 
         await _tokenService.SetAccessTokenAsync(authResponse.AccessToken);
-        await _tokenService.SetRefreshTokenAsync(authResponse.RefreshToken);
 
-        return authResponse;
+        // Refresh token support is intentionally paused for now.
+        // await _tokenService.SetRefreshTokenAsync(authResponse.RefreshToken);
+
+        _authStateProvider.NotifyUserLoggedIn(authResponse.AccessToken);
+
+        return (authResponse, null);
+    }
+
+    public async Task<string?> ChangePasswordAsync(ChangePasswordDto request)
+    {
+        var response = await _httpClient.PutAsJsonAsync("api/auth/change-password", request);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadFromJsonAsync<AuthMessageResponse>();
+            return error?.Message ?? "Unable to change password.";
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<AuthMessageResponse>();
+
+        return result?.Message ?? "Password changed successfully.";
     }
 
     public async Task LogoutAsync()
     {
         await _tokenService.ClearTokensAsync();
+        _authStateProvider.NotifyUserLoggedOut();
+    }
+
+    private sealed class AuthMessageResponse
+    {
+        public string Message { get; set; } = string.Empty;
     }
 }

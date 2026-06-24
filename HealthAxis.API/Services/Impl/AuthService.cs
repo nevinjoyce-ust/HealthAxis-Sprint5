@@ -1,6 +1,7 @@
 using HealthAxis.API.Constants;
+using HealthAxis.Shared.Constants;
 using HealthAxis.API.Data;
-using HealthAxis.API.Dtos.Auth;
+using HealthAxis.Shared.Dtos.Auth;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
 using Microsoft.AspNetCore.Identity;
@@ -127,6 +128,9 @@ public class AuthService(
         return (true, response.Message, response);
     }
 
+    // Refresh token support is intentionally paused for now.
+    // Keep this implementation here so refresh support can be restored later if needed.
+    /*
     public async Task<(bool Success, string Message, AuthResponseDto? Response)> RefreshTokenAsync(RefreshTokenRequestDto request)
     {
         var user = await userManager.FindByIdAsync(request.UserId);
@@ -152,14 +156,13 @@ public class AuthService(
         }
 
         if (!DateTime.TryParse(
-        storedExpiryValue,
-        CultureInfo.InvariantCulture,
-        DateTimeStyles.RoundtripKind,
-        out var expiresAtUtc))
+            storedExpiryValue,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.RoundtripKind,
+            out var expiresAtUtc))
         {
             return (false, ErrorMessages.InvalidRefreshToken, null);
         }
-        
 
         if (DateTime.UtcNow >= expiresAtUtc)
         {
@@ -191,6 +194,7 @@ public class AuthService(
 
         return (true, response.Message, response);
     }
+    */
 
     private async Task<(bool Success, string Message, IList<string> Roles, string Role, int? PatientId, int? DoctorId)> BuildUserProfileAsync(IdentityUser user)
     {
@@ -237,14 +241,15 @@ public class AuthService(
     {
         var expiresIn = int.Parse(configuration.GetSection("Jwt")["AccessTokenExpirationMinutes"]!);
         var token = GenerateToken(user, roles, expiresIn, patientId, doctorId);
-        var refreshToken = GenerateRefreshToken();
 
-        await StoreRefreshTokenAsync(user, refreshToken);
+        // Refresh token support is intentionally paused for now.
+        // var refreshToken = GenerateRefreshToken();
+        // await StoreRefreshTokenAsync(user, refreshToken);
 
         return new AuthResponseDto
         {
             AccessToken = token,
-            RefreshToken = refreshToken,
+            // RefreshToken = refreshToken,
             Message = message,
             ExpiresIn = expiresIn,
             UserId = user.Id,
@@ -255,6 +260,8 @@ public class AuthService(
         };
     }
 
+    // Refresh token support is intentionally paused for now.
+    /*
     private async Task StoreRefreshTokenAsync(IdentityUser user, string refreshToken)
     {
         var refreshTokenExpirationDays = int.TryParse(
@@ -284,6 +291,7 @@ public class AuthService(
         await userManager.RemoveAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenName);
         await userManager.RemoveAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenExpiryName);
     }
+    */
 
     private string GenerateToken(
         IdentityUser user,
@@ -337,6 +345,8 @@ public class AuthService(
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    // Refresh token support is intentionally paused for now.
+    /*
     private static string GenerateRefreshToken()
     {
         var randomBytes = RandomNumberGenerator.GetBytes(64);
@@ -350,4 +360,5 @@ public class AuthService(
 
         return Convert.ToBase64String(hashBytes);
     }
+    */
 }

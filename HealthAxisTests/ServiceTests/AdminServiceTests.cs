@@ -1,8 +1,11 @@
 using AutoMapper;
 using HealthAxis.API.Constants;
+using HealthAxis.Shared.Constants;
 using HealthAxis.API.Data;
-using HealthAxis.API.Dtos;
-using HealthAxis.API.Enums;
+using HealthAxis.Shared.Dtos;
+using HealthAxis.Shared.Dtos.Doctor;
+using HealthAxis.Shared.Dtos.Appointment;
+using HealthAxis.Shared.Enums;
 using HealthAxis.API.Exceptions;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
@@ -21,6 +24,7 @@ public class AdminServiceTests
 {
     private readonly HealthAxisDbContext _context;
     private readonly Mock<IDoctorRepository> _doctorRepositoryMock;
+    private readonly Mock<IPatientRepository> _patientRepositoryMock;
     private readonly Mock<IAppointmentService> _appointmentServiceMock;
     private readonly Mock<IMapper> _mapperMock;
     private readonly Mock<UserManager<IdentityUser>> _userManagerMock;
@@ -30,6 +34,7 @@ public class AdminServiceTests
     {
         _context = CreateDbContext();
         _doctorRepositoryMock = new Mock<IDoctorRepository>();
+        _patientRepositoryMock = new Mock<IPatientRepository>();
         _appointmentServiceMock = new Mock<IAppointmentService>();
         _mapperMock = new Mock<IMapper>();
         _userManagerMock = CreateUserManagerMock();
@@ -37,6 +42,7 @@ public class AdminServiceTests
         _adminService = new AdminService(
             _context,
             _doctorRepositoryMock.Object,
+            _patientRepositoryMock.Object,
             _appointmentServiceMock.Object,
             _mapperMock.Object,
             _userManagerMock.Object
@@ -374,98 +380,40 @@ public class AdminServiceTests
     public async Task GetAppointmentReportsAsync_ShouldReturnReportsFromAppointmentService()
     {
         var reports = new List<AppointmentReportDto>
+    {
+        new AppointmentReportDto
         {
-            new AppointmentReportDto
-            {
-                Date = DateOnly.FromDateTime(DateTime.Today),
-                PendingCount = 1,
-                ConfirmedCount = 2,
-                CancelledCount = 3,
-                CompletedCount = 4,
-                TotalCount = 10
-            }
-        };
+            Date = DateOnly.FromDateTime(DateTime.Today),
+            PendingCount = 1,
+            ConfirmedCount = 2,
+            CancelledCount = 3,
+            CompletedCount = 4,
+            TotalCount = 10
+        }
+    };
 
         _appointmentServiceMock
             .Setup(service => service.GetAppointmentReportsAsync())
             .ReturnsAsync(reports);
 
-        var result = await _adminService.GetAppointmentReportsAsync();
+        var pagination = new PaginationQueryDto
+        {
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        var result = await _adminService.GetAppointmentReportsAsync(pagination);
 
         Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.Equal(10, result[0].TotalCount);
+        Assert.Equal(1, result.PageNumber);
+        Assert.Equal(10, result.PageSize);
+        Assert.Equal(1, result.TotalCount);
+        Assert.Equal(1, result.TotalPages);
+        Assert.Single(result.Items);
+        Assert.Contains(result.Items, report => report.Date == DateOnly.FromDateTime(DateTime.Today));
     }
 
-    [Fact]
-    public async Task GetAppointmentHealthRecordReportsAsync_WhenAppointmentsExist_ShouldReturnVerificationRowsWithoutClinicalFields()
-    {
-        var patient = new Patient
-        {
-            Id = 10,
-            UserId = "patient-user-id",
-            FullName = "Patient One",
-            DateOfBirth = new DateOnly(1998, 1, 1),
-            Gender = "Female",
-            Address = "Trivandrum"
-        };
-
-        var doctor = new Doctor
-        {
-            Id = 20,
-            UserId = "doctor-user-id",
-            FullName = "Doctor One",
-            Specialisation = DoctorSpecialisation.Cardiology,
-            PracticeStartDate = new DateOnly(2015, 1, 1),
-            ConsultationFee = 600,
-            IsAvailable = true
-        };
-
-        var appointment = new Appointment
-        {
-            Id = 100,
-            PatientId = 10,
-            DoctorId = 20,
-            AppointmentDate = DateOnly.FromDateTime(DateTime.Today),
-            AppointmentTime = new TimeOnly(10, 30),
-            Status = AppointmentStatus.Completed,
-            Patient = patient,
-            Doctor = doctor,
-            HealthRecord = new HealthRecord
-            {
-                Id = 200,
-                AppointmentId = 100,
-                VisitDate = DateOnly.FromDateTime(DateTime.Today),
-                Diagnosis = "Private diagnosis",
-                Prescription = "Private prescription",
-                Notes = "Private notes"
-            }
-        };
-
-        await _context.Patients.AddAsync(patient);
-        await _context.Doctors.AddAsync(doctor);
-        await _context.Appointments.AddAsync(appointment);
-        await _context.SaveChangesAsync();
-
-        var result = await _adminService.GetAppointmentHealthRecordReportsAsync();
-
-        Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.Equal(100, result[0].AppointmentId);
-        Assert.Equal(10, result[0].PatientId);
-        Assert.Equal(20, result[0].DoctorId);
-        Assert.Equal("Patient One", result[0].PatientName);
-        Assert.Equal("Doctor One", result[0].DoctorName);
-        Assert.True(result[0].HasHealthRecord);
-        Assert.Equal(200, result[0].HealthRecordId);
-        Assert.Equal(DateOnly.FromDateTime(DateTime.Today), result[0].HealthRecordVisitDate);
-
-        var reportType = typeof(AppointmentHealthRecordReportDto);
-        Assert.Null(reportType.GetProperty("Diagnosis"));
-        Assert.Null(reportType.GetProperty("Prescription"));
-        Assert.Null(reportType.GetProperty("Notes"));
-    }
-
+   
     private static CreateDoctorDto CreateDoctorDto()
     {
         return new CreateDoctorDto

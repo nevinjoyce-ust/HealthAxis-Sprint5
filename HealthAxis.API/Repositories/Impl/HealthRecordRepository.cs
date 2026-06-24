@@ -4,11 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.Repositories.Impl;
 
-public class HealthRecordRepository : Repository<HealthRecord>, IHealthRecordRepository
+public class HealthRecordRepository(HealthAxisDbContext context) : Repository<HealthRecord>(context), IHealthRecordRepository
 {
-    public HealthRecordRepository(HealthAxisDbContext context) : base(context)
-    {
-    }
 
     public async Task<PagedResult<HealthRecord>> GetHealthRecordsByPatientIdAsync(
         int patientId,

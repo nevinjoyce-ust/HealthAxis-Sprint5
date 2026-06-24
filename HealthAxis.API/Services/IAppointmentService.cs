@@ -1,4 +1,6 @@
-using HealthAxis.API.Dtos;
+using HealthAxis.Shared.Dtos;
+using HealthAxis.Shared.Dtos.Appointment;
+using HealthAxis.Shared.Enums;
 
 namespace HealthAxis.API.Services;
 
@@ -8,11 +10,16 @@ public interface IAppointmentService
 
     Task<AppointmentDto> GetAppointmentByIdAsync(int id);
 
-    Task<PagedResultDto<AppointmentDto>> GetAppointmentsByPatientIdAsync(int patientId, PaginationQueryDto pagination);
+    Task<PagedResultDto<AppointmentDto>> GetAppointmentsByPatientIdAsync(int patientId, AppointmentStatus? status, PaginationQueryDto pagination);
 
-    Task<PagedResultDto<AppointmentDto>> GetAppointmentsByDoctorIdAsync(int doctorId, PaginationQueryDto pagination);
+    Task<PagedResultDto<AppointmentDto>> GetAppointmentsByDoctorIdAsync(int doctorId, AppointmentStatus? status, PaginationQueryDto pagination);
 
     Task<PagedResultDto<AppointmentDto>> GetAppointmentsByDoctorIdAndDateAsync(int doctorId, DateOnly date, PaginationQueryDto pagination);
+
+    Task<PagedResultDto<AppointmentDto>> GetAppointmentsByDateAndStatusAsync(
+        DateOnly date,
+        AppointmentStatus? status,
+        PaginationQueryDto pagination);
 
     Task<AppointmentDto?> CreateAppointmentAsync(CreateAppointmentDto dto);
 
@@ -22,8 +29,6 @@ public interface IAppointmentService
         string currentRole,
         int? currentPatientId,
         int? currentDoctorId);
-
-    Task<AppointmentDto?> DeleteAppointmentAsync(int id);
 
     Task<List<AppointmentReportDto>> GetAppointmentReportsAsync();
 }

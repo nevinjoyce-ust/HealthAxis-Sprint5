@@ -1,14 +1,17 @@
 using AutoMapper;
 using HealthAxis.API.Constants;
-using HealthAxis.API.Dtos;
-using HealthAxis.API.Enums;
 using HealthAxis.API.Exceptions;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
+using HealthAxis.API.Repositories.Impl;
 using HealthAxis.API.Services.Impl;
+using HealthAxis.Shared.Constants;
+using HealthAxis.Shared.Dtos;
+using HealthAxis.Shared.Dtos.Appointment;
+using HealthAxis.Shared.Enums;
 using Moq;
 
-namespace HealthAxisTests;
+namespace HealthAxisTests.ServiceTests;
 
 public class AppointmentServiceTests
 {
@@ -26,7 +29,7 @@ public class AppointmentServiceTests
         _mapperMock = new Mock<IMapper>();
 
         _appointmentRepositoryMock
-            .Setup(repo => repo.GetPendingAppointmentsAsync())
+            .Setup(repo => repo.GetExpiredPendingAppointmentsAsync(It.IsAny<DateTime>()))
             .ReturnsAsync(new List<Appointment>());
 
         _appointmentService = new AppointmentService(
@@ -200,14 +203,14 @@ public class AppointmentServiceTests
         };
 
         _appointmentRepositoryMock
-            .Setup(repo => repo.GetAppointmentsByPatientIdAsync(10, 1, 10))
+            .Setup(repo => repo.GetAppointmentsByPatientIdAsync(10, null, 1, 10))
             .ReturnsAsync(pagedAppointments);
 
         _mapperMock
             .Setup(mapper => mapper.Map<List<AppointmentDto>>(appointments))
             .Returns(mappedAppointmentDtos);
 
-        var result = await _appointmentService.GetAppointmentsByPatientIdAsync(10, pagination);
+        var result = await _appointmentService.GetAppointmentsByPatientIdAsync(10, null, pagination);
 
         Assert.NotNull(result);
         Assert.Single(result.Items);
@@ -265,14 +268,14 @@ public class AppointmentServiceTests
         };
 
         _appointmentRepositoryMock
-            .Setup(repo => repo.GetAppointmentsByDoctorIdAsync(20, 1, 10))
+            .Setup(repo => repo.GetAppointmentsByDoctorIdAsync(20, null, 1, 10))
             .ReturnsAsync(pagedAppointments);
 
         _mapperMock
             .Setup(mapper => mapper.Map<List<AppointmentDto>>(appointments))
             .Returns(mappedAppointmentDtos);
 
-        var result = await _appointmentService.GetAppointmentsByDoctorIdAsync(20, pagination);
+        var result = await _appointmentService.GetAppointmentsByDoctorIdAsync(20,null, pagination);
 
         Assert.NotNull(result);
         Assert.Single(result.Items);
@@ -680,80 +683,6 @@ public class AppointmentServiceTests
         Assert.Equal(ErrorMessages.AppointmentCompletedOnlyThroughHealthRecord, exception.Message);
     }
 
-    [Fact]
-    public async Task DeleteAppointmentAsync_WhenAppointmentDoesNotExist_ShouldThrowNotFoundException()
-    {
-        _appointmentRepositoryMock
-            .Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(99))
-            .ReturnsAsync((Appointment?)null);
-
-        var exception = await Assert.ThrowsAsync<NotFoundException>(() =>
-            _appointmentService.DeleteAppointmentAsync(99));
-
-        Assert.Equal(ErrorMessages.AppointmentNotFound, exception.Message);
-    }
-
-    [Fact]
-    public async Task DeleteAppointmentAsync_WhenHealthRecordExists_ShouldThrowBusinessRuleException()
-    {
-        var appointment = new Appointment
-        {
-            Id = 1,
-            PatientId = 10,
-            DoctorId = 20,
-            HealthRecord = new HealthRecord { Id = 5, AppointmentId = 1 }
-        };
-
-        _appointmentRepositoryMock
-            .Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(1))
-            .ReturnsAsync(appointment);
-
-        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() =>
-            _appointmentService.DeleteAppointmentAsync(1));
-
-        Assert.Equal(ErrorMessages.AppointmentCannotBeDeletedBecauseHealthRecordExists, exception.Message);
-    }
-
-    [Fact]
-    public async Task DeleteAppointmentAsync_WhenAppointmentExistsWithoutHealthRecord_ShouldReturnDeletedAppointmentDto()
-    {
-        var futureDateTime = GetFutureDateTime();
-        var deletedAppointment = new Appointment
-        {
-            Id = 1,
-            PatientId = 10,
-            DoctorId = 20,
-            AppointmentDate = DateOnly.FromDateTime(futureDateTime),
-            AppointmentTime = TimeOnly.FromDateTime(futureDateTime),
-            Status = AppointmentStatus.Cancelled,
-            Patient = new Patient { Id = 10, UserId = "patient-user-id", FullName = "Patient One" },
-            Doctor = new Doctor { Id = 20, UserId = "doctor-user-id", FullName = "Doctor One" },
-            HealthRecord = null
-        };
-
-        var mappedAppointmentDto = new AppointmentDto
-        {
-            Id = 1,
-            PatientId = 10,
-            DoctorId = 20,
-            PatientName = "Patient One",
-            DoctorName = "Doctor One",
-            AppointmentDate = deletedAppointment.AppointmentDate,
-            AppointmentTime = deletedAppointment.AppointmentTime,
-            Status = AppointmentStatus.Cancelled
-        };
-
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(1)).ReturnsAsync(deletedAppointment);
-        _appointmentRepositoryMock.Setup(repo => repo.DeleteAppointmentAsync(1)).ReturnsAsync(deletedAppointment);
-        _mapperMock.Setup(mapper => mapper.Map<AppointmentDto>(deletedAppointment)).Returns(mappedAppointmentDto);
-
-        var result = await _appointmentService.DeleteAppointmentAsync(1);
-
-        Assert.NotNull(result);
-        Assert.Equal(1, result!.Id);
-        Assert.Equal("Patient One", result.PatientName);
-        Assert.Equal("Doctor One", result.DoctorName);
-    }
 
     [Fact]
     public async Task GetAppointmentReportsAsync_WhenAppointmentsExist_ShouldReturnGroupedReports()

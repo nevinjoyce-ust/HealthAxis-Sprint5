@@ -1,55 +1,196 @@
-﻿@page "/doctors"
+@page "/doctors"
+@attribute [Authorize(Roles = AppRoles.Admin)]
+@using Microsoft.AspNetCore.Components.Forms
 @using HealthAxis.Admin.Components
-@using HealthAxis.Admin.Models
+@using HealthAxis.Shared.Constants
+@using HealthAxis.Shared.Dtos
+@using HealthAxis.Shared.Dtos.Appointment
+@using HealthAxis.Shared.Dtos.Auth
+@using HealthAxis.Shared.Dtos.Doctor
+@using HealthAxis.Shared.Enums
+@inject IDoctorAdminService DoctorAdminService
+@inject IAdminReportService AdminReportService
 
 <PageTitle>Doctors - HealthAxis Admin</PageTitle>
 
 <AdminPageHeader Kicker="Doctor Management"
                  Title="Doctors"
-                 Description="Create, edit, and review doctor profiles. Practice start date is captured in the form; experience is shown as provided by the backend/mock data."
+                 Description="Create, edit, search, and review doctor profiles."
                  ActionText="Add Doctor"
                  OnActionClick="ShowAddForm" />
 
-@if (_showForm)
-{
-    <section class="admin-card mb-4">
-        <div class="admin-card-header">
-            <div>
-                <h3>@(_editingDoctorId is null ? "Add Doctor" : "Edit Doctor")</h3>
-                <p>Enter the practice start date. Years of experience will be calculated by the backend later.</p>
-            </div>
+<section class="admin-card mb-4">
+    <div class="filter-row">
+        <div>
+            <label class="form-label">Search by name, email, phone, or specialisation</label>
+            <input class="form-control"
+                   value="@_searchText"
+                   @oninput="HandleSearchInputAsync"
+                   placeholder="Search doctors..." />
         </div>
 
-        <EditForm Model="_doctorForm" OnValidSubmit="SaveDoctor">
+        <div>
+            <label class="form-label">Filter by specialisation</label>
+            <select class="form-select"
+                    value="@_selectedSpecialisationValue"
+                    @onchange="HandleSpecialisationFilterChangedAsync">
+                <option value="All">All specialisations</option>
+                @foreach (var specialisation in Enum.GetValues<DoctorSpecialisation>())
+                {
+                    <option value="@specialisation">@specialisation</option>
+                }
+            </select>
+        </div>
+    </div>
+</section>
+
+<AdminModal IsOpen="_showForm"
+            Title="@DoctorFormTitle"
+            Description="@DoctorFormDescription"
+            DisableClose="@_isSaving"
+            OnClose="CancelForm">
+    @if (_editingDoctorId is null)
+    {
+        <EditForm EditContext="_createDoctorEditContext" OnValidSubmit="CreateDoctorAsync">
             <DataAnnotationsValidator />
+
             <div class="form-grid">
                 <div>
                     <label class="form-label">Full name</label>
-                    <InputText class="form-control" @bind-Value="_doctorForm.FullName" />
+                    <input class="form-control" value="@_createDoctorForm.FullName" @oninput="HandleCreateFullNameInput" />
+                    <ValidationMessage For="@(() => _createDoctorForm.FullName)" />
                 </div>
+
+                <div>
+                    <label class="form-label">Email</label>
+                    <input class="form-control" value="@_createDoctorForm.Email" @oninput="HandleCreateEmailInput" />
+                    <ValidationMessage For="@(() => _createDoctorForm.Email)" />
+                </div>
+
+                <div>
+                    <label class="form-label">Phone number</label>
+                    <input class="form-control" maxlength="20" inputmode="tel" value="@_createDoctorForm.PhoneNumber" @oninput="HandleCreatePhoneNumberInput" />
+                    <ValidationMessage For="@(() => _createDoctorForm.PhoneNumber)" />
+                </div>
+
+                <div>
+                    <label class="form-label">Password</label>
+                    <input class="form-control" type="password" value="@_createDoctorForm.Password" @oninput="HandleCreatePasswordInput" />
+                    <ValidationMessage For="@(() => _createDoctorForm.Password)" />
+                </div>
+
                 <div>
                     <label class="form-label">Specialisation</label>
-                    <InputText class="form-control" @bind-Value="_doctorForm.Specialisation" />
+                    <InputSelect class="form-select" @bind-Value="_createDoctorForm.Specialisation">
+                        @foreach (var specialisation in Enum.GetValues<DoctorSpecialisation>())
+                        {
+                            <option value="@specialisation">@specialisation</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => _createDoctorForm.Specialisation)" />
                 </div>
+
                 <div>
                     <label class="form-label">Practice start date</label>
-                    <input class="form-control"
-                           type="date"
-                           value="@_doctorForm.PracticeStartDate.ToString("yyyy-MM-dd")"
-                           @onchange="HandlePracticeStartDateChanged" />
+                    <input class="form-control" type="date" value="@_createDoctorForm.PracticeStartDate.ToString("yyyy-MM-dd")" max="@TodayInputValue" @onchange="HandleCreatePracticeStartDateChanged" />
+                    <ValidationMessage For="@(() => _createDoctorForm.PracticeStartDate)" />
                 </div>
+
                 <div>
                     <label class="form-label">Consultation fee</label>
-                    <InputNumber class="form-control" @bind-Value="_doctorForm.ConsultationFee" />
+                    <InputNumber class="form-control" @bind-Value="_createDoctorForm.ConsultationFee" />
+                    <ValidationMessage For="@(() => _createDoctorForm.ConsultationFee)" />
                 </div>
             </div>
 
             <div class="form-actions">
-                <button class="btn btn-primary" type="submit">Save</button>
-                <button class="btn btn-outline-secondary" type="button" @onclick="CancelForm">Cancel</button>
+                <button class="btn btn-primary" type="submit" disabled="@_isSaving">
+                    @(_isSaving ? "Saving..." : "Save")
+                </button>
+                <button class="btn btn-outline-secondary" type="button" @onclick="CancelForm" disabled="@_isSaving">
+                    Cancel
+                </button>
             </div>
         </EditForm>
+    }
+    else
+    {
+        <EditForm EditContext="_updateDoctorEditContext" OnValidSubmit="UpdateDoctorAsync">
+            <DataAnnotationsValidator />
+
+            <div class="form-grid">
+                <div>
+                    <label class="form-label">Full name</label>
+                    <input class="form-control" value="@_updateDoctorForm.FullName" @oninput="HandleUpdateFullNameInput" />
+                    <ValidationMessage For="@(() => _updateDoctorForm.FullName)" />
+                </div>
+
+                <div>
+                    <label class="form-label">Email</label>
+                    <input class="form-control" value="@_updateDoctorForm.Email" @oninput="HandleUpdateEmailInput" />
+                    <ValidationMessage For="@(() => _updateDoctorForm.Email)" />
+                </div>
+
+                <div>
+                    <label class="form-label">Phone number</label>
+                    <input class="form-control" maxlength="20" inputmode="tel" value="@_updateDoctorForm.PhoneNumber" @oninput="HandleUpdatePhoneNumberInput" />
+                    <ValidationMessage For="@(() => _updateDoctorForm.PhoneNumber)" />
+                </div>
+
+                <div>
+                    <label class="form-label">Specialisation</label>
+                    <InputSelect class="form-select" @bind-Value="_updateDoctorForm.Specialisation">
+                        @foreach (var specialisation in Enum.GetValues<DoctorSpecialisation>())
+                        {
+                            <option value="@specialisation">@specialisation</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => _updateDoctorForm.Specialisation)" />
+                </div>
+
+                <div>
+                    <label class="form-label">Practice start date</label>
+                    <input class="form-control" type="date" value="@_updateDoctorForm.PracticeStartDate.ToString("yyyy-MM-dd")" max="@TodayInputValue" @onchange="HandleUpdatePracticeStartDateChanged" />
+                    <ValidationMessage For="@(() => _updateDoctorForm.PracticeStartDate)" />
+                </div>
+
+                <div>
+                    <label class="form-label">Consultation fee</label>
+                    <InputNumber class="form-control" @bind-Value="_updateDoctorForm.ConsultationFee" />
+                    <ValidationMessage For="@(() => _updateDoctorForm.ConsultationFee)" />
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit" disabled="@_isSaving">
+                    @(_isSaving ? "Saving..." : "Save")
+                </button>
+                <button class="btn btn-outline-warning" type="button" disabled="@_isSaving" @onclick="() => OpenDoctorResetPasswordModal()">
+                    Reset Password
+                </button>
+                <button class="btn btn-outline-secondary" type="button" @onclick="CancelForm" disabled="@_isSaving">
+                    Cancel
+                </button>
+            </div>
+        </EditForm>
+    }
+</AdminModal>
+
+@if (_isLoading)
+{
+    <section class="admin-card mb-4">
+        <p class="mb-0">Loading doctors...</p>
     </section>
+}
+
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <div class="alert alert-danger">@_errorMessage</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(_successMessage))
+{
+    <div class="alert alert-success">@_successMessage</div>
 }
 
 <section class="admin-card">
@@ -62,6 +203,7 @@
                     <th rowspan="2">Experience</th>
                     <th rowspan="2">Fee</th>
                     <th colspan="2" class="availability-group-header">Availability</th>
+                    <th rowspan="2">Appointments</th>
                     <th rowspan="2" class="doctor-edit-header">Edit</th>
                 </tr>
                 <tr>
@@ -70,141 +212,604 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var doctor in _doctors)
+                @if (!_isLoading && _doctors.Count == 0)
                 {
                     <tr>
-                        <td>@doctor.FullName</td>
-                        <td>@doctor.Specialisation</td>
-                        <td>@doctor.YearsOfExperience years</td>
-                        <td>₹@doctor.ConsultationFee</td>
-                        <td class="availability-status-cell">
-                            <StatusBadge Text="@(doctor.IsAvailable ? "Available" : "Unavailable")"
-                                         Variant="@(doctor.IsAvailable ? "success" : "danger")" />
-                        </td>
-                        <td class="availability-toggle-cell">
-                            <button class="btn btn-sm @GetAvailabilityButtonClass(doctor) compact-action-button"
-                                    type="button"
-                                    @onclick="() => HandleAvailabilityClick(doctor)">
-                                @(doctor.IsAvailable ? "Deactivate" : "Activate")
-                            </button>
-                        </td>
-                        <td class="doctor-edit-cell">
-                            <button class="btn btn-sm btn-outline-primary compact-edit-button"
-                                    type="button"
-                                    @onclick="() => EditDoctor(doctor)">
-                                Edit
-                            </button>
-                        </td>
+                        <td colspan="8" class="text-center text-muted py-4">No doctors found.</td>
                     </tr>
+                }
+                else
+                {
+                    @foreach (var doctor in _doctors)
+                    {
+                        <tr @key="doctor.Id">
+                            <td>Dr. @doctor.FullName</td>
+                            <td>@doctor.Specialisation</td>
+                            <td>@doctor.YearsOfExperience years</td>
+                            <td>₹@doctor.ConsultationFee</td>
+                            <td class="availability-status-cell">
+                                <StatusBadge Text="@(doctor.IsAvailable ? "Available" : "Unavailable")" Variant="@(doctor.IsAvailable ? "success" : "danger")" />
+                            </td>
+                            <td class="availability-toggle-cell">
+                                <button class="btn btn-sm @GetAvailabilityButtonClass(doctor) compact-action-button"
+                                        type="button"
+                                        disabled="@_isSaving"
+                                        @onclick="() => HandleAvailabilityClick(doctor)">
+                                    @(doctor.IsAvailable ? "Deactivate" : "Activate")
+                                </button>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" type="button" @onclick="() => ViewDoctorAppointmentsAsync(doctor)">
+                                    View Appointments
+                                </button>
+                            </td>
+                            <td class="doctor-edit-cell">
+                                <button class="btn btn-sm btn-outline-primary compact-edit-button" type="button" disabled="@_isSaving" @onclick="() => EditDoctor(doctor)">
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                    }
                 }
             </tbody>
         </table>
     </div>
 </section>
 
-@if (_showDeactivateModal && _doctorPendingDeactivation is not null)
+@if (_pagedResult is not null && _pagedResult.TotalPages > 1)
 {
-    <div class="modal-backdrop-custom">
-        <section class="confirm-modal-card">
-            <div class="confirm-modal-icon">
-                <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
-            </div>
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <button class="btn btn-outline-secondary btn-sm" type="button" disabled="@(!_pagedResult.HasPreviousPage || _isLoading)" @onclick="PreviousPageAsync">
+            Previous
+        </button>
 
-            <h3>Deactivate doctor?</h3>
-            <p>
-                Are you sure you want to deactivate
-                <strong>@_doctorPendingDeactivation.FullName</strong>?
-            </p>
-            <p class="text-muted mb-0">
-                In the real API flow, this action may affect today's appointments depending on admin override rules.
-            </p>
+        <span class="text-muted">Page @_pagination.PageNumber of @_pagedResult.TotalPages</span>
 
-            <div class="form-actions">
-                <button class="btn btn-danger" type="button" @onclick="ConfirmDeactivateDoctor">
-                    Yes, deactivate
-                </button>
-                <button class="btn btn-outline-secondary" type="button" @onclick="CancelDeactivateDoctor">
-                    Cancel
-                </button>
-            </div>
-        </section>
+        <button class="btn btn-outline-secondary btn-sm" type="button" disabled="@(!_pagedResult.HasNextPage || _isLoading)" @onclick="NextPageAsync">
+            Next
+        </button>
     </div>
 }
 
+<AdminAppointmentListModal IsOpen="_showDoctorAppointmentsModal"
+                           Title="@DoctorAppointmentsModalTitle"
+                           Description="Completed appointments show health record ID when available. Clinical details are not visible to admins."
+                           Appointments="_appointments"
+                           PagedResult="_appointmentsPagedResult"
+                           Pagination="_appointmentPagination"
+                           IsLoading="_isLoadingAppointments"
+                           IsSavingStatus="_isSavingStatus"
+                           ShowDateColumn="true"
+                           ShowPatientColumn="true"
+                           ShowDoctorColumn="false"
+                           ShowStatusFilter="true"
+                           ShowActions="true"
+                           SelectedStatus="_selectedAppointmentStatus"
+                           OnClose="CloseDoctorAppointments"
+                           OnStatusChanged="HandleAppointmentStatusChangedAsync"
+                           OnPreviousPage="PreviousAppointmentPageAsync"
+                           OnNextPage="NextAppointmentPageAsync"
+                           OnConfirm="ConfirmAppointmentAsync"
+                           OnCancelRequested="OpenCancelAppointmentModal" />
+
+<CancelAppointmentModal IsOpen="_showCancelModal"
+                        Appointment="_appointmentPendingCancellation"
+                        CancellationReason="_cancellationReason"
+                        CancellationReasonChanged="@((string value) => _cancellationReason = value)"
+                        IsSaving="_isSavingStatus"
+                        OnConfirm="CancelAppointmentAsync"
+                        OnClose="CloseCancelAppointmentModal" />
+
+<ConfirmActionModal IsOpen="@(_showDeactivateModal && _doctorPendingDeactivation is not null)"
+                    Title="Deactivate doctor?"
+                    Message="@DeactivateDoctorMessage"
+                    SecondaryMessage="Admin deactivation may cancel today's pending or confirmed appointments based on API rules."
+                    ConfirmText="Yes, deactivate"
+                    BusyText="Deactivating..."
+                    ConfirmButtonClass="btn btn-danger"
+                    IsBusy="_isSaving"
+                    OnConfirm="ConfirmDeactivateDoctorAsync"
+                    OnCancel="CancelDeactivateDoctor" />
+
+<AdminResetPasswordModal IsOpen="@(_showResetPasswordModal && _editingDoctorId is not null)"
+                         ResetPasswordForm="_resetPasswordForm"
+                         IsSaving="_isResettingPassword"
+                         Title="Reset doctor password"
+                         Description="Set a new password for this doctor account. The current password is not required."
+                         OnConfirm="ResetDoctorPasswordAsync"
+                         OnClose="CloseResetPasswordModal" />
+
 @code {
     private bool _showForm;
-    private int? _editingDoctorId;
-    private Doctor _doctorForm = new();
-
     private bool _showDeactivateModal;
-    private Doctor? _doctorPendingDeactivation;
+    private bool _isLoading;
+    private bool _isSaving;
+    private bool _isLoadingAppointments;
+    private bool _isSavingStatus;
+    private bool _showCancelModal;
+    private bool _showResetPasswordModal;
+    private bool _isResettingPassword;
+    private bool _showDoctorAppointmentsModal;
 
-    private readonly List<Doctor> _doctors = new()
+    private int? _editingDoctorId;
+    private string? _errorMessage;
+    private string? _successMessage;
+    private string _searchText = string.Empty;
+    private string _cancellationReason = string.Empty;
+
+    private DoctorSpecialisation? _selectedSpecialisation;
+    private string _selectedSpecialisationValue = "All";
+    private AppointmentStatus? _selectedAppointmentStatus;
+
+    private AdminResetPasswordDto _resetPasswordForm = new();
+    private CreateDoctorDto _createDoctorForm = CreateEmptyDoctor();
+    private UpdateDoctorDto _updateDoctorForm = CreateEmptyUpdateDoctor();
+    private EditContext _createDoctorEditContext = new(CreateEmptyDoctor());
+    private EditContext _updateDoctorEditContext = new(CreateEmptyUpdateDoctor());
+
+    private DoctorDto? _doctorPendingDeactivation;
+    private DoctorDto? _selectedDoctor;
+    private AppointmentDto? _appointmentPendingCancellation;
+
+    private List<DoctorDto> _doctors = new();
+    private List<AppointmentDto> _appointments = new();
+    private PagedResultDto<DoctorDto>? _pagedResult;
+    private PagedResultDto<AppointmentDto>? _appointmentsPagedResult;
+
+    private readonly PaginationQueryDto _pagination = new() { PageNumber = 1, PageSize = 10 };
+    private readonly PaginationQueryDto _appointmentPagination = new() { PageNumber = 1, PageSize = 10 };
+
+    private string DeactivateDoctorMessage => _doctorPendingDeactivation is null
+    ? string.Empty
+    : $"Are you sure you want to deactivate <strong>Dr. {_doctorPendingDeactivation.FullName}</strong>?";
+
+    private static string TodayInputValue => DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
+
+    private string DoctorFormTitle => _editingDoctorId is null ? "Add Doctor" : "Edit Doctor";
+
+    private string DoctorFormDescription => _editingDoctorId is null
+        ? "Create a doctor account and profile. Validation runs while you type."
+        : "Update profile details, email, and phone number. Use reset password if a new login password is needed.";
+
+    private string DoctorAppointmentsModalTitle => _selectedDoctor is null
+        ? "Doctor appointments"
+        : $"Appointments for Dr. {_selectedDoctor.FullName}";
+
+    protected override async Task OnInitializedAsync()
     {
-        new() { Id = 1, FullName = "Dr. Ananya Menon", Specialisation = "Cardiology", PracticeStartDate = new DateOnly(2014, 6, 1), YearsOfExperience = 12, ConsultationFee = 750, IsAvailable = true },
-        new() { Id = 2, FullName = "Dr. Rohan Mathew", Specialisation = "Orthopaedics", PracticeStartDate = new DateOnly(2017, 4, 15), YearsOfExperience = 9, ConsultationFee = 650, IsAvailable = true },
-        new() { Id = 3, FullName = "Dr. Meera Nair", Specialisation = "Dermatology", PracticeStartDate = new DateOnly(2019, 9, 10), YearsOfExperience = 7, ConsultationFee = 500, IsAvailable = false }
-    };
+        await LoadDoctorsAsync();
+    }
+
+    private async Task LoadDoctorsAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            _pagedResult = await DoctorAdminService.GetDoctorsAsync(
+                _pagination,
+                _searchText,
+                _selectedSpecialisation);
+            _doctors = _pagedResult.Items;
+        }
+        catch
+        {
+            _errorMessage = "Unable to load doctors.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleSearchInputAsync(ChangeEventArgs args)
+    {
+        _searchText = args.Value?.ToString() ?? string.Empty;
+        _pagination.PageNumber = 1;
+        await LoadDoctorsAsync();
+    }
+
+    private async Task HandleSpecialisationFilterChangedAsync(ChangeEventArgs args)
+    {
+        _selectedSpecialisationValue = args.Value?.ToString() ?? "All";
+        _selectedSpecialisation = Enum.TryParse<DoctorSpecialisation>(_selectedSpecialisationValue, out var parsedSpecialisation)
+            ? parsedSpecialisation
+            : null;
+        _pagination.PageNumber = 1;
+        await LoadDoctorsAsync();
+    }
 
     private void ShowAddForm()
     {
         _editingDoctorId = null;
-        _doctorForm = new Doctor
-        {
-            PracticeStartDate = DateOnly.FromDateTime(DateTime.Today),
-            IsAvailable = true
-        };
+        _createDoctorForm = CreateEmptyDoctor();
+        _createDoctorEditContext = new EditContext(_createDoctorForm);
+        _errorMessage = null;
+        _successMessage = null;
+        CloseResetPasswordModal();
         _showForm = true;
     }
 
-    private void EditDoctor(Doctor doctor)
+    private void EditDoctor(DoctorDto doctor)
     {
         _editingDoctorId = doctor.Id;
-        _doctorForm = new Doctor
+        _updateDoctorForm = new UpdateDoctorDto
         {
-            Id = doctor.Id,
             FullName = doctor.FullName,
+            Email = doctor.Email,
+            PhoneNumber = doctor.PhoneNumber,
             Specialisation = doctor.Specialisation,
             PracticeStartDate = doctor.PracticeStartDate,
-            YearsOfExperience = doctor.YearsOfExperience,
-            ConsultationFee = doctor.ConsultationFee,
-            IsAvailable = doctor.IsAvailable
+            ConsultationFee = doctor.ConsultationFee
         };
+        _updateDoctorEditContext = new EditContext(_updateDoctorForm);
+        _errorMessage = null;
+        _successMessage = null;
+        CloseResetPasswordModal();
         _showForm = true;
     }
 
-    private void SaveDoctor()
+    private async Task CreateDoctorAsync()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var result = await DoctorAdminService.CreateDoctorAsync(_createDoctorForm);
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage ?? "Unable to create doctor.";
+                return;
+            }
+
+            if (result.Data is null)
+            {
+                _errorMessage = "Unable to create doctor.";
+                return;
+            }
+
+            _successMessage = "Doctor created successfully.";
+            CancelForm();
+            await LoadDoctorsAsync();
+        }
+        catch
+        {
+            _errorMessage = "Unable to create doctor.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task UpdateDoctorAsync()
     {
         if (_editingDoctorId is null)
         {
-            _doctorForm.Id = _doctors.Max(d => d.Id) + 1;
-            _doctorForm.YearsOfExperience = 0;
-            _doctorForm.IsAvailable = true;
-            _doctors.Add(_doctorForm);
-        }
-        else
-        {
-            var doctor = _doctors.First(d => d.Id == _editingDoctorId);
-            doctor.FullName = _doctorForm.FullName;
-            doctor.Specialisation = _doctorForm.Specialisation;
-            doctor.PracticeStartDate = _doctorForm.PracticeStartDate;
-            doctor.ConsultationFee = _doctorForm.ConsultationFee;
+            return;
         }
 
-        CancelForm();
+        _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var result = await DoctorAdminService.UpdateDoctorAsync(
+                _editingDoctorId.Value,
+                _updateDoctorForm);
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage ?? "Unable to update doctor.";
+                return;
+            }
+
+            if (result.Data is null)
+            {
+                _errorMessage = "Unable to update doctor.";
+                return;
+            }
+
+            _successMessage = "Doctor updated successfully.";
+            CancelForm();
+            await LoadDoctorsAsync();
+        }
+        catch
+        {
+            _errorMessage = "Unable to update doctor.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
     }
 
-    private void HandlePracticeStartDateChanged(ChangeEventArgs args)
+    private void OpenDoctorResetPasswordModal()
     {
-        var value = args.Value?.ToString();
-
-        if (DateOnly.TryParse(value, out var parsedDate))
+        if (_editingDoctorId is null)
         {
-            _doctorForm.PracticeStartDate = parsedDate;
+            return;
+        }
+        _resetPasswordForm = new AdminResetPasswordDto();
+        _errorMessage = null;
+        _successMessage = null;
+        _showResetPasswordModal = true;
+    }
+
+    private void CloseResetPasswordModal()
+    {
+        _showResetPasswordModal = false;
+        _resetPasswordForm = new AdminResetPasswordDto();
+    }
+
+    private async Task ResetDoctorPasswordAsync()
+    {
+        if (_editingDoctorId is null)
+        {
+            return;
+        }
+
+        _isResettingPassword = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var result = await DoctorAdminService.ResetDoctorPasswordAsync(
+                _editingDoctorId.Value,
+                _resetPasswordForm);
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage ?? "Unable to reset doctor password.";
+                return;
+            }
+
+            _successMessage = result.Data ?? "Doctor password reset successfully.";
+            CloseResetPasswordModal();
+        }
+        catch
+        {
+            _errorMessage = "Unable to reset doctor password.";
+        }
+        finally
+        {
+            _isResettingPassword = false;
         }
     }
 
-    private void HandleAvailabilityClick(Doctor doctor)
+    private async Task ViewDoctorAppointmentsAsync(DoctorDto doctor)
+    {
+        _selectedDoctor = doctor;
+        _selectedAppointmentStatus = null;
+        _appointmentPagination.PageNumber = 1;
+        _showDoctorAppointmentsModal = true;
+        await LoadDoctorAppointmentsAsync();
+    }
+
+    private async Task LoadDoctorAppointmentsAsync()
+    {
+        if (_selectedDoctor is null)
+        {
+            return;
+        }
+        _isLoadingAppointments = true;
+        _errorMessage = null;
+        try
+        {
+            _appointmentsPagedResult = await DoctorAdminService.GetDoctorAppointmentsAsync(
+                _selectedDoctor.Id,
+                _selectedAppointmentStatus,
+                _appointmentPagination);
+            _appointments = _appointmentsPagedResult.Items;
+        }
+        catch
+        {
+            _errorMessage = "Unable to load doctor appointments.";
+        }
+        finally
+        {
+            _isLoadingAppointments = false;
+        }
+    }
+
+    private async Task HandleAppointmentStatusChangedAsync(AppointmentStatus? status)
+    {
+        _selectedAppointmentStatus = status;
+        _appointmentPagination.PageNumber = 1;
+        await LoadDoctorAppointmentsAsync();
+    }
+
+    private async Task ConfirmAppointmentAsync(AppointmentDto appointment)
+    {
+        _isSavingStatus = true;
+        _errorMessage = null;
+        _successMessage = null;
+        try
+        {
+            var result = await AdminReportService.UpdateAppointmentStatusAsync(
+                appointment.Id,
+                new UpdateAppointmentStatusDto { Status = AppointmentStatus.Confirmed });
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage ?? "Unable to confirm appointment.";
+                return;
+            }
+
+            if (result.Data is null)
+            {
+                _errorMessage = "Unable to confirm appointment.";
+                return;
+            }
+
+            _successMessage = "Appointment confirmed successfully.";
+            await LoadDoctorsAsync();
+            await LoadDoctorAppointmentsAsync();
+        }
+        catch
+        {
+            _errorMessage = "Unable to confirm appointment.";
+        }
+        finally
+        {
+            _isSavingStatus = false;
+        }
+    }
+
+    private void OpenCancelAppointmentModal(AppointmentDto appointment)
+    {
+        _appointmentPendingCancellation = appointment;
+        _cancellationReason = string.Empty;
+        _errorMessage = null;
+        _successMessage = null;
+        _showCancelModal = true;
+    }
+
+    private async Task CancelAppointmentAsync()
+    {
+        if (_appointmentPendingCancellation is null)
+        {
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_cancellationReason))
+        {
+            _errorMessage = "Cancellation reason is required.";
+            return;
+        }
+        _isSavingStatus = true;
+        _errorMessage = null;
+        _successMessage = null;
+        try
+        {
+            var result = await AdminReportService.UpdateAppointmentStatusAsync(
+                _appointmentPendingCancellation.Id,
+                new UpdateAppointmentStatusDto
+                {
+                    Status = AppointmentStatus.Cancelled,
+                    CancellationReason = _cancellationReason.Trim()
+                });
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage ?? "Unable to cancel appointment.";
+                return;
+            }
+
+            if (result.Data is null)
+            {
+                _errorMessage = "Unable to cancel appointment.";
+                return;
+            }
+
+            _successMessage = "Appointment cancelled successfully.";
+            CloseCancelAppointmentModal();
+            await LoadDoctorsAsync();
+            await LoadDoctorAppointmentsAsync();
+        }
+        catch
+        {
+            _errorMessage = "Unable to cancel appointment.";
+        }
+        finally
+        {
+            _isSavingStatus = false;
+        }
+    }
+
+    private void CloseCancelAppointmentModal()
+    {
+        _showCancelModal = false;
+        _appointmentPendingCancellation = null;
+        _cancellationReason = string.Empty;
+    }
+
+    private void CloseDoctorAppointments()
+    {
+        _showDoctorAppointmentsModal = false;
+        _selectedDoctor = null;
+        _selectedAppointmentStatus = null;
+        _appointments = new();
+        _appointmentsPagedResult = null;
+    }
+
+    private void HandleCreateFullNameInput(ChangeEventArgs args)
+    {
+        _createDoctorForm.FullName = args.Value?.ToString() ?? string.Empty;
+        NotifyCreateFieldChanged(nameof(CreateDoctorDto.FullName));
+    }
+
+    private void HandleCreateEmailInput(ChangeEventArgs args)
+    {
+        _createDoctorForm.Email = args.Value?.ToString() ?? string.Empty;
+        NotifyCreateFieldChanged(nameof(CreateDoctorDto.Email));
+    }
+
+    private void HandleCreatePhoneNumberInput(ChangeEventArgs args)
+    {
+        _createDoctorForm.PhoneNumber = args.Value?.ToString() ?? string.Empty;
+        NotifyCreateFieldChanged(nameof(CreateDoctorDto.PhoneNumber));
+    }
+
+    private void HandleCreatePasswordInput(ChangeEventArgs args)
+    {
+        _createDoctorForm.Password = args.Value?.ToString() ?? string.Empty;
+        NotifyCreateFieldChanged(nameof(CreateDoctorDto.Password));
+    }
+
+    private void HandleCreatePracticeStartDateChanged(ChangeEventArgs args)
+    {
+        if (DateOnly.TryParse(args.Value?.ToString(), out var parsedDate))
+        {
+            _createDoctorForm.PracticeStartDate = parsedDate;
+            NotifyCreateFieldChanged(nameof(CreateDoctorDto.PracticeStartDate));
+        }
+    }
+
+    private void HandleUpdateFullNameInput(ChangeEventArgs args)
+    {
+        _updateDoctorForm.FullName = args.Value?.ToString() ?? string.Empty;
+        NotifyUpdateFieldChanged(nameof(UpdateDoctorDto.FullName));
+    }
+
+    private void HandleUpdateEmailInput(ChangeEventArgs args)
+    {
+        _updateDoctorForm.Email = args.Value?.ToString() ?? string.Empty;
+        NotifyUpdateFieldChanged(nameof(UpdateDoctorDto.Email));
+    }
+
+    private void HandleUpdatePhoneNumberInput(ChangeEventArgs args)
+    {
+        _updateDoctorForm.PhoneNumber = args.Value?.ToString() ?? string.Empty;
+        NotifyUpdateFieldChanged(nameof(UpdateDoctorDto.PhoneNumber));
+    }
+
+    private void HandleUpdatePracticeStartDateChanged(ChangeEventArgs args)
+    {
+        if (DateOnly.TryParse(args.Value?.ToString(), out var parsedDate))
+        {
+            _updateDoctorForm.PracticeStartDate = parsedDate;
+            NotifyUpdateFieldChanged(nameof(UpdateDoctorDto.PracticeStartDate));
+        }
+    }
+
+    private void NotifyCreateFieldChanged(string fieldName)
+    {
+        _createDoctorEditContext.NotifyFieldChanged(new FieldIdentifier(_createDoctorForm, fieldName));
+    }
+
+    private void NotifyUpdateFieldChanged(string fieldName)
+    {
+        _updateDoctorEditContext.NotifyFieldChanged(new FieldIdentifier(_updateDoctorForm, fieldName));
+    }
+
+    private async Task HandleAvailabilityClick(DoctorDto doctor)
     {
         if (doctor.IsAvailable)
         {
@@ -212,18 +817,56 @@
             _showDeactivateModal = true;
             return;
         }
-
-        doctor.IsAvailable = true;
+        await UpdateAvailabilityAsync(doctor, true);
     }
 
-    private void ConfirmDeactivateDoctor()
+    private async Task ConfirmDeactivateDoctorAsync()
     {
-        if (_doctorPendingDeactivation is not null)
+        if (_doctorPendingDeactivation is null)
         {
-            _doctorPendingDeactivation.IsAvailable = false;
+            return;
         }
-
+        await UpdateAvailabilityAsync(_doctorPendingDeactivation, false);
         CancelDeactivateDoctor();
+    }
+
+    private async Task UpdateAvailabilityAsync(DoctorDto doctor, bool isAvailable)
+    {
+        _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var result = await DoctorAdminService.UpdateAvailabilityAsync(
+                doctor.Id,
+                new UpdateDoctorAvailabilityDto { IsAvailable = isAvailable });
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage ?? "Unable to update doctor availability.";
+                return;
+            }
+
+            if (result.Data is null)
+            {
+                _errorMessage = "Unable to update doctor availability.";
+                return;
+            }
+
+            doctor.IsAvailable = result.Data.IsAvailable;
+            _successMessage = result.Data.IsAvailable
+                ? "Doctor activated successfully."
+                : "Doctor deactivated successfully.";
+        }
+        catch
+        {
+            _errorMessage = "Unable to update doctor availability.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
     }
 
     private void CancelDeactivateDoctor()
@@ -232,7 +875,7 @@
         _doctorPendingDeactivation = null;
     }
 
-    private static string GetAvailabilityButtonClass(Doctor doctor)
+    private static string GetAvailabilityButtonClass(DoctorDto doctor)
     {
         return doctor.IsAvailable ? "btn-outline-danger" : "btn-outline-success";
     }
@@ -241,6 +884,67 @@
     {
         _showForm = false;
         _editingDoctorId = null;
-        _doctorForm = new();
+        _createDoctorForm = CreateEmptyDoctor();
+        _updateDoctorForm = CreateEmptyUpdateDoctor();
+        _createDoctorEditContext = new EditContext(_createDoctorForm);
+        _updateDoctorEditContext = new EditContext(_updateDoctorForm);
+        CloseResetPasswordModal();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        if (_pagination.PageNumber <= 1)
+        {
+            return;
+        }
+        _pagination.PageNumber--;
+        await LoadDoctorsAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_pagedResult?.HasNextPage != true)
+        {
+            return;
+        }
+        _pagination.PageNumber++;
+        await LoadDoctorsAsync();
+    }
+
+    private async Task PreviousAppointmentPageAsync()
+    {
+        if (_appointmentPagination.PageNumber <= 1)
+        {
+            return;
+        }
+        _appointmentPagination.PageNumber--;
+        await LoadDoctorAppointmentsAsync();
+    }
+
+    private async Task NextAppointmentPageAsync()
+    {
+        if (_appointmentsPagedResult?.HasNextPage != true)
+        {
+            return;
+        }
+        _appointmentPagination.PageNumber++;
+        await LoadDoctorAppointmentsAsync();
+    }
+
+    private static CreateDoctorDto CreateEmptyDoctor()
+    {
+        return new CreateDoctorDto
+        {
+            PracticeStartDate = DateOnly.FromDateTime(DateTime.Today),
+            IsAvailable = true
+        };
+    }
+
+    private static UpdateDoctorDto CreateEmptyUpdateDoctor()
+    {
+        return new UpdateDoctorDto
+        {
+            PracticeStartDate = DateOnly.FromDateTime(DateTime.Today)
+        };
     }
 }

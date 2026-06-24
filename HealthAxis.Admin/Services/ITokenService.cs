@@ -6,9 +6,11 @@ public interface ITokenService
     Task<string?> GetAccessTokenAsync();
     Task RemoveAccessTokenAsync();
 
-    Task SetRefreshTokenAsync(string token);
-    Task<string?> GetRefreshTokenAsync();
-    Task RemoveRefreshTokenAsync();
+    // Refresh token support is intentionally paused for now.
+    // These methods are kept commented so refresh support can be restored later if needed.
+    // Task SetRefreshTokenAsync(string token);
+    // Task<string?> GetRefreshTokenAsync();
+    // Task RemoveRefreshTokenAsync();
 
     Task ClearTokensAsync();
 }

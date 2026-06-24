@@ -1,7 +1,9 @@
 using AutoMapper;
 using HealthAxis.API.Constants;
-using HealthAxis.API.Dtos;
-using HealthAxis.API.Enums;
+using HealthAxis.Shared.Constants;
+using HealthAxis.Shared.Dtos;
+using HealthAxis.Shared.Dtos.Doctor;
+using HealthAxis.Shared.Enums;
 using HealthAxis.API.Exceptions;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;

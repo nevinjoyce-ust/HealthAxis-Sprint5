@@ -1,6 +1,6 @@
 @page "/login"
 @layout HealthAxis.Admin.Layout.LoginLayout
-@using HealthAxis.Admin.Models
+@using HealthAxis.Shared.Dtos.Auth
 @using HealthAxis.Admin.Services
 @inject IAuthService AuthService
 @inject NavigationManager NavigationManager
@@ -87,9 +87,17 @@
 </div>
 
 @code {
-    private readonly LoginRequest _loginRequest = new();
+    private readonly LoginDto _loginRequest = new();
     private bool _isLoading;
     private string? _errorMessage;
+
+    protected override void OnInitialized()
+    {
+        if (HasQueryParameter("reason", "session-expired"))
+        {
+            _errorMessage = "Session expired. Please login again.";
+        }
+    }
 
     private async Task HandleLoginAsync()
     {
@@ -100,17 +108,55 @@
         {
             var result = await AuthService.LoginAsync(_loginRequest);
 
-            if (result is null)
+            if (result.Response is null)
             {
-                _errorMessage = "Invalid admin credentials, non-admin account, or API connection issue.";
+                _errorMessage = result.ErrorMessage ?? "Unable to sign in. Please try again.";
                 return;
             }
 
             NavigationManager.NavigateTo("/dashboard");
         }
+        catch
+        {
+            _errorMessage = "Unable to sign in. Please try again.";
+        }
         finally
         {
             _isLoading = false;
         }
+    }
+
+    private bool HasQueryParameter(string key, string expectedValue)
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = uri.Query;
+
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return false;
+        }
+
+        var parameters = query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var parameter in parameters)
+        {
+            var pair = parameter.Split('=', 2);
+
+            if (pair.Length != 2)
+            {
+                continue;
+            }
+
+            var parameterKey = Uri.UnescapeDataString(pair[0]);
+            var parameterValue = Uri.UnescapeDataString(pair[1]);
+
+            if (string.Equals(parameterKey, key, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(parameterValue, expectedValue, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

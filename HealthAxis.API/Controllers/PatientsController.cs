@@ -1,6 +1,6 @@
 using System.Security.Claims;
-using HealthAxis.API.Constants;
-using HealthAxis.API.Dtos;
+using HealthAxis.Shared.Constants;
+using HealthAxis.Shared.Dtos.Patient;
 using HealthAxis.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -39,22 +39,6 @@ public class PatientsController(IPatientService patientService) : ControllerBase
         var patient = await patientService.UpdatePatientAsync(id, request);
 
         return Ok(patient);
-    }
-
-    [HttpGet("{id:int}/health-records")]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.Patient)]
-    public async Task<IActionResult> GetPatientHealthRecords(
-        int id,
-        [FromQuery] PaginationQueryDto pagination)
-    {
-        if (User.IsInRole(AppRoles.Patient) && !IsOwnPatientId(id))
-        {
-            return Forbid();
-        }
-
-        var records = await patientService.GetPatientHealthRecordsAsync(id, pagination);
-
-        return Ok(records);
     }
 
     private bool IsOwnPatientId(int patientId)

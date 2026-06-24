@@ -1,9 +1,12 @@
-using HealthAxis.Admin.Models;
+using HealthAxis.Shared.Dtos.Auth;
 
 namespace HealthAxis.Admin.Services;
 
 public interface IAuthService
 {
-    Task<AuthResponse?> LoginAsync(LoginRequest request);
+    Task<(AuthResponseDto? Response, string? ErrorMessage)> LoginAsync(LoginDto request);
+
+    Task<string?> ChangePasswordAsync(ChangePasswordDto request);
+
     Task LogoutAsync();
 }

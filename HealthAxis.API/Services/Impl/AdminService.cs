@@ -1,7 +1,13 @@
 using AutoMapper;
 using HealthAxis.API.Constants;
+using HealthAxis.Shared.Constants;
 using HealthAxis.API.Data;
-using HealthAxis.API.Dtos;
+using HealthAxis.Shared.Dtos;
+using HealthAxis.Shared.Dtos.Appointment;
+using HealthAxis.Shared.Dtos.Auth;
+using HealthAxis.Shared.Dtos.Doctor;
+using HealthAxis.Shared.Dtos.Patient;
+using HealthAxis.Shared.Enums;
 using HealthAxis.API.Exceptions;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
@@ -13,15 +19,41 @@ namespace HealthAxis.API.Services.Impl;
 public class AdminService(
     HealthAxisDbContext context,
     IDoctorRepository doctorRepository,
+    IPatientRepository patientRepository,
     IAppointmentService appointmentService,
     IMapper mapper,
     UserManager<IdentityUser> userManager) : IAdminService
 {
-    public async Task<PagedResultDto<DoctorDto>> GetDoctorsAsync(PaginationQueryDto pagination)
+    public async Task<AdminDashboardSummaryDto> GetDashboardSummaryAsync()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        return new AdminDashboardSummaryDto
+        {
+            ActiveDoctorsCount = await context.Doctors.CountAsync(doctor => doctor.IsAvailable),
+            RegisteredPatientsCount = await context.Patients.CountAsync(),
+            PendingAppointmentsCount = await context.Appointments.CountAsync(appointment => appointment.Status == AppointmentStatus.Pending),
+            ConfirmedAppointmentsCount = await context.Appointments.CountAsync(appointment => appointment.Status == AppointmentStatus.Confirmed),
+            CompletedAppointmentsCount = await context.Appointments.CountAsync(appointment => appointment.Status == AppointmentStatus.Completed),
+            CancelledAppointmentsCount = await context.Appointments.CountAsync(appointment => appointment.Status == AppointmentStatus.Cancelled),
+            TodaysAppointmentsCount = await context.Appointments.CountAsync(appointment => appointment.AppointmentDate == today),
+            TodaysPendingAppointmentsCount = await context.Appointments.CountAsync(appointment => appointment.AppointmentDate == today && appointment.Status == AppointmentStatus.Pending),
+            TodaysConfirmedAppointmentsCount = await context.Appointments.CountAsync(appointment => appointment.AppointmentDate == today && appointment.Status == AppointmentStatus.Confirmed),
+            TodaysCompletedAppointmentsCount = await context.Appointments.CountAsync(appointment => appointment.AppointmentDate == today && appointment.Status == AppointmentStatus.Completed),
+            TodaysCancelledAppointmentsCount = await context.Appointments.CountAsync(appointment => appointment.AppointmentDate == today && appointment.Status == AppointmentStatus.Cancelled)
+        };
+    }
+
+    public async Task<PagedResultDto<DoctorDto>> GetDoctorsAsync(
+        PaginationQueryDto pagination,
+        string? search = null,
+        DoctorSpecialisation? specialisation = null)
     {
         var doctors = await doctorRepository.GetAllDoctorsWithUserAsync(
             pagination.PageNumber,
-            pagination.PageSize);
+            pagination.PageSize,
+            search,
+            specialisation);
 
         return MapPagedResult<Doctor, DoctorDto>(doctors);
     }
@@ -92,60 +124,199 @@ public class AdminService(
 
     public async Task<DoctorDto?> UpdateDoctorAsync(int id, UpdateDoctorDto dto)
     {
-        var doctor = await doctorRepository.GetDoctorByIdAsync(id);
+        var doctor = await doctorRepository.GetDoctorByIdWithUserAsync(id);
 
         if (doctor == null)
         {
             throw new NotFoundException(ErrorMessages.DoctorNotFound);
         }
 
-        doctor.FullName = dto.FullName;
-        doctor.Specialisation = dto.Specialisation;
-        doctor.PracticeStartDate = dto.PracticeStartDate;
-        doctor.ConsultationFee = dto.ConsultationFee;
-
-        var updatedDoctor = await doctorRepository.UpdateAsync(doctor);
-
-        if (updatedDoctor == null)
+        if (doctor.User == null)
         {
             throw new NotFoundException(ErrorMessages.DoctorNotFound);
         }
 
-        var doctorWithUser = await doctorRepository.GetDoctorByIdWithUserAsync(updatedDoctor.Id);
+        await EnsureEmailIsAvailableForUserAsync(dto.Email, doctor.UserId);
 
-        return doctorWithUser == null
+        doctor.FullName = dto.FullName;
+        doctor.Specialisation = dto.Specialisation;
+        doctor.PracticeStartDate = dto.PracticeStartDate;
+        doctor.ConsultationFee = dto.ConsultationFee;
+        doctor.User.Email = dto.Email.Trim();
+        doctor.User.UserName = dto.Email.Trim();
+        doctor.User.PhoneNumber = dto.PhoneNumber;
+        doctor.User.EmailConfirmed = true;
+
+        var updateUserResult = await userManager.UpdateAsync(doctor.User);
+
+        if (!updateUserResult.Succeeded)
+        {
+            var errors = string.Join(" ", updateUserResult.Errors.Select(error => error.Description));
+            throw new BadRequestException(errors);
+        }
+
+        await doctorRepository.UpdateAsync(doctor);
+
+        var updatedDoctor = await doctorRepository.GetDoctorByIdWithUserAsync(id);
+
+        return updatedDoctor == null
             ? throw new NotFoundException(ErrorMessages.DoctorNotFound)
-            : mapper.Map<DoctorDto>(doctorWithUser);
+            : mapper.Map<DoctorDto>(updatedDoctor);
     }
 
-    public async Task<List<AppointmentReportDto>> GetAppointmentReportsAsync()
+    public async Task ResetDoctorPasswordAsync(int id, AdminResetPasswordDto dto)
     {
-        return await appointmentService.GetAppointmentReportsAsync();
+        var doctor = await doctorRepository.GetDoctorByIdWithUserAsync(id);
+
+        if (doctor == null || doctor.User == null)
+        {
+            throw new NotFoundException(ErrorMessages.DoctorNotFound);
+        }
+
+        await ResetUserPasswordAsync(doctor.User, dto);
     }
 
-    public async Task<List<AppointmentHealthRecordReportDto>> GetAppointmentHealthRecordReportsAsync()
+    public async Task<PagedResultDto<AppointmentDto>> GetDoctorAppointmentsAsync(int doctorId, AppointmentStatus? status, PaginationQueryDto pagination)
     {
-        return await context.Appointments
-            .Include(appointment => appointment.Patient)
-            .Include(appointment => appointment.Doctor)
-            .Include(appointment => appointment.HealthRecord)
-            .OrderBy(appointment => appointment.AppointmentDate)
-            .ThenBy(appointment => appointment.AppointmentTime)
-            .Select(appointment => new AppointmentHealthRecordReportDto
-            {
-                AppointmentId = appointment.Id,
-                PatientId = appointment.PatientId,
-                DoctorId = appointment.DoctorId,
-                PatientName = appointment.Patient != null ? appointment.Patient.FullName : string.Empty,
-                DoctorName = appointment.Doctor != null ? appointment.Doctor.FullName : string.Empty,
-                AppointmentDate = appointment.AppointmentDate,
-                AppointmentTime = appointment.AppointmentTime,
-                AppointmentStatus = appointment.Status,
-                HasHealthRecord = appointment.HealthRecord != null,
-                HealthRecordId = appointment.HealthRecord != null ? appointment.HealthRecord.Id : null,
-                HealthRecordVisitDate = appointment.HealthRecord != null ? appointment.HealthRecord.VisitDate : null
-            })
-            .ToListAsync();
+        var doctorExists = await doctorRepository.GetDoctorByIdAsync(doctorId);
+
+        if (doctorExists == null)
+        {
+            throw new NotFoundException(ErrorMessages.DoctorNotFound);
+        }
+
+        return await appointmentService.GetAppointmentsByDoctorIdAsync(doctorId, status, pagination);
+    }
+
+    public async Task<PagedResultDto<PatientDto>> GetPatientsAsync(PaginationQueryDto pagination, string? search)
+    {
+        var patients = await patientRepository.GetAllPatientsWithUserAsync(
+            pagination.PageNumber,
+            pagination.PageSize,
+            search);
+
+        return MapPagedResult<Patient, PatientDto>(patients);
+    }
+
+    public async Task<PatientDto?> UpdatePatientAsync(int id, UpdatePatientDto dto)
+    {
+        var patient = await patientRepository.GetPatientByIdWithUserAsync(id);
+
+        if (patient == null)
+        {
+            throw new NotFoundException(ErrorMessages.PatientNotFound);
+        }
+
+        if (patient.User == null)
+        {
+            throw new NotFoundException(ErrorMessages.PatientAccountNotFound);
+        }
+
+        await EnsureEmailIsAvailableForUserAsync(dto.Email, patient.UserId);
+
+        patient.FullName = dto.FullName;
+        patient.DateOfBirth = dto.DateOfBirth;
+        patient.Gender = dto.Gender;
+        patient.Address = dto.Address;
+        patient.User.Email = dto.Email.Trim();
+        patient.User.UserName = dto.Email.Trim();
+        patient.User.PhoneNumber = dto.PhoneNumber;
+        patient.User.EmailConfirmed = true;
+
+        var updateUserResult = await userManager.UpdateAsync(patient.User);
+
+        if (!updateUserResult.Succeeded)
+        {
+            var errors = string.Join(" ", updateUserResult.Errors.Select(error => error.Description));
+            throw new BadRequestException(errors);
+        }
+
+        await patientRepository.UpdateAsync(patient);
+
+        var updatedPatient = await patientRepository.GetPatientByIdWithUserAsync(id);
+
+        return updatedPatient == null
+            ? throw new NotFoundException(ErrorMessages.PatientNotFound)
+            : mapper.Map<PatientDto>(updatedPatient);
+    }
+
+    public async Task ResetPatientPasswordAsync(int id, AdminResetPasswordDto dto)
+    {
+        var patient = await patientRepository.GetPatientByIdWithUserAsync(id);
+
+        if (patient == null)
+        {
+            throw new NotFoundException(ErrorMessages.PatientNotFound);
+        }
+
+        if (patient.User == null)
+        {
+            throw new NotFoundException(ErrorMessages.PatientAccountNotFound);
+        }
+
+        await ResetUserPasswordAsync(patient.User, dto);
+    }
+
+    public async Task<PagedResultDto<AppointmentDto>> GetPatientAppointmentsAsync(int patientId, AppointmentStatus? status, PaginationQueryDto pagination)
+    {
+        return await appointmentService.GetAppointmentsByPatientIdAsync(patientId, status, pagination);
+    }
+
+    public async Task<PagedResultDto<AppointmentReportDto>> GetAppointmentReportsAsync(PaginationQueryDto pagination)
+    {
+        var reports = await appointmentService.GetAppointmentReportsAsync();
+
+        var orderedReports = reports
+            .OrderByDescending(report => report.Date)
+            .ToList();
+
+        var totalCount = orderedReports.Count;
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pagination.PageSize);
+
+        var items = orderedReports
+            .Skip((pagination.PageNumber - 1) * pagination.PageSize)
+            .Take(pagination.PageSize)
+            .ToList();
+
+        return new PagedResultDto<AppointmentReportDto>
+        {
+            Items = items,
+            PageNumber = pagination.PageNumber,
+            PageSize = pagination.PageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages
+        };
+    }
+
+    public async Task<PagedResultDto<AppointmentDto>> GetAppointmentReportDetailsAsync(
+        DateOnly date,
+        AppointmentStatus? status,
+        PaginationQueryDto pagination)
+    {
+        return await appointmentService.GetAppointmentsByDateAndStatusAsync(date, status, pagination);
+    }
+
+    private async Task ResetUserPasswordAsync(IdentityUser user, AdminResetPasswordDto dto)
+    {
+        var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+        var resetResult = await userManager.ResetPasswordAsync(user, resetToken, dto.NewPassword);
+
+        if (!resetResult.Succeeded)
+        {
+            var errors = string.Join(" ", resetResult.Errors.Select(error => error.Description));
+            throw new BadRequestException(errors);
+        }
+    }
+
+    private async Task EnsureEmailIsAvailableForUserAsync(string email, string currentUserId)
+    {
+        var normalizedEmail = email.Trim();
+        var existingUser = await userManager.FindByEmailAsync(normalizedEmail);
+
+        if (existingUser != null && existingUser.Id != currentUserId)
+        {
+            throw new ConflictException(ErrorMessages.EmailAlreadyExists);
+        }
     }
 
     private PagedResultDto<TDestination> MapPagedResult<TSource, TDestination>(PagedResult<TSource> pagedResult)

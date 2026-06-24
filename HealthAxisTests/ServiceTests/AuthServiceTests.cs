@@ -1,6 +1,7 @@
 using HealthAxis.API.Constants;
+using HealthAxis.Shared.Constants;
 using HealthAxis.API.Data;
-using HealthAxis.API.Dtos.Auth;
+using HealthAxis.Shared.Dtos.Auth;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
 using HealthAxis.API.Services.Impl;

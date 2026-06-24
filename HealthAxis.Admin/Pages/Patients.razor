@@ -1,0 +1,655 @@
+@page "/patients"
+@attribute [Authorize(Roles = AppRoles.Admin)]
+@using Microsoft.AspNetCore.Components.Forms
+@using HealthAxis.Admin.Components
+@using HealthAxis.Shared.Constants
+@using HealthAxis.Shared.Dtos
+@using HealthAxis.Shared.Dtos.Appointment
+@using HealthAxis.Shared.Dtos.Auth
+@using HealthAxis.Shared.Dtos.Patient
+@using HealthAxis.Shared.Enums
+@inject IAdminPatientService AdminPatientService
+@inject IAdminReportService AdminReportService
+
+<PageTitle>Patients - HealthAxis Admin</PageTitle>
+
+<AdminPageHeader Kicker="Patient Management"
+                 Title="Patients"
+                 Description="Search, edit, and review registered patient profiles. New patients register themselves from the public app." />
+
+<section class="admin-card mb-4">
+    <div class="filter-row">
+        <div>
+            <label class="form-label">Search by name, email, or phone</label>
+            <input class="form-control"
+                   value="@_searchText"
+                   @oninput="HandleSearchInputAsync"
+                   placeholder="Search patients..." />
+        </div>
+    </div>
+</section>
+
+<AdminModal IsOpen="_showEditForm"
+            Title="Edit Patient"
+            Description="Update patient profile details and login email. Use reset password if a new login password is needed."
+            DisableClose="@_isSaving"
+            OnClose="CancelEditForm">
+    <EditForm EditContext="_updateEditContext" OnValidSubmit="UpdatePatientAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-grid">
+            <div>
+                <label class="form-label">Full name</label>
+                <input class="form-control" value="@_updatePatientForm.FullName" @oninput="HandleUpdateFullNameInput" />
+            </div>
+
+            <div>
+                <label class="form-label">Email</label>
+                <input class="form-control" value="@_updatePatientForm.Email" @oninput="HandleUpdateEmailInput" />
+            </div>
+
+            <div>
+                <label class="form-label">Phone number</label>
+                <input class="form-control" inputmode="tel" value="@_updatePatientForm.PhoneNumber" @oninput="HandleUpdatePhoneInput" />
+            </div>
+
+            <div>
+                <label class="form-label">Date of birth</label>
+                <input class="form-control" type="date" value="@_updatePatientForm.DateOfBirth.ToString("yyyy-MM-dd")" max="@TodayInputValue" @onchange="HandleUpdateDateOfBirthChanged" />
+            </div>
+
+            <div>
+                <label class="form-label">Gender</label>
+                <input class="form-control" value="@_updatePatientForm.Gender" @oninput="HandleUpdateGenderInput" />
+            </div>
+
+            <div>
+                <label class="form-label">Address</label>
+                <input class="form-control" value="@_updatePatientForm.Address" @oninput="HandleUpdateAddressInput" />
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit" disabled="@_isSaving">
+                @(_isSaving ? "Saving..." : "Save")
+            </button>
+            <button class="btn btn-outline-warning" type="button" disabled="@_isSaving" @onclick="() => OpenPatientResetPasswordModal()">
+                Reset Password
+            </button>
+            <button class="btn btn-outline-secondary" type="button" @onclick="CancelEditForm" disabled="@_isSaving">
+                Cancel
+            </button>
+        </div>
+    </EditForm>
+</AdminModal>
+
+@if (_isLoadingPatients)
+{
+    <section class="admin-card mb-4">
+        <p class="mb-0">Loading patients...</p>
+    </section>
+}
+
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <div class="alert alert-danger">@_errorMessage</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(_successMessage))
+{
+    <div class="alert alert-success">@_successMessage</div>
+}
+
+<section class="admin-card">
+    <div class="table-responsive">
+        <table class="table admin-table align-middle">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Date of Birth</th>
+                    <th>Gender</th>
+                    <th>Phone</th>
+                    <th>Address</th>
+                    <th>Appointments</th>
+                    <th>Edit</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!_isLoadingPatients && _patients.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">No patients found.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var patient in _patients)
+                    {
+                        <tr @key="patient.Id">
+                            <td>@patient.FullName</td>
+                            <td>@patient.DateOfBirth.ToString("dd MMM yyyy")</td>
+                            <td>@patient.Gender</td>
+                            <td>@patient.PhoneNumber</td>
+                            <td>@patient.Address</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" type="button" @onclick="() => ViewPatientAppointmentsAsync(patient)">
+                                    View Appointments
+                                </button>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary compact-edit-button" type="button" @onclick="() => EditPatient(patient)">
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@if (_patientsPagedResult is not null && _patientsPagedResult.TotalPages > 1)
+{
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <button class="btn btn-outline-secondary btn-sm" type="button" disabled="@(!_patientsPagedResult.HasPreviousPage || _isLoadingPatients)" @onclick="PreviousPatientsPageAsync">
+            Previous
+        </button>
+
+        <span class="text-muted">Page @_patientsPagination.PageNumber of @_patientsPagedResult.TotalPages</span>
+
+        <button class="btn btn-outline-secondary btn-sm" type="button" disabled="@(!_patientsPagedResult.HasNextPage || _isLoadingPatients)" @onclick="NextPatientsPageAsync">
+            Next
+        </button>
+    </div>
+}
+
+<AdminAppointmentListModal IsOpen="_showPatientAppointmentsModal"
+                           Title="@PatientAppointmentsModalTitle"
+                           Description="Completed appointments show health record ID when available. Clinical details are not visible to admins."
+                           Appointments="_appointments"
+                           PagedResult="_appointmentsPagedResult"
+                           Pagination="_appointmentsPagination"
+                           IsLoading="_isLoadingAppointments"
+                           IsSavingStatus="_isSavingStatus"
+                           ShowDateColumn="true"
+                           ShowPatientColumn="false"
+                           ShowDoctorColumn="true"
+                           ShowStatusFilter="true"
+                           ShowActions="true"
+                           SelectedStatus="_selectedAppointmentStatus"
+                           OnClose="ClosePatientAppointments"
+                           OnStatusChanged="HandleAppointmentStatusChangedAsync"
+                           OnPreviousPage="PreviousAppointmentsPageAsync"
+                           OnNextPage="NextAppointmentsPageAsync"
+                           OnConfirm="ConfirmAppointmentAsync"
+                           OnCancelRequested="OpenCancelAppointmentModal" />
+
+<CancelAppointmentModal IsOpen="_showCancelModal"
+                        Appointment="_appointmentPendingCancellation"
+                        CancellationReason="_cancellationReason"
+                        CancellationReasonChanged="@((string value) => _cancellationReason = value)"
+                        IsSaving="_isSavingStatus"
+                        OnConfirm="CancelAppointmentAsync"
+                        OnClose="CloseCancelAppointmentModal" />
+
+<AdminResetPasswordModal IsOpen="@(_showResetPasswordModal && _editingPatientId is not null)"
+                         ResetPasswordForm="_resetPasswordForm"
+                         IsSaving="_isResettingPassword"
+                         Title="Reset patient password"
+                         Description="Set a new password for this patient account. The current password is not required."
+                         OnConfirm="ResetPatientPasswordAsync"
+                         OnClose="CloseResetPasswordModal" />
+
+@code {
+    private readonly PaginationQueryDto _patientsPagination = new() { PageNumber = 1, PageSize = 10 };
+    private readonly PaginationQueryDto _appointmentsPagination = new() { PageNumber = 1, PageSize = 10 };
+
+    private PagedResultDto<PatientDto>? _patientsPagedResult;
+    private PagedResultDto<AppointmentDto>? _appointmentsPagedResult;
+    private List<PatientDto> _patients = new();
+    private List<AppointmentDto> _appointments = new();
+
+    private string? _errorMessage;
+    private string? _successMessage;
+    private string _searchText = string.Empty;
+    private string _cancellationReason = string.Empty;
+
+    private bool _showEditForm;
+    private bool _showPatientAppointmentsModal;
+    private bool _isLoadingPatients;
+    private bool _isLoadingAppointments;
+    private bool _isSaving;
+    private bool _isSavingStatus;
+    private bool _showCancelModal;
+    private bool _showResetPasswordModal;
+    private bool _isResettingPassword;
+
+    private int? _editingPatientId;
+    private PatientDto? _selectedPatient;
+    private AppointmentDto? _appointmentPendingCancellation;
+    private AppointmentStatus? _selectedAppointmentStatus;
+
+    private AdminResetPasswordDto _resetPasswordForm = new();
+    private UpdatePatientDto _updatePatientForm = CreateEmptyUpdatePatient();
+    private EditContext _updateEditContext = new(CreateEmptyUpdatePatient());
+
+    private static string TodayInputValue => DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
+
+    private string PatientAppointmentsModalTitle => _selectedPatient is null
+        ? "Patient appointments"
+        : $"Appointments for {_selectedPatient.FullName}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPatientsAsync();
+    }
+
+    private async Task LoadPatientsAsync()
+    {
+        _isLoadingPatients = true;
+        _errorMessage = null;
+
+        try
+        {
+            _patientsPagedResult = await AdminPatientService.GetPatientsAsync(_patientsPagination, _searchText);
+            _patients = _patientsPagedResult.Items;
+        }
+        catch
+        {
+            _errorMessage = "Unable to load patients.";
+        }
+        finally
+        {
+            _isLoadingPatients = false;
+        }
+    }
+
+    private async Task HandleSearchInputAsync(ChangeEventArgs args)
+    {
+        _searchText = args.Value?.ToString() ?? string.Empty;
+        _patientsPagination.PageNumber = 1;
+        await LoadPatientsAsync();
+    }
+
+    private void EditPatient(PatientDto patient)
+    {
+        _editingPatientId = patient.Id;
+        _updatePatientForm = new UpdatePatientDto
+        {
+            FullName = patient.FullName,
+            Email = patient.Email,
+            DateOfBirth = patient.DateOfBirth,
+            Gender = patient.Gender,
+            PhoneNumber = patient.PhoneNumber,
+            Address = patient.Address
+        };
+
+        _updateEditContext = new EditContext(_updatePatientForm);
+        _errorMessage = null;
+        _successMessage = null;
+        CloseResetPasswordModal();
+        _showEditForm = true;
+    }
+
+    private async Task UpdatePatientAsync()
+    {
+        if (_editingPatientId is null)
+        {
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var result = await AdminPatientService.UpdatePatientAsync(
+                _editingPatientId.Value,
+                _updatePatientForm);
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage ?? "Unable to update patient.";
+                return;
+            }
+
+            if (result.Data is null)
+            {
+                _errorMessage = "Unable to update patient.";
+                return;
+            }
+
+            _successMessage = "Patient updated successfully.";
+            CancelEditForm();
+            await LoadPatientsAsync();
+        }
+        catch
+        {
+            _errorMessage = "Unable to update patient.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void OpenPatientResetPasswordModal()
+    {
+        if (_editingPatientId is null)
+        {
+            return;
+        }
+
+        _resetPasswordForm = new AdminResetPasswordDto();
+        _errorMessage = null;
+        _successMessage = null;
+        _showResetPasswordModal = true;
+    }
+
+    private void CloseResetPasswordModal()
+    {
+        _showResetPasswordModal = false;
+        _resetPasswordForm = new AdminResetPasswordDto();
+    }
+
+    private async Task ResetPatientPasswordAsync()
+    {
+        if (_editingPatientId is null)
+        {
+            return;
+        }
+
+        _isResettingPassword = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var result = await AdminPatientService.ResetPatientPasswordAsync(
+                _editingPatientId.Value,
+                _resetPasswordForm);
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage ?? "Unable to reset patient password.";
+                return;
+            }
+
+            _successMessage = result.Data ?? "Patient password reset successfully.";
+            CloseResetPasswordModal();
+        }
+        catch
+        {
+            _errorMessage = "Unable to reset patient password.";
+        }
+        finally
+        {
+            _isResettingPassword = false;
+        }
+    }
+
+    private async Task ViewPatientAppointmentsAsync(PatientDto patient)
+    {
+        _selectedPatient = patient;
+        _selectedAppointmentStatus = null;
+        _appointmentsPagination.PageNumber = 1;
+        _showPatientAppointmentsModal = true;
+        await LoadPatientAppointmentsAsync();
+    }
+
+    private async Task LoadPatientAppointmentsAsync()
+    {
+        if (_selectedPatient is null)
+        {
+            return;
+        }
+
+        _isLoadingAppointments = true;
+        _errorMessage = null;
+
+        try
+        {
+            _appointmentsPagedResult = await AdminPatientService.GetPatientAppointmentsAsync(
+                _selectedPatient.Id,
+                _selectedAppointmentStatus,
+                _appointmentsPagination);
+
+            _appointments = _appointmentsPagedResult.Items;
+        }
+        catch
+        {
+            _errorMessage = "Unable to load patient appointments.";
+        }
+        finally
+        {
+            _isLoadingAppointments = false;
+        }
+    }
+
+    private async Task HandleAppointmentStatusChangedAsync(AppointmentStatus? status)
+    {
+        _selectedAppointmentStatus = status;
+        _appointmentsPagination.PageNumber = 1;
+        await LoadPatientAppointmentsAsync();
+    }
+
+    private async Task ConfirmAppointmentAsync(AppointmentDto appointment)
+    {
+        _isSavingStatus = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var result = await AdminReportService.UpdateAppointmentStatusAsync(
+                appointment.Id,
+                new UpdateAppointmentStatusDto { Status = AppointmentStatus.Confirmed });
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage ?? "Unable to confirm appointment.";
+                return;
+            }
+
+            if (result.Data is null)
+            {
+                _errorMessage = "Unable to confirm appointment.";
+                return;
+            }
+
+            _successMessage = "Appointment confirmed successfully.";
+            await LoadPatientsAsync();
+            await LoadPatientAppointmentsAsync();
+        }
+        catch
+        {
+            _errorMessage = "Unable to confirm appointment.";
+        }
+        finally
+        {
+            _isSavingStatus = false;
+        }
+    }
+
+    private void OpenCancelAppointmentModal(AppointmentDto appointment)
+    {
+        _appointmentPendingCancellation = appointment;
+        _cancellationReason = string.Empty;
+        _errorMessage = null;
+        _successMessage = null;
+        _showCancelModal = true;
+    }
+
+    private async Task CancelAppointmentAsync()
+    {
+        if (_appointmentPendingCancellation is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_cancellationReason))
+        {
+            _errorMessage = "Cancellation reason is required.";
+            return;
+        }
+
+        _isSavingStatus = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var result = await AdminReportService.UpdateAppointmentStatusAsync(
+                _appointmentPendingCancellation.Id,
+                new UpdateAppointmentStatusDto
+                {
+                    Status = AppointmentStatus.Cancelled,
+                    CancellationReason = _cancellationReason.Trim()
+                });
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage ?? "Unable to cancel appointment.";
+                return;
+            }
+
+            if (result.Data is null)
+            {
+                _errorMessage = "Unable to cancel appointment.";
+                return;
+            }
+
+            _successMessage = "Appointment cancelled successfully.";
+            CloseCancelAppointmentModal();
+            await LoadPatientsAsync();
+            await LoadPatientAppointmentsAsync();
+        }
+        catch
+        {
+            _errorMessage = "Unable to cancel appointment.";
+        }
+        finally
+        {
+            _isSavingStatus = false;
+        }
+    }
+
+    private void CloseCancelAppointmentModal()
+    {
+        _showCancelModal = false;
+        _appointmentPendingCancellation = null;
+        _cancellationReason = string.Empty;
+    }
+
+    private void ClosePatientAppointments()
+    {
+        _showPatientAppointmentsModal = false;
+        _selectedPatient = null;
+        _selectedAppointmentStatus = null;
+        _appointments = new();
+        _appointmentsPagedResult = null;
+    }
+
+    private void CancelEditForm()
+    {
+        _showEditForm = false;
+        _editingPatientId = null;
+        _updatePatientForm = CreateEmptyUpdatePatient();
+        _updateEditContext = new EditContext(_updatePatientForm);
+        CloseResetPasswordModal();
+    }
+
+    private async Task PreviousPatientsPageAsync()
+    {
+        if (_patientsPagination.PageNumber <= 1)
+        {
+            return;
+        }
+
+        _patientsPagination.PageNumber--;
+        await LoadPatientsAsync();
+    }
+
+    private async Task NextPatientsPageAsync()
+    {
+        if (_patientsPagedResult?.HasNextPage != true)
+        {
+            return;
+        }
+
+        _patientsPagination.PageNumber++;
+        await LoadPatientsAsync();
+    }
+
+    private async Task PreviousAppointmentsPageAsync()
+    {
+        if (_appointmentsPagination.PageNumber <= 1)
+        {
+            return;
+        }
+
+        _appointmentsPagination.PageNumber--;
+        await LoadPatientAppointmentsAsync();
+    }
+
+    private async Task NextAppointmentsPageAsync()
+    {
+        if (_appointmentsPagedResult?.HasNextPage != true)
+        {
+            return;
+        }
+
+        _appointmentsPagination.PageNumber++;
+        await LoadPatientAppointmentsAsync();
+    }
+
+    private void HandleUpdateFullNameInput(ChangeEventArgs args)
+    {
+        _updatePatientForm.FullName = args.Value?.ToString() ?? string.Empty;
+        _updateEditContext.NotifyFieldChanged(new FieldIdentifier(_updatePatientForm, nameof(UpdatePatientDto.FullName)));
+    }
+
+    private void HandleUpdateEmailInput(ChangeEventArgs args)
+    {
+        _updatePatientForm.Email = args.Value?.ToString() ?? string.Empty;
+        _updateEditContext.NotifyFieldChanged(new FieldIdentifier(_updatePatientForm, nameof(UpdatePatientDto.Email)));
+    }
+
+    private void HandleUpdatePhoneInput(ChangeEventArgs args)
+    {
+        _updatePatientForm.PhoneNumber = args.Value?.ToString() ?? string.Empty;
+        _updateEditContext.NotifyFieldChanged(new FieldIdentifier(_updatePatientForm, nameof(UpdatePatientDto.PhoneNumber)));
+    }
+
+    private void HandleUpdateGenderInput(ChangeEventArgs args)
+    {
+        _updatePatientForm.Gender = args.Value?.ToString() ?? string.Empty;
+        _updateEditContext.NotifyFieldChanged(new FieldIdentifier(_updatePatientForm, nameof(UpdatePatientDto.Gender)));
+    }
+
+    private void HandleUpdateAddressInput(ChangeEventArgs args)
+    {
+        _updatePatientForm.Address = args.Value?.ToString() ?? string.Empty;
+        _updateEditContext.NotifyFieldChanged(new FieldIdentifier(_updatePatientForm, nameof(UpdatePatientDto.Address)));
+    }
+
+    private void HandleUpdateDateOfBirthChanged(ChangeEventArgs args)
+    {
+        if (DateOnly.TryParse(args.Value?.ToString(), out var parsed))
+        {
+            _updatePatientForm.DateOfBirth = parsed;
+            _updateEditContext.NotifyFieldChanged(new FieldIdentifier(_updatePatientForm, nameof(UpdatePatientDto.DateOfBirth)));
+        }
+    }
+
+    private static UpdatePatientDto CreateEmptyUpdatePatient()
+    {
+        return new UpdatePatientDto
+        {
+            DateOfBirth = DateOnly.FromDateTime(DateTime.Today.AddYears(-18))
+        };
+    }
+}

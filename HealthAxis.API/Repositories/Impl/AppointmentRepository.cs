@@ -1,15 +1,13 @@
 using HealthAxis.API.Data;
-using HealthAxis.API.Enums;
+using HealthAxis.Shared.Dtos.Appointment;
+using HealthAxis.Shared.Enums;
 using HealthAxis.API.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.Repositories.Impl;
 
-public class AppointmentRepository : Repository<Appointment>, IAppointmentRepository
+public class AppointmentRepository(HealthAxisDbContext context) : Repository<Appointment>(context), IAppointmentRepository
 {
-    public AppointmentRepository(HealthAxisDbContext context) : base(context)
-    {
-    }
 
     public async Task<PagedResult<Appointment>> GetAllAppointmentsAsync(int pageNumber, int pageSize)
     {
@@ -28,12 +26,20 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
     }
 
     public async Task<PagedResult<Appointment>> GetAppointmentsByPatientIdAsync(
-        int patientId,
-        int pageNumber,
-        int pageSize)
+    int patientId,
+    AppointmentStatus? status,
+    int pageNumber,
+    int pageSize)
     {
         var query = GetAppointmentsWithDetails()
-            .Where(appointment => appointment.PatientId == patientId)
+            .Where(appointment => appointment.PatientId == patientId);
+
+        if (status.HasValue)
+        {
+            query = query.Where(appointment => appointment.Status == status.Value);
+        }
+
+        query = query
             .OrderBy(appointment => appointment.AppointmentDate)
             .ThenBy(appointment => appointment.AppointmentTime)
             .ThenBy(appointment => appointment.Id);
@@ -42,12 +48,20 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
     }
 
     public async Task<PagedResult<Appointment>> GetAppointmentsByDoctorIdAsync(
-        int doctorId,
-        int pageNumber,
-        int pageSize)
+     int doctorId,
+     AppointmentStatus? status,
+     int pageNumber,
+     int pageSize)
     {
         var query = GetAppointmentsWithDetails()
-            .Where(appointment => appointment.DoctorId == doctorId)
+            .Where(appointment => appointment.DoctorId == doctorId);
+
+        if (status.HasValue)
+        {
+            query = query.Where(appointment => appointment.Status == status.Value);
+        }
+
+        query = query
             .OrderBy(appointment => appointment.AppointmentDate)
             .ThenBy(appointment => appointment.AppointmentTime)
             .ThenBy(appointment => appointment.Id);
@@ -71,10 +85,54 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
         return await ToPagedResultAsync(query, pageNumber, pageSize);
     }
 
-    public async Task<List<Appointment>> GetPendingAppointmentsAsync()
+    public async Task<PagedResult<Appointment>> GetAppointmentsByDateAndStatusAsync(
+        DateOnly date,
+        AppointmentStatus? status,
+        int pageNumber,
+        int pageSize)
+    {
+        var query = GetAppointmentsWithDetails()
+            .Where(appointment => appointment.AppointmentDate == date);
+
+        if (status.HasValue)
+        {
+            query = query.Where(appointment => appointment.Status == status.Value);
+        }
+
+        query = query
+            .OrderBy(appointment => appointment.AppointmentTime)
+            .ThenBy(appointment => appointment.Id);
+
+        return await ToPagedResultAsync(query, pageNumber, pageSize);
+    }
+
+    public async Task<List<Appointment>> GetExpiredPendingAppointmentsAsync(DateTime cutoffDateTime)
+    {
+        var cutoffDate = DateOnly.FromDateTime(cutoffDateTime);
+        var cutoffTime = TimeOnly.FromDateTime(cutoffDateTime);
+
+        return await _context.Appointments
+            .Where(appointment =>
+                appointment.Status == AppointmentStatus.Pending &&
+                (appointment.AppointmentDate < cutoffDate ||
+                 appointment.AppointmentDate == cutoffDate && appointment.AppointmentTime <= cutoffTime))
+            .ToListAsync();
+    }
+
+    public async Task<List<AppointmentReportDto>> GetAppointmentReportsAsync()
     {
         return await _context.Appointments
-            .Where(appointment => appointment.Status == AppointmentStatus.Pending)
+            .GroupBy(appointment => appointment.AppointmentDate)
+            .Select(group => new AppointmentReportDto
+            {
+                Date = group.Key,
+                ConfirmedCount = group.Count(appointment => appointment.Status == AppointmentStatus.Confirmed),
+                CancelledCount = group.Count(appointment => appointment.Status == AppointmentStatus.Cancelled),
+                CompletedCount = group.Count(appointment => appointment.Status == AppointmentStatus.Completed),
+                PendingCount = group.Count(appointment => appointment.Status == AppointmentStatus.Pending),
+                TotalCount = group.Count()
+            })
+            .OrderByDescending(report => report.Date)
             .ToListAsync();
     }
 
@@ -128,20 +186,6 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
             .ToListAsync();
     }
 
-    public async Task<Appointment?> DeleteAppointmentAsync(int appointmentId)
-    {
-        var appointment = await GetAppointmentByIdWithDetailsAsync(appointmentId);
-
-        if (appointment == null)
-        {
-            return null;
-        }
-
-        _dbSet.Remove(appointment);
-        await _context.SaveChangesAsync();
-
-        return appointment;
-    }
     public async Task<bool> DoctorHasConfirmedAppointmentWithPatientAsync(int doctorId, int patientId)
     {
         return await _context.Appointments

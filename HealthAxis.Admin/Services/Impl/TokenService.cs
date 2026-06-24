@@ -7,7 +7,9 @@ public class TokenService : ITokenService
     private readonly IJSRuntime _jsRuntime;
 
     private const string AccessTokenKey = "healthAxisAdminAccessToken";
-    private const string RefreshTokenKey = "healthAxisAdminRefreshToken";
+
+    // Refresh token support is intentionally paused for now.
+    // private const string RefreshTokenKey = "healthAxisAdminRefreshToken";
 
     public TokenService(IJSRuntime jsRuntime)
     {
@@ -29,6 +31,8 @@ public class TokenService : ITokenService
         await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AccessTokenKey);
     }
 
+    // Refresh token support is intentionally paused for now.
+    /*
     public async Task SetRefreshTokenAsync(string token)
     {
         await _jsRuntime.InvokeVoidAsync("localStorage.setItem", RefreshTokenKey, token);
@@ -43,10 +47,13 @@ public class TokenService : ITokenService
     {
         await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", RefreshTokenKey);
     }
+    */
 
     public async Task ClearTokensAsync()
     {
         await RemoveAccessTokenAsync();
-        await RemoveRefreshTokenAsync();
+
+        // Refresh token support is intentionally paused for now.
+        // await RemoveRefreshTokenAsync();
     }
 }

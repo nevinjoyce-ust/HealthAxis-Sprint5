@@ -1,8 +1,7 @@
 using AutoMapper;
 using HealthAxis.API.Constants;
-using HealthAxis.API.Dtos;
+using HealthAxis.Shared.Dtos.Patient;
 using HealthAxis.API.Exceptions;
-using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
 using Microsoft.AspNetCore.Identity;
 
@@ -10,7 +9,6 @@ namespace HealthAxis.API.Services.Impl;
 
 public class PatientService(
     IPatientRepository patientRepository,
-    IHealthRecordRepository healthRecordRepository,
     UserManager<IdentityUser> userManager,
     IMapper mapper) : IPatientService
 {
@@ -59,11 +57,16 @@ public class PatientService(
             throw new NotFoundException(ErrorMessages.PatientAccountNotFound);
         }
 
+        await EnsureEmailIsAvailableForUserAsync(dto.Email, patient.UserId);
+
         patient.FullName = dto.FullName;
         patient.DateOfBirth = dto.DateOfBirth;
         patient.Gender = dto.Gender;
         patient.Address = dto.Address;
+        patient.User.Email = dto.Email.Trim();
+        patient.User.UserName = dto.Email.Trim();
         patient.User.PhoneNumber = dto.PhoneNumber;
+        patient.User.EmailConfirmed = true;
 
         var updateUserResult = await userManager.UpdateAsync(patient.User);
 
@@ -85,34 +88,14 @@ public class PatientService(
         return mapper.Map<PatientDto>(updatedPatient);
     }
 
-    public async Task<PagedResultDto<HealthRecordDto>> GetPatientHealthRecordsAsync(
-        int patientId,
-        PaginationQueryDto pagination)
+    private async Task EnsureEmailIsAvailableForUserAsync(string email, string currentUserId)
     {
-        var patient = await patientRepository.GetByIdAsync(patientId);
+        var normalizedEmail = email.Trim();
+        var existingUser = await userManager.FindByEmailAsync(normalizedEmail);
 
-        if (patient == null)
+        if (existingUser != null && existingUser.Id != currentUserId)
         {
-            throw new NotFoundException(ErrorMessages.PatientNotFound);
+            throw new ConflictException(ErrorMessages.EmailAlreadyExists);
         }
-
-        var records = await healthRecordRepository.GetHealthRecordsByPatientIdAsync(
-            patientId,
-            pagination.PageNumber,
-            pagination.PageSize);
-
-        return MapPagedResult<HealthRecord, HealthRecordDto>(records);
-    }
-
-    private PagedResultDto<TDestination> MapPagedResult<TSource, TDestination>(PagedResult<TSource> pagedResult)
-    {
-        return new PagedResultDto<TDestination>
-        {
-            Items = mapper.Map<List<TDestination>>(pagedResult.Items),
-            PageNumber = pagedResult.PageNumber,
-            PageSize = pagedResult.PageSize,
-            TotalCount = pagedResult.TotalCount,
-            TotalPages = pagedResult.TotalPages
-        };
     }
 }

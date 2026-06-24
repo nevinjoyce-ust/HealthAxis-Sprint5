@@ -1,6 +1,7 @@
 using System.Security.Claims;
-using HealthAxis.API.Constants;
-using HealthAxis.API.Dtos;
+using HealthAxis.Shared.Constants;
+using HealthAxis.Shared.Dtos;
+using HealthAxis.Shared.Dtos.HealthRecord;
 using HealthAxis.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -41,8 +42,7 @@ public class HealthRecordsController(IHealthRecordService healthRecordService) :
             var doctorRecords = await healthRecordService.GetHealthRecordsForDoctorPatientViewAsync(
                 patientId,
                 doctorId.Value,
-                pagination
-            );
+                pagination);
 
             return Ok(doctorRecords);
         }

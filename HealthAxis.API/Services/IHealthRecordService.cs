@@ -1,5 +1,5 @@
-using HealthAxis.API.Dtos;
-
+using HealthAxis.Shared.Dtos;
+using HealthAxis.Shared.Dtos.HealthRecord;
 namespace HealthAxis.API.Services;
 
 public interface IHealthRecordService

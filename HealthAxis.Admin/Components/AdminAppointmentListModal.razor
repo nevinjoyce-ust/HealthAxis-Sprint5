@@ -1,0 +1,272 @@
+@using HealthAxis.Shared.Dtos
+@using HealthAxis.Shared.Dtos.Appointment
+@using HealthAxis.Shared.Enums
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop-custom">
+        <section class="confirm-modal-card appointment-list-modal-card">
+            <div class="admin-card-header align-items-center">
+                <div>
+                    <h3>@Title</h3>
+                    @if (!string.IsNullOrWhiteSpace(Description))
+                    {
+                        <p>@Description</p>
+                    }
+                </div>
+
+                <button class="btn btn-sm btn-outline-secondary" type="button" @onclick="OnClose">
+                    Close
+                </button>
+            </div>
+
+            @if (ShowStatusFilter)
+            {
+                <div class="filter-row mb-3 text-start">
+                    <div>
+                        <label class="form-label">Filter by status</label>
+                        <select class="form-select" value="@_selectedStatusValue" @onchange="HandleStatusChangedAsync">
+                            <option value="All">All</option>
+                            @foreach (var status in Enum.GetValues<AppointmentStatus>())
+                            {
+                                <option value="@status">@status</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            }
+
+            @if (IsLoading)
+            {
+                <p>Loading appointments...</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table admin-table align-middle">
+                        <thead>
+                            <tr>
+                                @if (ShowDateColumn)
+                                {
+                                    <th>Date</th>
+                                }
+                                <th>Time</th>
+                                @if (ShowPatientColumn)
+                                {
+                                    <th>Patient</th>
+                                }
+                                @if (ShowDoctorColumn)
+                                {
+                                    <th>Doctor</th>
+                                }
+                                <th>Status</th>
+                                <th>Health Record</th>
+                                <th>Cancellation Reason</th>
+                                @if (ShowActions)
+                                {
+                                    <th>Actions</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Appointments.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="@ColumnCount" class="text-center text-muted py-4">No appointments found.</td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var appointment in Appointments)
+                                {
+                                    <tr @key="appointment.Id">
+                                        @if (ShowDateColumn)
+                                        {
+                                            <td>@appointment.AppointmentDate.ToString("dd MMM yyyy")</td>
+                                        }
+                                        <td>@appointment.AppointmentTime.ToString("hh:mm tt")</td>
+                                        @if (ShowPatientColumn)
+                                        {
+                                            <td>@appointment.PatientName</td>
+                                        }
+                                        @if (ShowDoctorColumn)
+                                        {
+                                            <td>Dr. @appointment.DoctorName</td>
+                                        }
+                                        <td>
+                                            <StatusBadge Text="@appointment.Status.ToString()" Variant="@GetAppointmentStatusVariant(appointment.Status)" />
+                                        </td>
+                                        <td>
+                                            @if (appointment.Status == AppointmentStatus.Completed && appointment.HealthRecordId is not null)
+                                            {
+                                                <span class="text-success" title="Health record exists">Record #@appointment.HealthRecordId</span>
+                                            }
+                                            else if (appointment.Status == AppointmentStatus.Completed)
+                                            {
+                                                <span class="text-warning">⚠ Missing</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (string.IsNullOrWhiteSpace(appointment.CancellationReason))
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn btn-sm btn-outline-secondary" type="button" @onclick="() => OpenCancellationReasonModal(appointment)">
+                                                    View Reason
+                                                </button>
+                                            }
+                                        </td>
+                                        @if (ShowActions)
+                                        {
+                                            <td>
+                                                @if (appointment.Status == AppointmentStatus.Completed)
+                                                {
+                                                    <span class="text-muted">Locked</span>
+                                                }
+                                                else if (appointment.Status == AppointmentStatus.Cancelled)
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+                                                else
+                                                {
+                                                    @if (appointment.Status == AppointmentStatus.Pending)
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-success me-2" type="button" disabled="@IsSavingStatus" @onclick="() => OnConfirm.InvokeAsync(appointment)">
+                                                            Confirm
+                                                        </button>
+                                                    }
+
+                                                    <button class="btn btn-sm btn-outline-danger" type="button" disabled="@IsSavingStatus" @onclick="() => OnCancelRequested.InvokeAsync(appointment)">
+                                                        Cancel
+                                                    </button>
+                                                }
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            @if (PagedResult is not null && PagedResult.TotalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <button class="btn btn-outline-secondary btn-sm" type="button" disabled="@(!PagedResult.HasPreviousPage || IsLoading)" @onclick="OnPreviousPage">
+                        Previous
+                    </button>
+
+                    <span class="text-muted">Appointment page @Pagination.PageNumber of @PagedResult.TotalPages</span>
+
+                    <button class="btn btn-outline-secondary btn-sm" type="button" disabled="@(!PagedResult.HasNextPage || IsLoading)" @onclick="OnNextPage">
+                        Next
+                    </button>
+                </div>
+            }
+        </section>
+    </div>
+}
+
+@if (_showReasonModal && _appointmentReasonToView is not null)
+{
+    <div class="modal-backdrop-custom">
+        <section class="confirm-modal-card">
+            <div class="confirm-modal-icon">
+                <span class="bi bi-info-circle" aria-hidden="true"></span>
+            </div>
+
+            <h3>Cancellation reason</h3>
+            <p>
+                Appointment on <strong>@_appointmentReasonToView.AppointmentDate.ToString("dd MMM yyyy")</strong>
+                at <strong>@_appointmentReasonToView.AppointmentTime.ToString("hh:mm tt")</strong>
+            </p>
+
+            <div class="mb-3 text-start">
+                <label class="form-label">Reason</label>
+                <p class="form-control-plaintext border rounded p-3 bg-light mb-0 text-wrap">
+                    @_appointmentReasonToView.CancellationReason
+                </p>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-outline-secondary" type="button" @onclick="CloseCancellationReasonModal">Close</button>
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public string Title { get; set; } = "Appointments";
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public List<AppointmentDto> Appointments { get; set; } = new();
+    [Parameter] public PagedResultDto<AppointmentDto>? PagedResult { get; set; }
+    [Parameter] public PaginationQueryDto Pagination { get; set; } = new();
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool IsSavingStatus { get; set; }
+    [Parameter] public bool ShowDateColumn { get; set; } = true;
+    [Parameter] public bool ShowPatientColumn { get; set; } = true;
+    [Parameter] public bool ShowDoctorColumn { get; set; } = true;
+    [Parameter] public bool ShowStatusFilter { get; set; } = true;
+    [Parameter] public bool ShowActions { get; set; } = true;
+    [Parameter] public AppointmentStatus? SelectedStatus { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<AppointmentStatus?> OnStatusChanged { get; set; }
+    [Parameter] public EventCallback OnPreviousPage { get; set; }
+    [Parameter] public EventCallback OnNextPage { get; set; }
+    [Parameter] public EventCallback<AppointmentDto> OnConfirm { get; set; }
+    [Parameter] public EventCallback<AppointmentDto> OnCancelRequested { get; set; }
+
+    private bool _showReasonModal;
+    private AppointmentDto? _appointmentReasonToView;
+
+    private string _selectedStatusValue => SelectedStatus?.ToString() ?? "All";
+
+    private int ColumnCount =>
+        4 +
+        (ShowDateColumn ? 1 : 0) +
+        (ShowPatientColumn ? 1 : 0) +
+        (ShowDoctorColumn ? 1 : 0) +
+        (ShowActions ? 1 : 0);
+
+    private async Task HandleStatusChangedAsync(ChangeEventArgs args)
+    {
+        var selectedValue = args.Value?.ToString() ?? "All";
+        var selectedStatus = Enum.TryParse<AppointmentStatus>(selectedValue, out var parsedStatus)
+            ? parsedStatus
+            : (AppointmentStatus?)null;
+
+        await OnStatusChanged.InvokeAsync(selectedStatus);
+    }
+
+    private void OpenCancellationReasonModal(AppointmentDto appointment)
+    {
+        _appointmentReasonToView = appointment;
+        _showReasonModal = true;
+    }
+
+    private void CloseCancellationReasonModal()
+    {
+        _showReasonModal = false;
+        _appointmentReasonToView = null;
+    }
+
+    private static string GetAppointmentStatusVariant(AppointmentStatus status)
+    {
+        return status switch
+        {
+            AppointmentStatus.Pending => "warning",
+            AppointmentStatus.Confirmed => "success",
+            AppointmentStatus.Cancelled => "danger",
+            AppointmentStatus.Completed => "info",
+            _ => "neutral"
+        };
+    }
+}

@@ -1,7 +1,9 @@
 using AutoMapper;
 using HealthAxis.API.Constants;
-using HealthAxis.API.Dtos;
-using HealthAxis.API.Enums;
+using HealthAxis.Shared.Constants;
+using HealthAxis.Shared.Dtos;
+using HealthAxis.Shared.Dtos.Appointment;
+using HealthAxis.Shared.Enums;
 using HealthAxis.API.Exceptions;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
@@ -64,13 +66,15 @@ public class AppointmentService(
     }
 
     public async Task<PagedResultDto<AppointmentDto>> GetAppointmentsByDoctorIdAsync(
-        int doctorId,
-        PaginationQueryDto pagination)
+    int doctorId,
+    AppointmentStatus? status,
+    PaginationQueryDto pagination)
     {
         await AutoCancelExpiredPendingAppointmentsAsync();
 
         var appointments = await appointmentRepository.GetAppointmentsByDoctorIdAsync(
             doctorId,
+            status,
             pagination.PageNumber,
             pagination.PageSize);
 
@@ -78,13 +82,15 @@ public class AppointmentService(
     }
 
     public async Task<PagedResultDto<AppointmentDto>> GetAppointmentsByPatientIdAsync(
-        int patientId,
-        PaginationQueryDto pagination)
+    int patientId,
+    AppointmentStatus? status,
+    PaginationQueryDto pagination)
     {
         await AutoCancelExpiredPendingAppointmentsAsync();
 
         var appointments = await appointmentRepository.GetAppointmentsByPatientIdAsync(
             patientId,
+            status, 
             pagination.PageNumber,
             pagination.PageSize);
 
@@ -101,6 +107,22 @@ public class AppointmentService(
         var appointments = await appointmentRepository.GetAppointmentsByDoctorIdAndDateAsync(
             doctorId,
             date,
+            pagination.PageNumber,
+            pagination.PageSize);
+
+        return MapPagedResult<Appointment, AppointmentDto>(appointments);
+    }
+
+    public async Task<PagedResultDto<AppointmentDto>> GetAppointmentsByDateAndStatusAsync(
+        DateOnly date,
+        AppointmentStatus? status,
+        PaginationQueryDto pagination)
+    {
+        await AutoCancelExpiredPendingAppointmentsAsync();
+
+        var appointments = await appointmentRepository.GetAppointmentsByDateAndStatusAsync(
+            date,
+            status,
             pagination.PageNumber,
             pagination.PageSize);
 
@@ -149,46 +171,11 @@ public class AppointmentService(
             : mapper.Map<AppointmentDto>(appointmentWithDetails);
     }
 
-    public async Task<AppointmentDto?> DeleteAppointmentAsync(int id)
-    {
-        var appointment = await appointmentRepository.GetAppointmentByIdWithDetailsAsync(id);
-
-        if (appointment == null)
-        {
-            throw new NotFoundException(ErrorMessages.AppointmentNotFound);
-        }
-
-        if (appointment.HealthRecord != null)
-        {
-            throw new BusinessRuleException(ErrorMessages.AppointmentCannotBeDeletedBecauseHealthRecordExists);
-        }
-
-        var deletedAppointment = await appointmentRepository.DeleteAppointmentAsync(id);
-
-        return deletedAppointment == null
-            ? throw new NotFoundException(ErrorMessages.AppointmentNotFound)
-            : mapper.Map<AppointmentDto>(deletedAppointment);
-    }
-
     public async Task<List<AppointmentReportDto>> GetAppointmentReportsAsync()
     {
         await AutoCancelExpiredPendingAppointmentsAsync();
 
-        var appointments = await appointmentRepository.GetAllAsync();
-
-        return appointments
-            .GroupBy(appointment => appointment.AppointmentDate)
-            .Select(group => new AppointmentReportDto
-            {
-                Date = group.Key,
-                ConfirmedCount = group.Count(appointment => appointment.Status == AppointmentStatus.Confirmed),
-                CancelledCount = group.Count(appointment => appointment.Status == AppointmentStatus.Cancelled),
-                CompletedCount = group.Count(appointment => appointment.Status == AppointmentStatus.Completed),
-                PendingCount = group.Count(appointment => appointment.Status == AppointmentStatus.Pending),
-                TotalCount = group.Count()
-            })
-            .OrderBy(report => report.Date)
-            .ToList();
+        return await appointmentRepository.GetAppointmentReportsAsync();
     }
 
     private async Task ValidateAppointmentCanBeCreatedAsync(CreateAppointmentDto dto)
@@ -329,15 +316,11 @@ public class AppointmentService(
 
     private async Task AutoCancelExpiredPendingAppointmentsAsync()
     {
-        var pendingAppointments = await appointmentRepository.GetPendingAppointmentsAsync();
+        var cutoffDateTime = DateTime.Now.AddHours(MinimumHoursBeforeAppointment);
+        var expiredPendingAppointments = await appointmentRepository.GetExpiredPendingAppointmentsAsync(cutoffDateTime);
 
-        foreach (var appointment in pendingAppointments)
+        foreach (var appointment in expiredPendingAppointments)
         {
-            if (IsAtLeast24HoursAhead(appointment.AppointmentDate, appointment.AppointmentTime))
-            {
-                continue;
-            }
-
             appointment.Status = AppointmentStatus.Cancelled;
             appointment.CancellationReason = ErrorMessages.PendingAppointmentAutoCancelledReason;
 

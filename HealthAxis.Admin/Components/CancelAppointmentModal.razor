@@ -1,0 +1,95 @@
+@using HealthAxis.Shared.Dtos.Appointment
+
+@if (IsOpen && Appointment is not null)
+{
+    <div class="modal-backdrop-custom">
+        <section class="confirm-modal-card">
+            <div class="confirm-modal-icon">
+                <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+            </div>
+
+            <h3>@Title</h3>
+
+            <p>
+                @PromptPrefix
+                <strong>@DisplayName</strong>
+                at <strong>@Appointment.AppointmentTime.ToString("hh:mm tt")</strong>.
+            </p>
+
+            <div class="mb-3 text-start">
+                <label class="form-label">Cancellation reason</label>
+                <textarea class="form-control"
+                          rows="4"
+                          value="@CancellationReason"
+                          @oninput="HandleReasonInput"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-danger"
+                        type="button"
+                        disabled="@IsSaving"
+                        @onclick="ConfirmAsync">
+                    @(IsSaving ? "Cancelling..." : ConfirmButtonText)
+                </button>
+                <button class="btn btn-outline-secondary"
+                        type="button"
+                        disabled="@IsSaving"
+                        @onclick="CloseAsync">
+                    Close
+                </button>
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public AppointmentDto? Appointment { get; set; }
+    [Parameter] public string CancellationReason { get; set; } = string.Empty;
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public string Title { get; set; } = "Cancel appointment?";
+    [Parameter] public string PromptPrefix { get; set; } = "Add a cancellation reason for the appointment with";
+    [Parameter] public string ConfirmButtonText { get; set; } = "Confirm cancellation";
+    [Parameter] public EventCallback<string> CancellationReasonChanged { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string DisplayName
+    {
+        get
+        {
+            if (Appointment is null)
+            {
+                return string.Empty;
+            }
+
+            if (!string.IsNullOrWhiteSpace(Appointment.PatientName))
+            {
+                return Appointment.PatientName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(Appointment.DoctorName))
+            {
+                return $"Dr. {Appointment.DoctorName}";
+            }
+
+            return "the selected user";
+        }
+    }
+
+    private async Task HandleReasonInput(ChangeEventArgs args)
+    {
+        CancellationReason = args.Value?.ToString() ?? string.Empty;
+        await CancellationReasonChanged.InvokeAsync(CancellationReason);
+    }
+
+    private async Task ConfirmAsync()
+    {
+        await OnConfirm.InvokeAsync();
+    }
+
+    private async Task CloseAsync()
+    {
+        await OnClose.InvokeAsync();
+    }
+}
