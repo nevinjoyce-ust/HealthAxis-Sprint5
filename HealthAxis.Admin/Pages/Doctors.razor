@@ -15,32 +15,26 @@
 
 <AdminPageHeader Kicker="Doctor Management"
                  Title="Doctors"
-                 Description="Create, edit, search, and review doctor profiles."
                  ActionText="Add Doctor"
                  OnActionClick="ShowAddForm" />
 
-<section class="admin-card mb-4">
-    <div class="filter-row">
-        <div>
-            <label class="form-label">Search by name, email, phone, or specialisation</label>
-            <input class="form-control"
-                   value="@_searchText"
-                   @oninput="HandleSearchInputAsync"
-                   placeholder="Search doctors..." />
-        </div>
+<section class="admin-card mb-4 search-panel">
+    <h3 class="search-panel-title">Search</h3>
+    <div class="search-panel-grid">
+        <input class="form-control"
+               value="@_searchText"
+               @oninput="HandleSearchInputAsync"
+               placeholder="Name, email, phone, or specialisation" />
 
-        <div>
-            <label class="form-label">Filter by specialisation</label>
-            <select class="form-select"
-                    value="@_selectedSpecialisationValue"
-                    @onchange="HandleSpecialisationFilterChangedAsync">
-                <option value="All">All specialisations</option>
-                @foreach (var specialisation in Enum.GetValues<DoctorSpecialisation>())
-                {
-                    <option value="@specialisation">@specialisation</option>
-                }
-            </select>
-        </div>
+        <select class="form-select"
+                value="@_selectedSpecialisationValue"
+                @onchange="HandleSpecialisationFilterChangedAsync">
+            <option value="All">All specialisations</option>
+            @foreach (var specialisation in Enum.GetValues<DoctorSpecialisation>())
+            {
+                <option value="@specialisation">@specialisation</option>
+            }
+        </select>
     </div>
 </section>
 
@@ -198,24 +192,20 @@
         <table class="table admin-table doctor-table align-middle">
             <thead>
                 <tr>
-                    <th rowspan="2">Doctor</th>
-                    <th rowspan="2">Specialisation</th>
-                    <th rowspan="2">Experience</th>
-                    <th rowspan="2">Fee</th>
-                    <th colspan="2" class="availability-group-header">Availability</th>
-                    <th rowspan="2">Appointments</th>
-                    <th rowspan="2" class="doctor-edit-header">Edit</th>
-                </tr>
-                <tr>
-                    <th class="availability-status-header">Status</th>
-                    <th class="availability-toggle-header">Toggle</th>
+                    <th>Doctor</th>
+                    <th>Specialisation</th>
+                    <th>Experience</th>
+                    <th>Fee</th>
+                    <th class="availability-cell">Availability</th>
+                    <th class="table-action-cell">Appointments</th>
+                    <th class="doctor-edit-cell">Edit</th>
                 </tr>
             </thead>
             <tbody>
                 @if (!_isLoading && _doctors.Count == 0)
                 {
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">No doctors found.</td>
+                        <td colspan="7" class="text-center text-muted py-4">No doctors found.</td>
                     </tr>
                 }
                 else
@@ -227,20 +217,18 @@
                             <td>@doctor.Specialisation</td>
                             <td>@doctor.YearsOfExperience years</td>
                             <td>₹@doctor.ConsultationFee</td>
-                            <td class="availability-status-cell">
-                                <StatusBadge Text="@(doctor.IsAvailable ? "Available" : "Unavailable")" Variant="@(doctor.IsAvailable ? "success" : "danger")" />
-                            </td>
-                            <td class="availability-toggle-cell">
-                                <button class="btn btn-sm @GetAvailabilityButtonClass(doctor) compact-action-button"
+                            <td class="availability-cell">
+                                <button class="btn btn-sm @GetAvailabilityButtonClass(doctor) availability-toggle-button"
                                         type="button"
                                         disabled="@_isSaving"
+                                        title="Click to toggle availability"
                                         @onclick="() => HandleAvailabilityClick(doctor)">
-                                    @(doctor.IsAvailable ? "Deactivate" : "Activate")
+                                    @(doctor.IsAvailable ? "Available" : "Unavailable")
                                 </button>
                             </td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" type="button" @onclick="() => ViewDoctorAppointmentsAsync(doctor)">
-                                    View Appointments
+                            <td class="table-action-cell">
+                                <button class="btn btn-sm btn-soft-primary" type="button" @onclick="() => ViewDoctorAppointmentsAsync(doctor)">
+                                    View
                                 </button>
                             </td>
                             <td class="doctor-edit-cell">
@@ -273,7 +261,6 @@
 
 <AdminAppointmentListModal IsOpen="_showDoctorAppointmentsModal"
                            Title="@DoctorAppointmentsModalTitle"
-                           Description="Completed appointments show health record ID when available. Clinical details are not visible to admins."
                            Appointments="_appointments"
                            PagedResult="_appointmentsPagedResult"
                            Pagination="_appointmentPagination"
@@ -855,9 +842,9 @@
             }
 
             doctor.IsAvailable = result.Data.IsAvailable;
-            _successMessage = result.Data.IsAvailable
-                ? "Doctor activated successfully."
-                : "Doctor deactivated successfully.";
+            _successMessage = string.IsNullOrWhiteSpace(result.Data.Message)
+                ? (result.Data.IsAvailable ? "Doctor activated successfully." : "Doctor deactivated successfully.")
+                : result.Data.Message;
         }
         catch
         {
@@ -877,7 +864,7 @@
 
     private static string GetAvailabilityButtonClass(DoctorDto doctor)
     {
-        return doctor.IsAvailable ? "btn-outline-danger" : "btn-outline-success";
+        return doctor.IsAvailable ? "btn-soft-success" : "btn-soft-danger";
     }
 
     private void CancelForm()

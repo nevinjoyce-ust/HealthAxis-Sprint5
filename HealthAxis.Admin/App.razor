@@ -3,12 +3,22 @@
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
                 <NotAuthorized>
-                    <div class="auth-message-card">
-                        <h3>Access restricted</h3>
-                        <p>You are not authorized to access this page. Please sign in with an Admin account.</p>
-                        <a class="btn btn-primary" href="login">Go to Login</a>
-                    </div>
+                    <RedirectToLogin />
                 </NotAuthorized>
+                <Authorizing>
+                    <div class="app-loading-shell">
+                        <div class="app-loading-card">
+                            <div class="app-loading-logo">HA</div>
+                            <div class="app-loading-content">
+                                <p class="app-loading-kicker">Checking Access</p>
+                                <h1>Loading</h1>
+                            </div>
+                            <div class="app-loading-bar">
+                                <div class="app-loading-bar-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                </Authorizing>
             </AuthorizeRouteView>
 
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />

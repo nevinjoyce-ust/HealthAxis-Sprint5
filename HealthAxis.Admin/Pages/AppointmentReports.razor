@@ -1,4 +1,4 @@
-﻿@page "/appointment-reports"
+@page "/appointment-reports"
 @attribute [Authorize(Roles = AppRoles.Admin)]
 @using HealthAxis.Admin.Components
 @using HealthAxis.Shared.Constants
@@ -9,9 +9,7 @@
 
 <PageTitle>Appointments - HealthAxis Admin</PageTitle>
 
-<AdminPageHeader Kicker="Appointments"
-                 Title="Appointments"
-                 Description="Review appointment activity, status changes, and daily appointment totals." />
+<AdminPageHeader Kicker="Appointments" Title="Appointments" />
 
 @if (_isLoadingReports)
 {
@@ -41,16 +39,14 @@
                     <th>Cancelled</th>
                     <th>Completed</th>
                     <th>Total</th>
-                    <th>Details</th>
+                    <th class="table-action-cell">Details</th>
                 </tr>
             </thead>
             <tbody>
                 @if (!_isLoadingReports && _reports.Count == 0)
                 {
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">
-                            No appointment activity found.
-                        </td>
+                        <td colspan="7" class="text-center text-muted py-4">No appointment activity found.</td>
                     </tr>
                 }
                 else
@@ -64,8 +60,8 @@
                             <td><StatusBadge Text="@report.CancelledCount.ToString()" Variant="danger" /></td>
                             <td><StatusBadge Text="@report.CompletedCount.ToString()" Variant="info" /></td>
                             <td><strong>@report.TotalCount</strong></td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary compact-edit-button"
+                            <td class="table-action-cell">
+                                <button class="btn btn-soft-primary view-details-button"
                                         type="button"
                                         @onclick="() => ViewAppointmentsForDateAsync(report.Date)">
                                     View More
@@ -82,18 +78,16 @@
 @if (_reportPagedResult is not null && _reportPagedResult.TotalPages > 1)
 {
     <div class="d-flex justify-content-between align-items-center mt-3">
-        <button class="btn btn-outline-secondary btn-sm"
+        <button class="btn btn-soft-secondary btn-sm"
                 type="button"
                 disabled="@(!_reportPagedResult.HasPreviousPage || _isLoadingReports)"
                 @onclick="PreviousReportPageAsync">
             Previous
         </button>
 
-        <span class="text-muted">
-            Report page @_reportPagination.PageNumber of @_reportPagedResult.TotalPages
-        </span>
+        <span class="text-muted">Page @_reportPagination.PageNumber of @_reportPagedResult.TotalPages</span>
 
-        <button class="btn btn-outline-secondary btn-sm"
+        <button class="btn btn-soft-secondary btn-sm"
                 type="button"
                 disabled="@(!_reportPagedResult.HasNextPage || _isLoadingReports)"
                 @onclick="NextReportPageAsync">
@@ -104,7 +98,6 @@
 
 <AdminAppointmentListModal IsOpen="_showAppointmentDetailsModal"
                            Title="@AppointmentDetailsModalTitle"
-                           Description="Filter appointments by status and update appointment status when allowed. Health records are shown by record ID only."
                            Appointments="_appointments"
                            PagedResult="_appointmentPagedResult"
                            Pagination="_appointmentPagination"
@@ -132,17 +125,8 @@
                         OnClose="CloseCancelAppointmentModal" />
 
 @code {
-    private readonly PaginationQueryDto _reportPagination = new()
-    {
-        PageNumber = 1,
-        PageSize = 7
-    };
-
-    private readonly PaginationQueryDto _appointmentPagination = new()
-    {
-        PageNumber = 1,
-        PageSize = 10
-    };
+    private readonly PaginationQueryDto _reportPagination = new() { PageNumber = 1, PageSize = 7 };
+    private readonly PaginationQueryDto _appointmentPagination = new() { PageNumber = 1, PageSize = 10 };
 
     private PagedResultDto<AppointmentReportDto>? _reportPagedResult;
     private PagedResultDto<AppointmentDto>? _appointmentPagedResult;
@@ -260,12 +244,6 @@
                 return;
             }
 
-            if (result.Data is null)
-            {
-                _errorMessage = "Unable to confirm appointment.";
-                return;
-            }
-
             _successMessage = "Appointment confirmed successfully.";
             await RefreshCurrentReportAndDetailsAsync();
         }
@@ -318,12 +296,6 @@
             if (!result.IsSuccess)
             {
                 _errorMessage = result.ErrorMessage ?? "Unable to cancel appointment.";
-                return;
-            }
-
-            if (result.Data is null)
-            {
-                _errorMessage = "Unable to cancel appointment.";
                 return;
             }
 

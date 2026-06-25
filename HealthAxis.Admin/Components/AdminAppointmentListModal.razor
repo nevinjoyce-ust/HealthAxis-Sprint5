@@ -15,24 +15,22 @@
                     }
                 </div>
 
-                <button class="btn btn-sm btn-outline-secondary" type="button" @onclick="OnClose">
+                <button class="btn btn-soft-secondary btn-sm" type="button" @onclick="OnClose">
                     Close
                 </button>
             </div>
 
             @if (ShowStatusFilter)
             {
-                <div class="filter-row mb-3 text-start">
-                    <div>
-                        <label class="form-label">Filter by status</label>
-                        <select class="form-select" value="@_selectedStatusValue" @onchange="HandleStatusChangedAsync">
-                            <option value="All">All</option>
-                            @foreach (var status in Enum.GetValues<AppointmentStatus>())
-                            {
-                                <option value="@status">@status</option>
-                            }
-                        </select>
-                    </div>
+                <div class="clean-filter-card mb-3">
+                    <div class="clean-filter-heading">Status</div>
+                    <select class="form-select clean-filter-control" value="@_selectedStatusValue" @onchange="HandleStatusChangedAsync">
+                        <option value="All">All</option>
+                        @foreach (var status in Enum.GetValues<AppointmentStatus>())
+                        {
+                            <option value="@status">@status</option>
+                        }
+                    </select>
                 </div>
             }
 
@@ -43,7 +41,7 @@
             else
             {
                 <div class="table-responsive">
-                    <table class="table admin-table align-middle">
+                    <table class="table admin-table align-middle appointment-clean-table">
                         <thead>
                             <tr>
                                 @if (ShowDateColumn)
@@ -60,11 +58,9 @@
                                     <th>Doctor</th>
                                 }
                                 <th>Status</th>
-                                <th>Health Record</th>
-                                <th>Cancellation Reason</th>
                                 @if (ShowActions)
                                 {
-                                    <th>Actions</th>
+                                    <th></th>
                                 }
                             </tr>
                         </thead>
@@ -96,55 +92,41 @@
                                         <td>
                                             <StatusBadge Text="@appointment.Status.ToString()" Variant="@GetAppointmentStatusVariant(appointment.Status)" />
                                         </td>
-                                        <td>
-                                            @if (appointment.Status == AppointmentStatus.Completed && appointment.HealthRecordId is not null)
-                                            {
-                                                <span class="text-success" title="Health record exists">Record #@appointment.HealthRecordId</span>
-                                            }
-                                            else if (appointment.Status == AppointmentStatus.Completed)
-                                            {
-                                                <span class="text-warning">⚠ Missing</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">—</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (string.IsNullOrWhiteSpace(appointment.CancellationReason))
-                                            {
-                                                <span class="text-muted">—</span>
-                                            }
-                                            else
-                                            {
-                                                <button class="btn btn-sm btn-outline-secondary" type="button" @onclick="() => OpenCancellationReasonModal(appointment)">
-                                                    View Reason
-                                                </button>
-                                            }
-                                        </td>
                                         @if (ShowActions)
                                         {
-                                            <td>
-                                                @if (appointment.Status == AppointmentStatus.Completed)
+                                            <td class="appointment-context-cell">
+                                                @if (appointment.Status == AppointmentStatus.Pending)
                                                 {
-                                                    <span class="text-muted">Locked</span>
+                                                    <button class="btn btn-soft-danger btn-sm me-2" type="button" disabled="@IsSavingStatus" @onclick="() => OnCancelRequested.InvokeAsync(appointment)">
+                                                        Cancel
+                                                    </button>
+                                                    <button class="btn btn-soft-success btn-sm" type="button" disabled="@IsSavingStatus" @onclick="() => OnConfirm.InvokeAsync(appointment)">
+                                                        Confirm
+                                                    </button>
+                                                }
+                                                else if (appointment.Status == AppointmentStatus.Confirmed)
+                                                {
+                                                    <button class="btn btn-soft-danger btn-sm" type="button" disabled="@IsSavingStatus" @onclick="() => OnCancelRequested.InvokeAsync(appointment)">
+                                                        Cancel
+                                                    </button>
+                                                }
+                                                else if (appointment.Status == AppointmentStatus.Cancelled && !string.IsNullOrWhiteSpace(appointment.CancellationReason))
+                                                {
+                                                    <button class="btn btn-soft-secondary btn-sm" type="button" @onclick="() => OpenCancellationReasonModal(appointment)">
+                                                        Reason
+                                                    </button>
                                                 }
                                                 else if (appointment.Status == AppointmentStatus.Cancelled)
                                                 {
                                                     <span class="text-muted">—</span>
                                                 }
-                                                else
+                                                else if (appointment.Status == AppointmentStatus.Completed && appointment.HealthRecordId is not null)
                                                 {
-                                                    @if (appointment.Status == AppointmentStatus.Pending)
-                                                    {
-                                                        <button class="btn btn-sm btn-outline-success me-2" type="button" disabled="@IsSavingStatus" @onclick="() => OnConfirm.InvokeAsync(appointment)">
-                                                            Confirm
-                                                        </button>
-                                                    }
-
-                                                    <button class="btn btn-sm btn-outline-danger" type="button" disabled="@IsSavingStatus" @onclick="() => OnCancelRequested.InvokeAsync(appointment)">
-                                                        Cancel
-                                                    </button>
+                                                    <span class="status-detail text-success">Health Record #@appointment.HealthRecordId</span>
+                                                }
+                                                else if (appointment.Status == AppointmentStatus.Completed)
+                                                {
+                                                    <span class="status-detail text-warning">Health Record Missing</span>
                                                 }
                                             </td>
                                         }
@@ -159,13 +141,13 @@
             @if (PagedResult is not null && PagedResult.TotalPages > 1)
             {
                 <div class="d-flex justify-content-between align-items-center mt-3">
-                    <button class="btn btn-outline-secondary btn-sm" type="button" disabled="@(!PagedResult.HasPreviousPage || IsLoading)" @onclick="OnPreviousPage">
+                    <button class="btn btn-soft-secondary btn-sm" type="button" disabled="@(!PagedResult.HasPreviousPage || IsLoading)" @onclick="OnPreviousPage">
                         Previous
                     </button>
 
-                    <span class="text-muted">Appointment page @Pagination.PageNumber of @PagedResult.TotalPages</span>
+                    <span class="text-muted">Page @Pagination.PageNumber of @PagedResult.TotalPages</span>
 
-                    <button class="btn btn-outline-secondary btn-sm" type="button" disabled="@(!PagedResult.HasNextPage || IsLoading)" @onclick="OnNextPage">
+                    <button class="btn btn-soft-secondary btn-sm" type="button" disabled="@(!PagedResult.HasNextPage || IsLoading)" @onclick="OnNextPage">
                         Next
                     </button>
                 </div>
@@ -178,10 +160,6 @@
 {
     <div class="modal-backdrop-custom">
         <section class="confirm-modal-card">
-            <div class="confirm-modal-icon">
-                <span class="bi bi-info-circle" aria-hidden="true"></span>
-            </div>
-
             <h3>Cancellation reason</h3>
             <p>
                 Appointment on <strong>@_appointmentReasonToView.AppointmentDate.ToString("dd MMM yyyy")</strong>
@@ -189,14 +167,13 @@
             </p>
 
             <div class="mb-3 text-start">
-                <label class="form-label">Reason</label>
                 <p class="form-control-plaintext border rounded p-3 bg-light mb-0 text-wrap">
                     @_appointmentReasonToView.CancellationReason
                 </p>
             </div>
 
             <div class="form-actions">
-                <button class="btn btn-outline-secondary" type="button" @onclick="CloseCancellationReasonModal">Close</button>
+                <button class="btn btn-soft-secondary" type="button" @onclick="CloseCancellationReasonModal">Close</button>
             </div>
         </section>
     </div>
@@ -230,7 +207,7 @@
     private string _selectedStatusValue => SelectedStatus?.ToString() ?? "All";
 
     private int ColumnCount =>
-        4 +
+        2 +
         (ShowDateColumn ? 1 : 0) +
         (ShowPatientColumn ? 1 : 0) +
         (ShowDoctorColumn ? 1 : 0) +

@@ -300,7 +300,7 @@ public class PatientServiceTests
         var exception = await Assert.ThrowsAsync<ConflictException>(() =>
             _patientService.UpdatePatientAsync(1, updateDto));
 
-        Assert.Equal("Email already exists.", exception.Message);
+        Assert.Equal("A user with this email already exists.", exception.Message);
 
         _userManagerMock.Verify(
             manager => manager.UpdateAsync(It.IsAny<IdentityUser>()),

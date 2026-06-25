@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 
-namespace HealthAxisTests;
+namespace HealthAxisTests.ServiceTests;
 
 public class AuthServiceTests
 {

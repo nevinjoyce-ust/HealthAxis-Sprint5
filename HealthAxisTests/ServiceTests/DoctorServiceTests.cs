@@ -10,7 +10,7 @@ using HealthAxis.API.Repositories;
 using HealthAxis.API.Services.Impl;
 using Moq;
 
-namespace HealthAxisTests;
+namespace HealthAxisTests.ServiceTests;
 
 public class DoctorServiceTests
 {

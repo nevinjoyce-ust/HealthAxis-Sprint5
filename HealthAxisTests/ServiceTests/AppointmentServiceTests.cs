@@ -684,18 +684,35 @@ public class AppointmentServiceTests
     }
 
 
+
     [Fact]
     public async Task GetAppointmentReportsAsync_WhenAppointmentsExist_ShouldReturnGroupedReports()
     {
-        var appointments = new List<Appointment>
+        var reports = new List<AppointmentReportDto>
+    {
+        new AppointmentReportDto
         {
-            new Appointment { Id = 1, AppointmentDate = new DateOnly(2026, 6, 20), Status = AppointmentStatus.Confirmed },
-            new Appointment { Id = 2, AppointmentDate = new DateOnly(2026, 6, 20), Status = AppointmentStatus.Cancelled },
-            new Appointment { Id = 3, AppointmentDate = new DateOnly(2026, 6, 20), Status = AppointmentStatus.Pending },
-            new Appointment { Id = 4, AppointmentDate = new DateOnly(2026, 6, 21), Status = AppointmentStatus.Completed }
-        };
+            Date = new DateOnly(2026, 6, 20),
+            PendingCount = 1,
+            ConfirmedCount = 1,
+            CancelledCount = 1,
+            CompletedCount = 0,
+            TotalCount = 3
+        },
+        new AppointmentReportDto
+        {
+            Date = new DateOnly(2026, 6, 21),
+            PendingCount = 0,
+            ConfirmedCount = 0,
+            CancelledCount = 0,
+            CompletedCount = 1,
+            TotalCount = 1
+        }
+    };
 
-        _appointmentRepositoryMock.Setup(repo => repo.GetAllAsync()).ReturnsAsync(appointments);
+        _appointmentRepositoryMock
+            .Setup(repo => repo.GetAppointmentReportsAsync())
+            .ReturnsAsync(reports);
 
         var result = await _appointmentService.GetAppointmentReportsAsync();
 
@@ -720,13 +737,16 @@ public class AppointmentServiceTests
     [Fact]
     public async Task GetAppointmentReportsAsync_WhenNoAppointmentsExist_ShouldReturnEmptyList()
     {
-        _appointmentRepositoryMock.Setup(repo => repo.GetAllAsync()).ReturnsAsync(new List<Appointment>());
+        _appointmentRepositoryMock
+            .Setup(repo => repo.GetAppointmentReportsAsync())
+            .ReturnsAsync(new List<AppointmentReportDto>());
 
         var result = await _appointmentService.GetAppointmentReportsAsync();
 
         Assert.NotNull(result);
         Assert.Empty(result);
     }
+
 
     [Fact]
     public async Task GetAppointmentByIdAsync_WhenAppointmentExists_ShouldReturnAppointmentDto()

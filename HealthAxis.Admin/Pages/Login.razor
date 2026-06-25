@@ -27,18 +27,9 @@
         </div>
 
         <div class="login-feature-list">
-            <div>
-                <span class="bi bi-person-badge"></span>
-                Doctor management
-            </div>
-            <div>
-                <span class="bi bi-clipboard2-pulse"></span>
-                Appointment reports
-            </div>
-            <div>
-                <span class="bi bi-shield-check"></span>
-                Role-aware admin access
-            </div>
+            <div><span class="bi bi-person-badge"></span>Doctor management</div>
+            <div><span class="bi bi-clipboard2-pulse"></span>Appointment reports</div>
+            <div><span class="bi bi-shield-check"></span>Role-aware admin access</div>
         </div>
     </section>
 
@@ -52,7 +43,6 @@
 
             <EditForm Model="_loginRequest" OnValidSubmit="HandleLoginAsync">
                 <DataAnnotationsValidator />
-                <ValidationSummary />
 
                 <div class="mb-3">
                     <label class="form-label" for="email">Email</label>
@@ -77,9 +67,7 @@
 
                 @if (!string.IsNullOrWhiteSpace(_errorMessage))
                 {
-                    <div class="alert alert-danger mt-3 mb-0">
-                        @_errorMessage
-                    </div>
+                    <div class="alert alert-danger mt-3 mb-0">@_errorMessage</div>
                 }
             </EditForm>
         </div>

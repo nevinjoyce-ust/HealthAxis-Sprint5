@@ -1,14 +1,7 @@
 @if (IsOpen)
 {
     <div class="modal-backdrop-custom">
-        <section class="confirm-modal-card">
-            @if (!string.IsNullOrWhiteSpace(IconCssClass))
-            {
-                <div class="confirm-modal-icon">
-                    <span class="@IconCssClass" aria-hidden="true"></span>
-                </div>
-            }
-
+        <section class="confirm-modal-card confirm-modal-card-danger">
             <h3>@Title</h3>
 
             @if (!string.IsNullOrWhiteSpace(Message))
@@ -36,7 +29,7 @@
                     @(IsBusy ? BusyText : ConfirmText)
                 </button>
 
-                <button class="btn btn-outline-secondary"
+                <button class="btn btn-soft-secondary"
                         type="button"
                         disabled="@IsBusy"
                         @onclick="CancelAsync">
@@ -52,11 +45,11 @@
     [Parameter] public string Title { get; set; } = "Confirm action";
     [Parameter] public string? Message { get; set; }
     [Parameter] public string? SecondaryMessage { get; set; }
-    [Parameter] public string IconCssClass { get; set; } = "bi bi-exclamation-triangle";
+    [Parameter] public string IconCssClass { get; set; } = string.Empty;
     [Parameter] public string ConfirmText { get; set; } = "Confirm";
     [Parameter] public string BusyText { get; set; } = "Working...";
     [Parameter] public string CancelText { get; set; } = "Cancel";
-    [Parameter] public string ConfirmButtonClass { get; set; } = "btn btn-danger";
+    [Parameter] public string ConfirmButtonClass { get; set; } = "btn btn-soft-danger";
     [Parameter] public bool IsBusy { get; set; }
     [Parameter] public EventCallback OnConfirm { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }

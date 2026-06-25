@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Moq;
 
-namespace HealthAxisTests;
+namespace HealthAxisTests.ServiceTests;
 
 public class HealthRecordServiceTests
 {

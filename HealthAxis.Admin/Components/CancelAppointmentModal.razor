@@ -3,11 +3,7 @@
 @if (IsOpen && Appointment is not null)
 {
     <div class="modal-backdrop-custom">
-        <section class="confirm-modal-card">
-            <div class="confirm-modal-icon">
-                <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
-            </div>
-
+        <section class="confirm-modal-card confirm-modal-card-danger">
             <h3>@Title</h3>
 
             <p>
@@ -25,13 +21,13 @@
             </div>
 
             <div class="form-actions">
-                <button class="btn btn-danger"
+                <button class="btn btn-soft-danger"
                         type="button"
                         disabled="@IsSaving"
                         @onclick="ConfirmAsync">
                     @(IsSaving ? "Cancelling..." : ConfirmButtonText)
                 </button>
-                <button class="btn btn-outline-secondary"
+                <button class="btn btn-soft-secondary"
                         type="button"
                         disabled="@IsSaving"
                         @onclick="CloseAsync">

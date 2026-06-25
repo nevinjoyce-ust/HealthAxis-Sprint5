@@ -19,7 +19,7 @@ public interface IDoctorAdminService
 
     Task<ApiResponse<string>> ResetDoctorPasswordAsync(int id, AdminResetPasswordDto request);
 
-    Task<ApiResponse<UpdateDoctorAvailabilityDto>> UpdateAvailabilityAsync(int id, UpdateDoctorAvailabilityDto request);
+    Task<ApiResponse<DoctorAvailabilityDto>> UpdateAvailabilityAsync(int id, UpdateDoctorAvailabilityDto request);
 
     Task<PagedResultDto<AppointmentDto>> GetDoctorAppointmentsAsync(
         int doctorId,

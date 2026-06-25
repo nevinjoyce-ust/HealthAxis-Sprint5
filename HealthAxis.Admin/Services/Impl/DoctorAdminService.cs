@@ -58,15 +58,15 @@ public class DoctorAdminService(HttpClient httpClient) : IDoctorAdminService
             "Doctor password reset successfully.");
     }
 
-    public async Task<ApiResponse<UpdateDoctorAvailabilityDto>> UpdateAvailabilityAsync(
-        int id,
-        UpdateDoctorAvailabilityDto request)
+    public async Task<ApiResponse<DoctorAvailabilityDto>> UpdateAvailabilityAsync(
+    int id,
+    UpdateDoctorAvailabilityDto request)
     {
         var response = await httpClient.PutAsJsonAsync(
-            $"api/admin/doctors/{id}/availability",
+            $"api/doctors/{id}/availability",
             request);
 
-        return await ApiResponseHandler.ReadResponseAsync<UpdateDoctorAvailabilityDto>(
+        return await ApiResponseHandler.ReadResponseAsync<DoctorAvailabilityDto>(
             response,
             "Unable to update doctor availability.");
     }

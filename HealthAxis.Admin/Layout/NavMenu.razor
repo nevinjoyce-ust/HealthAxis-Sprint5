@@ -1,4 +1,4 @@
-﻿@implements IDisposable
+@implements IDisposable
 @using HealthAxis.Admin.Services
 @inject ITokenService TokenService
 @inject NavigationManager NavigationManager
@@ -59,11 +59,6 @@
         </NavLink>
     }
 </nav>
-
-<div class="sidebar-footer">
-    <div class="sidebar-footer-label">HealthAxis</div>
-    <div class="sidebar-footer-text">Admin Console</div>
-</div>
 
 @code {
     private bool collapseNavMenu = true;

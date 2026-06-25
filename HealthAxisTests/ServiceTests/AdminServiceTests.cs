@@ -18,7 +18,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 
-namespace HealthAxisTests;
+namespace HealthAxisTests.ServiceTests;
 
 public class AdminServiceTests
 {
@@ -140,7 +140,7 @@ public class AdminServiceTests
         var exception = await Assert.ThrowsAsync<ConflictException>(() =>
             _adminService.CreateDoctorAsync(dto));
 
-        Assert.Equal(ErrorMessages.EmailAlreadyExists, exception.Message);
+        Assert.Equal("A user with this email already exists.", exception.Message);
     }
 
     [Fact]
@@ -294,6 +294,15 @@ public class AdminServiceTests
     public async Task UpdateDoctorAsync_WhenValid_ShouldUpdateProfileFieldsOnlyAndPreserveAvailability()
     {
         var dto = CreateUpdateDoctorDto();
+        var identityUser = new IdentityUser
+        {
+            Id = "doctor-user-id",
+            UserName = "old.doctor@test.com",
+            Email = "old.doctor@test.com",
+            PhoneNumber = "8888888888",
+            EmailConfirmed = true
+        };
+
         var doctor = new Doctor
         {
             Id = 1,
@@ -302,7 +311,8 @@ public class AdminServiceTests
             Specialisation = DoctorSpecialisation.Cardiology,
             PracticeStartDate = new DateOnly(2010, 1, 1),
             ConsultationFee = 500,
-            IsAvailable = false
+            IsAvailable = false,
+            User = identityUser
         };
 
         var updatedDoctor = new Doctor
@@ -313,7 +323,8 @@ public class AdminServiceTests
             Specialisation = dto.Specialisation,
             PracticeStartDate = dto.PracticeStartDate,
             ConsultationFee = dto.ConsultationFee,
-            IsAvailable = false
+            IsAvailable = false,
+            User = identityUser
         };
 
         var doctorWithUser = new Doctor
@@ -325,12 +336,7 @@ public class AdminServiceTests
             PracticeStartDate = dto.PracticeStartDate,
             ConsultationFee = dto.ConsultationFee,
             IsAvailable = false,
-            User = new IdentityUser
-            {
-                Id = "doctor-user-id",
-                Email = "doctor@test.com",
-                PhoneNumber = "9999999999"
-            }
+            User = identityUser
         };
 
         var mappedDto = new DoctorDto
@@ -338,8 +344,8 @@ public class AdminServiceTests
             Id = 1,
             UserId = "doctor-user-id",
             FullName = dto.FullName,
-            Email = "doctor@test.com",
-            PhoneNumber = "9999999999",
+            Email = dto.Email,
+            PhoneNumber = dto.PhoneNumber,
             Specialisation = dto.Specialisation,
             ConsultationFee = dto.ConsultationFee,
             IsAvailable = false
@@ -348,6 +354,18 @@ public class AdminServiceTests
         _doctorRepositoryMock
             .Setup(repo => repo.GetDoctorByIdAsync(1))
             .ReturnsAsync(doctor);
+
+        _userManagerMock
+            .Setup(manager => manager.FindByIdAsync("doctor-user-id"))
+            .ReturnsAsync(identityUser);
+
+        _userManagerMock
+            .Setup(manager => manager.FindByEmailAsync(dto.Email))
+            .ReturnsAsync((IdentityUser?)null);
+
+        _userManagerMock
+            .Setup(manager => manager.UpdateAsync(identityUser))
+            .ReturnsAsync(IdentityResult.Success);
 
         _doctorRepositoryMock
             .Setup(repo => repo.UpdateAsync(It.IsAny<Doctor>()))
@@ -365,7 +383,15 @@ public class AdminServiceTests
 
         Assert.NotNull(result);
         Assert.Equal(dto.FullName, result!.FullName);
+        Assert.Equal(dto.Email, result.Email);
+        Assert.Equal(dto.PhoneNumber, result.PhoneNumber);
         Assert.False(result.IsAvailable);
+
+        _userManagerMock.Verify(manager => manager.UpdateAsync(It.Is<IdentityUser>(user =>
+            user.Id == "doctor-user-id" &&
+            user.Email == dto.Email &&
+            user.UserName == dto.Email &&
+            user.PhoneNumber == dto.PhoneNumber)), Times.Once);
 
         _doctorRepositoryMock.Verify(repo => repo.UpdateAsync(It.Is<Doctor>(updated =>
             updated.Id == 1 &&
@@ -380,17 +406,17 @@ public class AdminServiceTests
     public async Task GetAppointmentReportsAsync_ShouldReturnReportsFromAppointmentService()
     {
         var reports = new List<AppointmentReportDto>
-    {
-        new AppointmentReportDto
         {
-            Date = DateOnly.FromDateTime(DateTime.Today),
-            PendingCount = 1,
-            ConfirmedCount = 2,
-            CancelledCount = 3,
-            CompletedCount = 4,
-            TotalCount = 10
-        }
-    };
+            new AppointmentReportDto
+            {
+                Date = DateOnly.FromDateTime(DateTime.Today),
+                PendingCount = 1,
+                ConfirmedCount = 2,
+                CancelledCount = 3,
+                CompletedCount = 4,
+                TotalCount = 10
+            }
+        };
 
         _appointmentServiceMock
             .Setup(service => service.GetAppointmentReportsAsync())
@@ -413,7 +439,6 @@ public class AdminServiceTests
         Assert.Contains(result.Items, report => report.Date == DateOnly.FromDateTime(DateTime.Today));
     }
 
-   
     private static CreateDoctorDto CreateDoctorDto()
     {
         return new CreateDoctorDto
@@ -434,6 +459,8 @@ public class AdminServiceTests
         return new UpdateDoctorDto
         {
             FullName = "Updated Doctor",
+            Email = "updated.doctor@test.com",
+            PhoneNumber = "9999999999",
             Specialisation = DoctorSpecialisation.Dermatology,
             PracticeStartDate = new DateOnly(2018, 1, 1),
             ConsultationFee = 700

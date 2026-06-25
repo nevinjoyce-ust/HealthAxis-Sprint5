@@ -14,24 +14,20 @@
 <PageTitle>Patients - HealthAxis Admin</PageTitle>
 
 <AdminPageHeader Kicker="Patient Management"
-                 Title="Patients"
-                 Description="Search, edit, and review registered patient profiles. New patients register themselves from the public app." />
+                 Title="Patients"  />
 
-<section class="admin-card mb-4">
-    <div class="filter-row">
-        <div>
-            <label class="form-label">Search by name, email, or phone</label>
-            <input class="form-control"
-                   value="@_searchText"
-                   @oninput="HandleSearchInputAsync"
-                   placeholder="Search patients..." />
-        </div>
+<section class="admin-card mb-4 search-panel">
+    <h3 class="search-panel-title">Search</h3>
+    <div class="search-panel-grid-single">
+        <input class="form-control"
+               value="@_searchText"
+               @oninput="HandleSearchInputAsync"
+               placeholder="Name, email, or phone" />
     </div>
 </section>
 
 <AdminModal IsOpen="_showEditForm"
             Title="Edit Patient"
-            Description="Update patient profile details and login email. Use reset password if a new login password is needed."
             DisableClose="@_isSaving"
             OnClose="CancelEditForm">
     <EditForm EditContext="_updateEditContext" OnValidSubmit="UpdatePatientAsync">
@@ -132,9 +128,9 @@
                             <td>@patient.Gender</td>
                             <td>@patient.PhoneNumber</td>
                             <td>@patient.Address</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" type="button" @onclick="() => ViewPatientAppointmentsAsync(patient)">
-                                    View Appointments
+                            <td class="table-action-cell">
+                                <button class="btn btn-sm btn-soft-primary" type="button" @onclick="() => ViewPatientAppointmentsAsync(patient)">
+                                    View
                                 </button>
                             </td>
                             <td>

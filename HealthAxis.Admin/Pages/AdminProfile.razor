@@ -1,5 +1,6 @@
-﻿@page "/admin-profile"
+@page "/admin-profile"
 @attribute [Authorize(Roles = AppRoles.Admin)]
+@using Microsoft.AspNetCore.Components.Forms
 @using HealthAxis.Shared.Constants
 @using HealthAxis.Shared.Dtos.Auth
 @inject IAuthService AuthService
@@ -7,44 +8,45 @@
 <PageTitle>Admin Profile - HealthAxis Admin</PageTitle>
 
 <AdminPageHeader Kicker="Profile"
-                 Title="Admin Profile"
-                 Description="Change your current admin password." />
+                 Title="Admin Profile" />
 
-<section class="admin-card">
+<section class="admin-card profile-card-clean">
     <div class="profile-summary">
         <div class="profile-summary-avatar">A</div>
         <div>
             <h3 class="mb-1">Admin User</h3>
-            <p class="text-muted mb-0">Use this form to update your admin login password.</p>
+            <p class="text-muted mb-0">Change your admin login password.</p>
         </div>
     </div>
 
     <EditForm Model="_changePasswordForm" OnValidSubmit="ChangePasswordAsync">
         <DataAnnotationsValidator />
-        <ValidationSummary />
 
-        <div class="profile-form-grid">
+        <div class="profile-form-stack">
             <div>
                 <label class="form-label">Current password</label>
                 <InputText class="form-control" type="password" @bind-Value="_changePasswordForm.CurrentPassword" />
+                <ValidationMessage For="@(() => _changePasswordForm.CurrentPassword)" />
             </div>
 
             <div>
                 <label class="form-label">New password</label>
                 <InputText class="form-control" type="password" @bind-Value="_changePasswordForm.NewPassword" />
+                <ValidationMessage For="@(() => _changePasswordForm.NewPassword)" />
             </div>
 
             <div>
                 <label class="form-label">Confirm new password</label>
                 <InputText class="form-control" type="password" @bind-Value="_changePasswordForm.ConfirmNewPassword" />
+                <ValidationMessage For="@(() => _changePasswordForm.ConfirmNewPassword)" />
             </div>
         </div>
 
         <div class="form-actions">
-            <button class="btn btn-primary" type="submit" disabled="@_isSaving">
+            <button class="btn btn-soft-primary" type="submit" disabled="@_isSaving">
                 @(_isSaving ? "Changing..." : "Change password")
             </button>
-            <button class="btn btn-outline-secondary" type="button" @onclick="ResetForm" disabled="@_isSaving">
+            <button class="btn btn-soft-secondary" type="button" @onclick="ResetForm" disabled="@_isSaving">
                 Reset
             </button>
         </div>
