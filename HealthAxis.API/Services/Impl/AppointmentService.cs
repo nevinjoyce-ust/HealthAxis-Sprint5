@@ -16,7 +16,9 @@ public class AppointmentService(
     IDoctorRepository doctorRepository,
     IMapper mapper) : IAppointmentService
 {
-    private const int MinimumHoursBeforeAppointment = 24;
+    private const int MinimumBookingHoursBeforeAppointment = 48;
+    private const int MinimumCancellationHoursBeforeAppointment = 24;
+    private const int PendingAutoCancelHoursBeforeAppointment = 24;
 
     public async Task<PagedResultDto<AppointmentDto>> GetAllAppointmentsAsync(PaginationQueryDto pagination)
     {
@@ -66,9 +68,9 @@ public class AppointmentService(
     }
 
     public async Task<PagedResultDto<AppointmentDto>> GetAppointmentsByDoctorIdAsync(
-    int doctorId,
-    AppointmentStatus? status,
-    PaginationQueryDto pagination)
+        int doctorId,
+        AppointmentStatus? status,
+        PaginationQueryDto pagination)
     {
         await AutoCancelExpiredPendingAppointmentsAsync();
 
@@ -82,15 +84,15 @@ public class AppointmentService(
     }
 
     public async Task<PagedResultDto<AppointmentDto>> GetAppointmentsByPatientIdAsync(
-    int patientId,
-    AppointmentStatus? status,
-    PaginationQueryDto pagination)
+        int patientId,
+        AppointmentStatus? status,
+        PaginationQueryDto pagination)
     {
         await AutoCancelExpiredPendingAppointmentsAsync();
 
         var appointments = await appointmentRepository.GetAppointmentsByPatientIdAsync(
             patientId,
-            status, 
+            status,
             pagination.PageNumber,
             pagination.PageSize);
 
@@ -199,9 +201,9 @@ public class AppointmentService(
             throw new BusinessRuleException(ErrorMessages.DoctorUnavailable);
         }
 
-        if (!IsAtLeast24HoursAhead(dto.AppointmentDate, dto.AppointmentTime))
+        if (!IsAtLeastHoursAhead(dto.AppointmentDate, dto.AppointmentTime, MinimumBookingHoursBeforeAppointment))
         {
-            throw new BusinessRuleException(ErrorMessages.AppointmentMustBeBookedAtLeast24HoursAhead);
+            throw new BusinessRuleException(ErrorMessages.AppointmentMustBeBookedAtLeast48HoursAhead);
         }
 
         if (await appointmentRepository.DoctorHasNonCancelledAppointmentAtAsync(
@@ -281,9 +283,9 @@ public class AppointmentService(
                 throw new ForbiddenException(ErrorMessages.PatientsCanManageOnlyOwnAppointments);
             }
 
-            if (!IsAtLeast24HoursAhead(appointment.AppointmentDate, appointment.AppointmentTime))
+            if (appointment.Status != AppointmentStatus.Pending)
             {
-                throw new BusinessRuleException(ErrorMessages.AppointmentCannotBeCancelledWithin24Hours);
+                throw new BusinessRuleException(ErrorMessages.PatientsCanCancelOnlyPendingAppointments);
             }
 
             appointment.CancellationReason = reason + ErrorMessages.CancelledByPatientSuffix;
@@ -295,7 +297,16 @@ public class AppointmentService(
                 throw new ForbiddenException(ErrorMessages.DoctorsCanManageOnlyOwnAppointments);
             }
 
-            if (!IsAtLeast24HoursAhead(appointment.AppointmentDate, appointment.AppointmentTime))
+            if (appointment.Status != AppointmentStatus.Pending &&
+                appointment.Status != AppointmentStatus.Confirmed)
+            {
+                throw new BusinessRuleException(ErrorMessages.DoctorsCanCancelOnlyPendingOrConfirmedAppointments);
+            }
+
+            if (!IsAtLeastHoursAhead(
+                    appointment.AppointmentDate,
+                    appointment.AppointmentTime,
+                    MinimumCancellationHoursBeforeAppointment))
             {
                 throw new BusinessRuleException(ErrorMessages.AppointmentCannotBeCancelledWithin24Hours);
             }
@@ -316,7 +327,7 @@ public class AppointmentService(
 
     private async Task AutoCancelExpiredPendingAppointmentsAsync()
     {
-        var cutoffDateTime = DateTime.Now.AddHours(MinimumHoursBeforeAppointment);
+        var cutoffDateTime = DateTime.Now.AddHours(PendingAutoCancelHoursBeforeAppointment);
         var expiredPendingAppointments = await appointmentRepository.GetExpiredPendingAppointmentsAsync(cutoffDateTime);
 
         foreach (var appointment in expiredPendingAppointments)
@@ -328,11 +339,11 @@ public class AppointmentService(
         }
     }
 
-    private static bool IsAtLeast24HoursAhead(DateOnly date, TimeOnly time)
+    private static bool IsAtLeastHoursAhead(DateOnly date, TimeOnly time, int minimumHours)
     {
         var scheduledAt = date.ToDateTime(time);
 
-        return scheduledAt >= DateTime.Now.AddHours(MinimumHoursBeforeAppointment);
+        return scheduledAt >= DateTime.Now.AddHours(minimumHours);
     }
 
     private PagedResultDto<TDestination> MapPagedResult<TSource, TDestination>(PagedResult<TSource> pagedResult)

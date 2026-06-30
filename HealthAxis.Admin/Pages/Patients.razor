@@ -163,7 +163,6 @@
 
 <AdminAppointmentListModal IsOpen="_showPatientAppointmentsModal"
                            Title="@PatientAppointmentsModalTitle"
-                           Description="Completed appointments show health record ID when available. Clinical details are not visible to admins."
                            Appointments="_appointments"
                            PagedResult="_appointmentsPagedResult"
                            Pagination="_appointmentsPagination"
@@ -200,7 +199,7 @@
 
 @code {
     private readonly PaginationQueryDto _patientsPagination = new() { PageNumber = 1, PageSize = 10 };
-    private readonly PaginationQueryDto _appointmentsPagination = new() { PageNumber = 1, PageSize = 10 };
+    private readonly PaginationQueryDto _appointmentsPagination = new() { PageNumber = 1, PageSize = 5 };
 
     private PagedResultDto<PatientDto>? _patientsPagedResult;
     private PagedResultDto<AppointmentDto>? _appointmentsPagedResult;

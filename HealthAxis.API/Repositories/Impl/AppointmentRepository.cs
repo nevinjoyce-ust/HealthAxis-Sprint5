@@ -8,7 +8,6 @@ namespace HealthAxis.API.Repositories.Impl;
 
 public class AppointmentRepository(HealthAxisDbContext context) : Repository<Appointment>(context), IAppointmentRepository
 {
-
     public async Task<PagedResult<Appointment>> GetAllAppointmentsAsync(int pageNumber, int pageSize)
     {
         var query = GetAppointmentsWithDetails()
@@ -26,10 +25,10 @@ public class AppointmentRepository(HealthAxisDbContext context) : Repository<App
     }
 
     public async Task<PagedResult<Appointment>> GetAppointmentsByPatientIdAsync(
-    int patientId,
-    AppointmentStatus? status,
-    int pageNumber,
-    int pageSize)
+        int patientId,
+        AppointmentStatus? status,
+        int pageNumber,
+        int pageSize)
     {
         var query = GetAppointmentsWithDetails()
             .Where(appointment => appointment.PatientId == patientId);
@@ -48,10 +47,10 @@ public class AppointmentRepository(HealthAxisDbContext context) : Repository<App
     }
 
     public async Task<PagedResult<Appointment>> GetAppointmentsByDoctorIdAsync(
-     int doctorId,
-     AppointmentStatus? status,
-     int pageNumber,
-     int pageSize)
+        int doctorId,
+        AppointmentStatus? status,
+        int pageNumber,
+        int pageSize)
     {
         var query = GetAppointmentsWithDetails()
             .Where(appointment => appointment.DoctorId == doctorId);
@@ -144,6 +143,26 @@ public class AppointmentRepository(HealthAxisDbContext context) : Repository<App
                 appointment.AppointmentDate == date &&
                 appointment.AppointmentTime == time &&
                 appointment.Status != AppointmentStatus.Cancelled);
+    }
+
+    public async Task<List<Appointment>> GetNonCancelledAppointmentsByDoctorIdAndDateAsync(int doctorId, DateOnly date)
+    {
+        return await _context.Appointments
+            .Where(appointment =>
+                appointment.DoctorId == doctorId &&
+                appointment.AppointmentDate == date &&
+                appointment.Status != AppointmentStatus.Cancelled)
+            .ToListAsync();
+    }
+
+    public async Task<List<Appointment>> GetNonCancelledAppointmentsByDateAsync(DateOnly date)
+    {
+        return await _context.Appointments
+            .AsNoTracking()
+            .Where(appointment =>
+                appointment.AppointmentDate == date &&
+                appointment.Status != AppointmentStatus.Cancelled)
+            .ToListAsync();
     }
 
     public async Task<bool> PatientHasNonCancelledAppointmentAtAsync(int patientId, DateOnly date, TimeOnly time)

@@ -1,0 +1,77 @@
+<div class="login-page">
+  <a routerLink="/" class="back-link">← Back to Home</a>
+
+  <main class="login-shell">
+    <section class="login-info">
+      <div class="brand">
+        <div class="brand-icon">+</div>
+        <div>
+          <h1>HealthAxis</h1>
+          <p>Secure access for patients, doctors, and admins</p>
+        </div>
+      </div>
+
+      <div class="info-content">
+        <span class="eyebrow">Unified Login</span>
+        <h2>One secure entry point for every HealthAxis user.</h2>
+        <p>
+          Patients can book appointments, doctors can manage consultations,
+          and admins can continue to the dedicated Blazor Admin Console.
+        </p>
+      </div>
+    </section>
+
+    <section class="login-card">
+      <div class="card-heading">
+        <h2>Login</h2>
+        <p>Use your HealthAxis account credentials.</p>
+      </div>
+
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
+        <div class="form-group">
+          <label for="email">Email address</label>
+          <input id="email"
+                 type="email"
+                 formControlName="email"
+                 placeholder="name@example.com" />
+
+          @if (email.invalid && (email.touched || isSubmitted)) {
+          <small class="error">Enter a valid email address.</small>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input id="password"
+                 type="password"
+                 formControlName="password"
+                 placeholder="Enter password" />
+
+          @if (password.invalid && (password.touched || isSubmitted)) {
+          <small class="error">Password is required.</small>
+          }
+        </div>
+
+        <div class="login-note">
+          For this UI demo, emails containing <strong>admin</strong> redirect to the Blazor Admin Console,
+          emails containing <strong>doctor</strong> show the Doctor Portal message, and other valid emails
+          show the Patient Portal message.
+        </div>
+
+        <button type="submit" class="login-button">
+          Login
+        </button>
+      </form>
+
+      @if (demoMessage) {
+      <div class="demo-message">
+        {{ demoMessage }}
+      </div>
+      }
+
+      <div class="login-note">
+        Patient registration will be added after the first home/login design is approved.
+      </div>
+    </section>
+  </main>
+</div>

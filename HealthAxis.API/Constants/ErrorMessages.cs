@@ -44,7 +44,7 @@ public static class ErrorMessages
 
     public const string AppointmentDateCannotBeInPast = "Appointment date cannot be in the past.";
 
-    public const string AppointmentMustBeBookedAtLeast24HoursAhead = "Appointments must be booked at least 24 hours before the scheduled time.";
+    public const string AppointmentMustBeBookedAtLeast48HoursAhead = "Appointments must be booked at least 48 hours before the scheduled time.";
 
     public const string DoctorSlotAlreadyBooked = "Doctor already has an appointment at the selected date and time.";
 
@@ -62,7 +62,7 @@ public static class ErrorMessages
 
     public const string CompletedAppointmentsCannotBeCancelled = "Completed appointments cannot be cancelled.";
 
-    public const string CancelledAppointmentsCannotBeCancelledAgain = "Cancelled appointments cannot be cancelled again.";
+    public const string CancelledAppointmentsCannotBeCancelledAgain = "This appointment has already been cancelled.";
 
     public const string AppointmentCannotBeCancelledWithin24Hours = "Appointment cannot be cancelled within 24 hours of the scheduled time.";
 
@@ -99,4 +99,10 @@ public static class ErrorMessages
     public const string UnableToCreateAppointment = "Unable to create appointment.";
 
     public const string UnableToCreateHealthRecord = "Unable to create health record.";
+    
+    public const string PatientsCanCancelOnlyPendingAppointments =
+    "Patients can cancel only pending appointments.";
+
+    public const string DoctorsCanCancelOnlyPendingOrConfirmedAppointments =
+    "Doctors can cancel only pending or confirmed appointments.";
 }

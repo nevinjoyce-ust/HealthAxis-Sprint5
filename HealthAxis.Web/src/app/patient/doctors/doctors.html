@@ -1,0 +1,205 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <header>
+    <p class="text-sm font-bold uppercase tracking-wider text-blue-600">
+      Patient Portal
+    </p>
+
+    <h1 class="mt-2 text-4xl font-black tracking-tight text-slate-950">
+      Search Doctors
+    </h1>
+  </header>
+
+  <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-end">
+      <div class="min-w-0 flex-1">
+        <label for="searchText" class="text-sm font-bold text-slate-700">Search</label>
+        <input
+          id="searchText"
+          [(ngModel)]="searchText"
+          (ngModelChange)="updateQueryParams()"
+          placeholder="Enter doctor name"
+          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+      </div>
+
+      <div class="w-full lg:w-64">
+        <label for="specialisation" class="text-sm font-bold text-slate-700">Specialisation</label>
+        <select
+          id="specialisation"
+          [(ngModel)]="selectedSpecialisation"
+          (ngModelChange)="updateQueryParams()"
+          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100">
+          <option value="">All specialisations</option>
+          @for (specialisation of specialisationOptions; track specialisation) {
+            <option [value]="specialisation">{{ formatSpecialisation(specialisation) }}</option>
+          }
+        </select>
+      </div>
+
+      <button
+        type="button"
+        (click)="clearFilters()"
+        class="rounded-full bg-slate-100 px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200">
+        Clear
+      </button>
+    </div>
+
+    <div class="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <label class="inline-flex cursor-pointer items-center gap-3 rounded-full bg-slate-100 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200">
+        <input
+          type="checkbox"
+          [(ngModel)]="onlyShowAvailableDoctors"
+          (ngModelChange)="updateQueryParams()"
+          class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+        Only show available doctors
+      </label>
+
+      <div>
+        <p class="text-sm font-bold text-slate-700">Sort by</p>
+
+        <div class="mt-2 grid grid-cols-2 overflow-hidden rounded-2xl bg-slate-100 p-1">
+          <button
+            type="button"
+            (click)="setSortBy('experience')"
+            [class]="sortBy === 'experience'
+              ? 'rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm'
+              : 'rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:bg-white/70'">
+            Experience
+          </button>
+
+          <button
+            type="button"
+            (click)="setSortBy('fee')"
+            [class]="sortBy === 'fee'
+              ? 'rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm'
+              : 'rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:bg-white/70'">
+            Fee
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-lg font-black text-slate-950">
+        Doctors
+      </p>
+
+      <p class="text-sm font-semibold text-slate-500">
+        Showing {{ filteredDoctors.length }} doctor(s)
+      </p>
+    </div>
+
+    <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <tr>
+            <th class="px-4 py-3">Doctor</th>
+            <th class="px-4 py-3">Specialisation</th>
+            <th class="px-4 py-3">Experience</th>
+            <th class="px-4 py-3">Fee</th>
+            <th class="px-4 py-3">Availability</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+
+        <tbody class="divide-y divide-slate-100">
+          @for (doctor of filteredDoctors; track doctor.id) {
+            <tr>
+              <td class="px-4 py-4 font-bold text-slate-900">{{ doctor.fullName }}</td>
+              <td class="px-4 py-4 text-slate-600">{{ formatSpecialisation(doctor.specialisation) }}</td>
+              <td class="px-4 py-4 font-semibold text-slate-700">{{ doctor.yearsOfExperience }} years</td>
+              <td class="px-4 py-4 font-semibold text-slate-700">₹{{ doctor.consultationFee }}</td>
+              <td class="px-4 py-4">
+                @if (doctor.isAvailable) {
+                  <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
+                    Available
+                  </span>
+                } @else {
+                  <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                    Unavailable
+                  </span>
+                }
+              </td>
+              <td class="px-4 py-4 text-right">
+                @if (doctor.isAvailable) {
+                  <button
+                    type="button"
+                    (click)="openBookingDatePrompt(doctor)"
+                    class="rounded-full bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">
+                    Book
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+
+          @if (filteredDoctors.length === 0) {
+            <tr>
+              <td colspan="6" class="px-4 py-8 text-center text-sm font-semibold text-slate-500">
+                No doctors match the selected filters.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+@if (selectedDoctorForBooking) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
+    <section class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="text-sm font-bold uppercase tracking-wider text-blue-600">Choose Date</p>
+          <h2 class="mt-2 text-2xl font-black text-slate-950">Book appointment</h2>
+        </div>
+
+        <button
+          type="button"
+          (click)="closeBookingDatePrompt()"
+          class="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200">
+          Close
+        </button>
+      </div>
+
+      <div class="mt-5 space-y-4 text-sm">
+        <div>
+          <p class="font-bold text-slate-500">Doctor</p>
+          <p class="mt-1 font-semibold text-slate-900">{{ selectedDoctorForBooking.fullName }}</p>
+        </div>
+
+        <div>
+          <p class="font-bold text-slate-500">Specialisation</p>
+          <p class="mt-1 font-semibold text-slate-900">{{ formatSpecialisation(selectedDoctorForBooking.specialisation) }}</p>
+        </div>
+
+        <div>
+          <label for="bookingDate" class="text-sm font-bold text-slate-700">Appointment date</label>
+          <input
+            id="bookingDate"
+            type="date"
+            [(ngModel)]="bookingDate"
+            class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+        </div>
+      </div>
+
+      <div class="mt-6 flex flex-wrap gap-3">
+        <button
+          type="button"
+          (click)="continueToBooking()"
+          class="rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700">
+          Continue
+        </button>
+
+        <button
+          type="button"
+          (click)="closeBookingDatePrompt()"
+          class="rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200">
+          Cancel
+        </button>
+      </div>
+    </section>
+  </div>
+}

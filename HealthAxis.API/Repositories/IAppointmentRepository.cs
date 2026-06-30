@@ -11,10 +11,10 @@ public interface IAppointmentRepository : IRepository<Appointment>
     Task<Appointment?> GetAppointmentByIdWithDetailsAsync(int appointmentId);
 
     Task<PagedResult<Appointment>> GetAppointmentsByPatientIdAsync(
-      int patientId,
-      AppointmentStatus? status,
-      int pageNumber,
-      int pageSize);
+        int patientId,
+        AppointmentStatus? status,
+        int pageNumber,
+        int pageSize);
 
     Task<PagedResult<Appointment>> GetAppointmentsByDoctorIdAsync(
         int doctorId,
@@ -22,7 +22,11 @@ public interface IAppointmentRepository : IRepository<Appointment>
         int pageNumber,
         int pageSize);
 
-    Task<PagedResult<Appointment>> GetAppointmentsByDoctorIdAndDateAsync(int doctorId, DateOnly date, int pageNumber, int pageSize);
+    Task<PagedResult<Appointment>> GetAppointmentsByDoctorIdAndDateAsync(
+        int doctorId,
+        DateOnly date,
+        int pageNumber,
+        int pageSize);
 
     Task<PagedResult<Appointment>> GetAppointmentsByDateAndStatusAsync(
         DateOnly date,
@@ -35,6 +39,10 @@ public interface IAppointmentRepository : IRepository<Appointment>
     Task<List<AppointmentReportDto>> GetAppointmentReportsAsync();
 
     Task<bool> DoctorHasNonCancelledAppointmentAtAsync(int doctorId, DateOnly date, TimeOnly time);
+
+    Task<List<Appointment>> GetNonCancelledAppointmentsByDoctorIdAndDateAsync(int doctorId, DateOnly date);
+
+    Task<List<Appointment>> GetNonCancelledAppointmentsByDateAsync(DateOnly date);
 
     Task<bool> PatientHasNonCancelledAppointmentAtAsync(int patientId, DateOnly date, TimeOnly time);
 

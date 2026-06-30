@@ -5,7 +5,13 @@ namespace HealthAxis.API.Repositories;
 
 public interface IDoctorRepository : IRepository<Doctor>
 {
-    Task<PagedResult<Doctor>> GetAllDoctorsAsync(int pageNumber, int pageSize, DoctorSpecialisation? specialisation);
+    Task<PagedResult<Doctor>> GetAllDoctorsAsync(
+        int pageNumber,
+        int pageSize,
+        DoctorSpecialisation? specialisation,
+        bool? isAvailable = null);
+
+    Task<List<Doctor>> GetAvailableDoctorsAsync(DoctorSpecialisation? specialisation);
 
     Task<Doctor?> GetDoctorByIdAsync(int id);
 

@@ -5,6 +5,7 @@ using HealthAxis.Shared.Dtos.Doctor;
 using HealthAxis.Shared.Dtos;
 using HealthAxis.Shared.Enums;
 using HealthAxis.API.Exceptions;
+using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
 
 namespace HealthAxis.API.Services.Impl;
@@ -12,8 +13,16 @@ namespace HealthAxis.API.Services.Impl;
 public class DoctorService(
     IDoctorRepository doctorRepository,
     IMapper mapper,
-    IAppointmentRepository? appointmentRepository = null) : IDoctorService
+    IAppointmentRepository appointmentRepository) : IDoctorService
 {
+    private static readonly TimeOnly WorkDayStart = new(9, 0);
+    private static readonly TimeOnly LunchStart = new(12, 0);
+    private static readonly TimeOnly LunchEnd = new(13, 0);
+    private static readonly TimeOnly WorkDayEnd = new(17, 0);
+    private static readonly TimeSpan SlotDuration = TimeSpan.FromMinutes(30);
+
+    private const int MinimumBookingHoursBeforeAppointment = 48;
+
     public async Task<PagedResultDto<PublicDoctorDto>> GetAllDoctorsAsync(
         PaginationQueryDto pagination,
         DoctorSpecialisation? specialisation)
@@ -23,7 +32,7 @@ public class DoctorService(
             pagination.PageSize,
             specialisation);
 
-        return MapPagedResult<HealthAxis.API.Models.Doctor, PublicDoctorDto>(doctors);
+        return MapPagedResult<Doctor, PublicDoctorDto>(doctors);
     }
 
     public async Task<PublicDoctorDto?> GetDoctorByIdAsync(int id)
@@ -69,15 +78,77 @@ public class DoctorService(
         };
     }
 
-    public async Task<DoctorAvailabilityDto> UpdateAvailabilityAsync(
-    int id,
-    UpdateDoctorAvailabilityDto dto,
-    string currentRole,
-    int? currentDoctorId)
+    public async Task<DoctorAvailableSlotsDto> GetDoctorSlotsAsync(int id, DateOnly date)
     {
-        var appointmentRepositoryInstance = appointmentRepository
-            ?? throw new InvalidOperationException("Appointment repository is required to update doctor availability.");
+        var doctor = await doctorRepository.GetDoctorByIdAsync(id);
 
+        if (doctor == null)
+        {
+            throw new NotFoundException(ErrorMessages.DoctorNotFound);
+        }
+
+        var bookedTimes = await GetBookedTimesAsync(doctor.Id, date);
+
+        return CreateDoctorAvailableSlotsDto(doctor, date, bookedTimes);
+    }
+
+    public async Task<PagedResultDto<DoctorAvailableSlotsDto>> GetAvailableSlotsAsync(
+        DateOnly date,
+        DoctorSpecialisation? specialisation,
+        PaginationQueryDto pagination)
+    {
+        var doctors = await doctorRepository.GetAvailableDoctorsAsync(specialisation);
+        var appointments = await appointmentRepository.GetNonCancelledAppointmentsByDateAsync(date);
+
+        var bookedTimesByDoctor = appointments
+            .GroupBy(appointment => appointment.DoctorId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(appointment => appointment.AppointmentTime)
+                    .ToHashSet());
+
+        var doctorsWithAvailableSlots = new List<DoctorAvailableSlotsDto>();
+
+        foreach (var doctor in doctors)
+        {
+            bookedTimesByDoctor.TryGetValue(doctor.Id, out var bookedTimes);
+            bookedTimes ??= [];
+
+            var doctorSlots = CreateDoctorAvailableSlotsDto(doctor, date, bookedTimes);
+
+            if (doctorSlots.AvailableSlots.Count > 0)
+            {
+                doctorsWithAvailableSlots.Add(doctorSlots);
+            }
+        }
+
+        var totalCount = doctorsWithAvailableSlots.Count;
+        var totalPages = totalCount == 0
+            ? 0
+            : (int)Math.Ceiling(totalCount / (double)pagination.PageSize);
+
+        var pagedItems = doctorsWithAvailableSlots
+            .Skip((pagination.PageNumber - 1) * pagination.PageSize)
+            .Take(pagination.PageSize)
+            .ToList();
+
+        return new PagedResultDto<DoctorAvailableSlotsDto>
+        {
+            Items = pagedItems,
+            PageNumber = pagination.PageNumber,
+            PageSize = pagination.PageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages
+        };
+    }
+
+    public async Task<DoctorAvailabilityDto> UpdateAvailabilityAsync(
+        int id,
+        UpdateDoctorAvailabilityDto dto,
+        string currentRole,
+        int? currentDoctorId)
+    {
         var doctor = await doctorRepository.GetDoctorByIdAsync(id);
 
         if (doctor == null)
@@ -91,10 +162,7 @@ public class DoctorService(
 
         if (isDeactivation)
         {
-            await HandleDeactivationAsync(
-                id,
-                currentRole,
-                appointmentRepositoryInstance);
+            await HandleDeactivationAsync(id, currentRole);
         }
 
         doctor.IsAvailable = dto.IsAvailable;
@@ -109,7 +177,80 @@ public class DoctorService(
         return CreateAvailabilityDto(updatedDoctor.Id, updatedDoctor.IsAvailable);
     }
 
-    private PagedResultDto<TDestination> MapPagedResult<TSource, TDestination>(PagedResult<TSource> pagedResult)
+    private static DoctorAvailableSlotsDto CreateDoctorAvailableSlotsDto(
+        Doctor doctor,
+        DateOnly date,
+        HashSet<TimeOnly> bookedTimes)
+    {
+        return new DoctorAvailableSlotsDto
+        {
+            DoctorId = doctor.Id,
+            DoctorName = doctor.FullName,
+            Specialisation = doctor.Specialisation,
+            YearsOfExperience = doctor.CalculateYearsOfExperience(),
+            ConsultationFee = doctor.ConsultationFee,
+            IsAvailable = doctor.IsAvailable,
+            AvailableSlots = GenerateAvailableSlots(date, doctor.IsAvailable, bookedTimes)
+        };
+    }
+
+    private async Task<HashSet<TimeOnly>> GetBookedTimesAsync(
+        int doctorId,
+        DateOnly date)
+    {
+        var appointments = await appointmentRepository.GetNonCancelledAppointmentsByDoctorIdAndDateAsync(
+            doctorId,
+            date);
+
+        return appointments
+            .Select(appointment => appointment.AppointmentTime)
+            .ToHashSet();
+    }
+
+    private static List<TimeOnly> GenerateAvailableSlots(
+        DateOnly date,
+        bool doctorIsAvailable,
+        HashSet<TimeOnly> bookedTimes)
+    {
+        var slots = new List<TimeOnly>();
+
+        if (!doctorIsAvailable)
+        {
+            return slots;
+        }
+
+        for (var current = WorkDayStart; current < WorkDayEnd; current = current.Add(SlotDuration))
+        {
+            if (current >= LunchStart && current < LunchEnd)
+            {
+                continue;
+            }
+
+            if (!IsAtLeastHoursAhead(date, current, MinimumBookingHoursBeforeAppointment))
+            {
+                continue;
+            }
+
+            if (bookedTimes.Contains(current))
+            {
+                continue;
+            }
+
+            slots.Add(current);
+        }
+
+        return slots;
+    }
+
+    private static bool IsAtLeastHoursAhead(DateOnly date, TimeOnly time, int minimumHours)
+    {
+        var scheduledAt = date.ToDateTime(time);
+
+        return scheduledAt >= DateTime.Now.AddHours(minimumHours);
+    }
+
+    private PagedResultDto<TDestination> MapPagedResult<TSource, TDestination>(
+        PagedResult<TSource> pagedResult)
     {
         return new PagedResultDto<TDestination>
         {
@@ -120,10 +261,11 @@ public class DoctorService(
             TotalPages = pagedResult.TotalPages
         };
     }
+
     private static void ValidateAvailabilityUpdatePermission(
-    int doctorId,
-    string currentRole,
-    int? currentDoctorId)
+        int doctorId,
+        string currentRole,
+        int? currentDoctorId)
     {
         if (currentRole == AppRoles.Doctor && currentDoctorId != doctorId)
         {
@@ -147,38 +289,30 @@ public class DoctorService(
                 : ErrorMessages.DoctorUnavailableMessage
         };
     }
-    private static async Task HandleDeactivationAsync(
-    int doctorId,
-    string currentRole,
-    IAppointmentRepository appointmentRepositoryInstance)
+
+    private async Task HandleDeactivationAsync(
+        int doctorId,
+        string currentRole)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
 
         if (currentRole == AppRoles.Doctor)
         {
-            await EnsureDoctorCanDeactivateSelfAsync(
-                doctorId,
-                today,
-                appointmentRepositoryInstance);
-
+            await EnsureDoctorCanDeactivateSelfAsync(doctorId, today);
             return;
         }
 
         if (currentRole == AppRoles.Admin)
         {
-            await CancelTodaysAppointmentsForAdminDeactivationAsync(
-                doctorId,
-                today,
-                appointmentRepositoryInstance);
+            await CancelTodaysAppointmentsForAdminDeactivationAsync(doctorId, today);
         }
     }
 
-    private static async Task EnsureDoctorCanDeactivateSelfAsync(
+    private async Task EnsureDoctorCanDeactivateSelfAsync(
         int doctorId,
-        DateOnly today,
-        IAppointmentRepository appointmentRepositoryInstance)
+        DateOnly today)
     {
-        var hasConfirmedAppointmentsToday = await appointmentRepositoryInstance
+        var hasConfirmedAppointmentsToday = await appointmentRepository
             .DoctorHasConfirmedAppointmentsOnDateAsync(doctorId, today);
 
         if (hasConfirmedAppointmentsToday)
@@ -187,12 +321,11 @@ public class DoctorService(
         }
     }
 
-    private static async Task CancelTodaysAppointmentsForAdminDeactivationAsync(
+    private async Task CancelTodaysAppointmentsForAdminDeactivationAsync(
         int doctorId,
-        DateOnly today,
-        IAppointmentRepository appointmentRepositoryInstance)
+        DateOnly today)
     {
-        var appointmentsToCancel = await appointmentRepositoryInstance
+        var appointmentsToCancel = await appointmentRepository
             .GetPendingOrConfirmedAppointmentsByDoctorIdAndDateAsync(doctorId, today);
 
         foreach (var appointment in appointmentsToCancel)
@@ -200,7 +333,7 @@ public class DoctorService(
             appointment.Status = AppointmentStatus.Cancelled;
             appointment.CancellationReason = ErrorMessages.DoctorEmergencyCancellationReason;
 
-            await appointmentRepositoryInstance.UpdateAsync(appointment);
+            await appointmentRepository.UpdateAsync(appointment);
         }
     }
 }

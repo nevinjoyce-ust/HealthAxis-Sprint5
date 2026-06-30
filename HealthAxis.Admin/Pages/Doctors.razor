@@ -344,7 +344,7 @@
     private PagedResultDto<AppointmentDto>? _appointmentsPagedResult;
 
     private readonly PaginationQueryDto _pagination = new() { PageNumber = 1, PageSize = 10 };
-    private readonly PaginationQueryDto _appointmentPagination = new() { PageNumber = 1, PageSize = 10 };
+    private readonly PaginationQueryDto _appointmentPagination = new() { PageNumber = 1, PageSize = 5 };
 
     private string DeactivateDoctorMessage => _doctorPendingDeactivation is null
     ? string.Empty

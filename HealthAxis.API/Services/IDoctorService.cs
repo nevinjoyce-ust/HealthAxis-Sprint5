@@ -14,10 +14,16 @@ public interface IDoctorService
 
     Task<DoctorAvailabilityDto?> GetAvailabilityAsync(int id);
 
+    Task<DoctorAvailableSlotsDto> GetDoctorSlotsAsync(int id, DateOnly date);
+
+    Task<PagedResultDto<DoctorAvailableSlotsDto>> GetAvailableSlotsAsync(
+        DateOnly date,
+        DoctorSpecialisation? specialisation,
+        PaginationQueryDto pagination);
+
     Task<DoctorAvailabilityDto> UpdateAvailabilityAsync(
         int id,
         UpdateDoctorAvailabilityDto dto,
         string currentRole,
         int? currentDoctorId);
 }
-

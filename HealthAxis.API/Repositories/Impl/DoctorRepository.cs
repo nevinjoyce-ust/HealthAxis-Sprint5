@@ -7,11 +7,11 @@ namespace HealthAxis.API.Repositories.Impl;
 
 public class DoctorRepository(HealthAxisDbContext context) : Repository<Doctor>(context), IDoctorRepository
 {
-
     public async Task<PagedResult<Doctor>> GetAllDoctorsAsync(
         int pageNumber,
         int pageSize,
-        DoctorSpecialisation? specialisation)
+        DoctorSpecialisation? specialisation,
+        bool? isAvailable = null)
     {
         var query = _context.Doctors
             .AsNoTracking()
@@ -22,9 +22,30 @@ public class DoctorRepository(HealthAxisDbContext context) : Repository<Doctor>(
             query = query.Where(doctor => doctor.Specialisation == specialisation.Value);
         }
 
+        if (isAvailable.HasValue)
+        {
+            query = query.Where(doctor => doctor.IsAvailable == isAvailable.Value);
+        }
+
         query = query.OrderBy(doctor => doctor.Id);
 
         return await ToPagedResultAsync(query, pageNumber, pageSize);
+    }
+
+    public async Task<List<Doctor>> GetAvailableDoctorsAsync(DoctorSpecialisation? specialisation)
+    {
+        var query = _context.Doctors
+            .AsNoTracking()
+            .Where(doctor => doctor.IsAvailable);
+
+        if (specialisation.HasValue)
+        {
+            query = query.Where(doctor => doctor.Specialisation == specialisation.Value);
+        }
+
+        return await query
+            .OrderBy(doctor => doctor.Id)
+            .ToListAsync();
     }
 
     public async Task<Doctor?> GetDoctorByIdAsync(int id)

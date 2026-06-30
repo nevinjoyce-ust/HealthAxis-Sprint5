@@ -392,9 +392,9 @@ public class AppointmentServiceTests
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WhenAppointmentIsLessThanTwentyFourHoursAway_ShouldThrowBusinessRuleException()
+    public async Task CreateAppointmentAsync_WhenAppointmentIsLessThanFortyEightHoursAway_ShouldThrowBusinessRuleException()
     {
-        var tooSoon = DateTime.Now.AddHours(23);
+        var tooSoon = DateTime.Now.AddHours(47);
         var dto = new CreateAppointmentDto
         {
             PatientId = 10,
@@ -409,7 +409,7 @@ public class AppointmentServiceTests
         var exception = await Assert.ThrowsAsync<BusinessRuleException>(() =>
             _appointmentService.CreateAppointmentAsync(dto));
 
-        Assert.Equal(ErrorMessages.AppointmentMustBeBookedAtLeast24HoursAhead, exception.Message);
+        Assert.Equal(ErrorMessages.AppointmentMustBeBookedAtLeast48HoursAhead, exception.Message);
     }
 
     [Fact]

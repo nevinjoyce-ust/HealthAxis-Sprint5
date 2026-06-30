@@ -1,4 +1,4 @@
-﻿using HealthAxis.API.Models;
+using HealthAxis.API.Models;
 using HealthAxis.Shared.Constants;
 using HealthAxis.Shared.Enums;
 using Microsoft.AspNetCore.Identity;
@@ -16,7 +16,7 @@ public static class IdentityDataSeeder
         RoleManager<IdentityRole> roleManager,
         UserManager<IdentityUser> userManager,
         HealthAxisDbContext context,
-        bool seedDemoData = true)
+        bool seedDemoData = false)
     {
         await SeedRolesAsync(roleManager);
         await SeedAdminsAsync(userManager);
@@ -29,6 +29,7 @@ public static class IdentityDataSeeder
         var doctors = await SeedDoctorsAsync(userManager, context);
         var patients = await SeedPatientsAsync(userManager, context);
 
+        await ResetDemoAppointmentsAndHealthRecordsAsync(context, doctors, patients);
         await SeedAppointmentsAndHealthRecordsAsync(context, doctors, patients);
     }
 
@@ -71,31 +72,22 @@ public static class IdentityDataSeeder
         {
             new SeedDoctor("Anjali Menon", "anjali.menon@healthaxis.com", "9000001001", DoctorSpecialisation.Cardiology, new DateOnly(2015, 1, 1), 600m, true),
             new SeedDoctor("Arjun Varma", "arjun.varma@healthaxis.com", "9000001002", DoctorSpecialisation.Cardiology, new DateOnly(2021, 3, 10), 450m, false),
-
             new SeedDoctor("Rahul Nair", "rahul.nair@healthaxis.com", "9000001003", DoctorSpecialisation.Dermatology, new DateOnly(2019, 1, 1), 500m, true),
             new SeedDoctor("Nisha Thomas", "nisha.thomas@healthaxis.com", "9000001004", DoctorSpecialisation.Dermatology, new DateOnly(2017, 8, 20), 650m, true),
-
             new SeedDoctor("Farah Ahmed", "farah.ahmed@healthaxis.com", "9000001005", DoctorSpecialisation.Neurology, new DateOnly(2016, 4, 18), 720m, true),
             new SeedDoctor("Vikram Das", "vikram.das@healthaxis.com", "9000001006", DoctorSpecialisation.Neurology, new DateOnly(2013, 2, 11), 780m, false),
-
             new SeedDoctor("Meera Pillai", "meera.pillai@healthaxis.com", "9000001007", DoctorSpecialisation.Orthopaedics, new DateOnly(2012, 6, 15), 750m, true),
             new SeedDoctor("Kiran Joseph", "kiran.joseph@healthaxis.com", "9000001008", DoctorSpecialisation.Orthopaedics, new DateOnly(2010, 11, 5), 850m, true),
-
             new SeedDoctor("Aparna Suresh", "aparna.suresh@healthaxis.com", "9000001009", DoctorSpecialisation.Pediatrics, new DateOnly(2022, 9, 5), 430m, true),
             new SeedDoctor("Grace George", "grace.george@healthaxis.com", "9000001010", DoctorSpecialisation.Pediatrics, new DateOnly(2011, 10, 22), 820m, true),
-
             new SeedDoctor("Thomas Kurian", "thomas.kurian@healthaxis.com", "9000001011", DoctorSpecialisation.GeneralMedicine, new DateOnly(2009, 12, 1), 900m, true),
             new SeedDoctor("Ibrahim Khan", "ibrahim.khan@healthaxis.com", "9000001012", DoctorSpecialisation.GeneralMedicine, new DateOnly(2008, 6, 30), 950m, true),
-
             new SeedDoctor("Lakshmi Iyer", "lakshmi.iyer@healthaxis.com", "9000001013", DoctorSpecialisation.Psychiatry, new DateOnly(2018, 7, 7), 550m, true),
             new SeedDoctor("Rohan Mathew", "rohan.mathew@healthaxis.com", "9000001014", DoctorSpecialisation.Psychiatry, new DateOnly(2020, 5, 14), 520m, true),
-
             new SeedDoctor("Divya Raman", "divya.raman@healthaxis.com", "9000001015", DoctorSpecialisation.Radiology, new DateOnly(2023, 2, 1), 400m, true),
             new SeedDoctor("Sanjay Kumar", "sanjay.kumar@healthaxis.com", "9000001016", DoctorSpecialisation.Radiology, new DateOnly(2014, 9, 12), 700m, false),
-
             new SeedDoctor("Maya Krishnan", "maya.krishnan.doctor@healthaxis.com", "9000001017", DoctorSpecialisation.Gynecology, new DateOnly(2014, 6, 25), 760m, true),
             new SeedDoctor("Sara Wilson", "sara.wilson.doctor@healthaxis.com", "9000001018", DoctorSpecialisation.Gynecology, new DateOnly(2018, 12, 3), 640m, true),
-
             new SeedDoctor("Leena Das", "leena.das.doctor@healthaxis.com", "9000001019", DoctorSpecialisation.ENT, new DateOnly(2016, 9, 14), 580m, true),
             new SeedDoctor("Harish Kumar", "harish.kumar.doctor@healthaxis.com", "9000001020", DoctorSpecialisation.ENT, new DateOnly(2012, 1, 9), 720m, true)
         };
@@ -134,6 +126,7 @@ public static class IdentityDataSeeder
 
         return await context.Doctors
             .Include(doctor => doctor.User)
+            .Where(doctor => doctor.User != null && doctor.User.Email != null && doctor.User.Email.EndsWith("@healthaxis.com"))
             .OrderBy(doctor => doctor.Id)
             .ToListAsync();
     }
@@ -196,8 +189,37 @@ public static class IdentityDataSeeder
 
         return await context.Patients
             .Include(patient => patient.User)
+            .Where(patient => patient.User != null && patient.User.Email != null && patient.User.Email.EndsWith("@example.com"))
             .OrderBy(patient => patient.Id)
             .ToListAsync();
+    }
+
+    private static async Task ResetDemoAppointmentsAndHealthRecordsAsync(
+        HealthAxisDbContext context,
+        IReadOnlyCollection<Doctor> doctors,
+        IReadOnlyCollection<Patient> patients)
+    {
+        var doctorIds = doctors.Select(doctor => doctor.Id).ToList();
+        var patientIds = patients.Select(patient => patient.Id).ToList();
+
+        var appointmentIds = await context.Appointments
+            .Where(appointment => doctorIds.Contains(appointment.DoctorId) && patientIds.Contains(appointment.PatientId))
+            .Select(appointment => appointment.Id)
+            .ToListAsync();
+
+        var healthRecords = await context.HealthRecords
+            .Where(record => appointmentIds.Contains(record.AppointmentId))
+            .ToListAsync();
+
+        context.HealthRecords.RemoveRange(healthRecords);
+
+        var appointments = await context.Appointments
+            .Where(appointment => appointmentIds.Contains(appointment.Id))
+            .ToListAsync();
+
+        context.Appointments.RemoveRange(appointments);
+
+        await context.SaveChangesAsync();
     }
 
     private static async Task SeedAppointmentsAndHealthRecordsAsync(
@@ -214,34 +236,23 @@ public static class IdentityDataSeeder
         var doctorLookup = doctors
             .GroupBy(doctor => doctor.Specialisation)
             .ToDictionary(group => group.Key, group => group.First());
+
         var appointmentSeeds = BuildAppointmentSeeds(today, doctorLookup, patients);
         var completedAppointmentsWithRecords = new List<(Appointment Appointment, SeedHealthRecord HealthRecord)>();
 
         foreach (var seed in appointmentSeeds)
         {
-            var appointment = await context.Appointments
-                .Include(existingAppointment => existingAppointment.HealthRecord)
-                .FirstOrDefaultAsync(existingAppointment =>
-                    existingAppointment.PatientId == seed.Patient.Id &&
-                    existingAppointment.DoctorId == seed.Doctor.Id &&
-                    existingAppointment.AppointmentDate == seed.Date &&
-                    existingAppointment.AppointmentTime == seed.Time);
-
-            if (appointment == null)
+            var appointment = new Appointment
             {
-                appointment = new Appointment
-                {
-                    PatientId = seed.Patient.Id,
-                    DoctorId = seed.Doctor.Id,
-                    AppointmentDate = seed.Date,
-                    AppointmentTime = seed.Time
-                };
+                PatientId = seed.Patient.Id,
+                DoctorId = seed.Doctor.Id,
+                AppointmentDate = seed.Date,
+                AppointmentTime = seed.Time,
+                Status = seed.Status,
+                CancellationReason = seed.CancellationReason
+            };
 
-                await context.Appointments.AddAsync(appointment);
-            }
-
-            appointment.Status = seed.Status;
-            appointment.CancellationReason = seed.CancellationReason;
+            await context.Appointments.AddAsync(appointment);
 
             if (seed.HealthRecord != null && seed.Status == AppointmentStatus.Completed)
             {
@@ -253,23 +264,14 @@ public static class IdentityDataSeeder
 
         foreach (var (appointment, seedRecord) in completedAppointmentsWithRecords)
         {
-            var healthRecord = await context.HealthRecords
-                .FirstOrDefaultAsync(record => record.AppointmentId == appointment.Id);
-
-            if (healthRecord == null)
+            await context.HealthRecords.AddAsync(new HealthRecord
             {
-                healthRecord = new HealthRecord
-                {
-                    AppointmentId = appointment.Id
-                };
-
-                await context.HealthRecords.AddAsync(healthRecord);
-            }
-
-            healthRecord.VisitDate = seedRecord.VisitDate;
-            healthRecord.Diagnosis = seedRecord.Diagnosis;
-            healthRecord.Prescription = seedRecord.Prescription;
-            healthRecord.Notes = seedRecord.Notes;
+                AppointmentId = appointment.Id,
+                VisitDate = seedRecord.VisitDate,
+                Diagnosis = seedRecord.Diagnosis,
+                Prescription = seedRecord.Prescription,
+                Notes = seedRecord.Notes
+            });
         }
 
         await context.SaveChangesAsync();
@@ -285,24 +287,33 @@ public static class IdentityDataSeeder
 
         return
         [
-            new(Patient(0), Doctor(DoctorSpecialisation.Cardiology), today.AddDays(2), new TimeOnly(9, 0), AppointmentStatus.Pending, null, null),
-            new(Patient(1), Doctor(DoctorSpecialisation.Dermatology), today.AddDays(2), new TimeOnly(10, 0), AppointmentStatus.Confirmed, null, null),
-            new(Patient(2), Doctor(DoctorSpecialisation.Neurology), today.AddDays(2), new TimeOnly(11, 0), AppointmentStatus.Cancelled, "Patient requested reschedule. Cancelled by admin.", null),
-            new(Patient(3), Doctor(DoctorSpecialisation.Orthopaedics), today.AddDays(3), new TimeOnly(9, 30), AppointmentStatus.Pending, null, null),
-            new(Patient(4), Doctor(DoctorSpecialisation.Pediatrics), today.AddDays(3), new TimeOnly(10, 30), AppointmentStatus.Confirmed, null, null),
-            new(Patient(5), Doctor(DoctorSpecialisation.GeneralMedicine), today.AddDays(3), new TimeOnly(11, 30), AppointmentStatus.Pending, null, null),
-            new(Patient(6), Doctor(DoctorSpecialisation.Psychiatry), today.AddDays(4), new TimeOnly(12, 0), AppointmentStatus.Confirmed, null, null),
-            new(Patient(7), Doctor(DoctorSpecialisation.Radiology), today.AddDays(4), new TimeOnly(14, 0), AppointmentStatus.Pending, null, null),
-            new(Patient(8), Doctor(DoctorSpecialisation.Gynecology), today.AddDays(5), new TimeOnly(9, 0), AppointmentStatus.Cancelled, "Doctor unavailable. Cancelled by admin.", null),
-            new(Patient(9), Doctor(DoctorSpecialisation.ENT), today.AddDays(5), new TimeOnly(10, 0), AppointmentStatus.Pending, null, null),
+            // Today's doctor-dashboard data. These are intentionally today-relative for demos.
+            new(Patient(0), Doctor(DoctorSpecialisation.Radiology), today, new TimeOnly(9, 30), AppointmentStatus.Confirmed, null, null),
+            new(Patient(1), Doctor(DoctorSpecialisation.Gynecology), today, new TimeOnly(10, 30), AppointmentStatus.Pending, null, null),
+            new(Patient(2), Doctor(DoctorSpecialisation.ENT), today, new TimeOnly(11, 30), AppointmentStatus.Cancelled, "Patient requested cancellation. - Cancelled by admin", null),
+            new(Patient(3), Doctor(DoctorSpecialisation.GeneralMedicine), today, new TimeOnly(14, 30), AppointmentStatus.Completed, null,
+                new SeedHealthRecord(today, "Acute lower back pain", "Short-term pain management and posture advice provided", "No neurological red flags documented.")),
 
+            // Future appointments start after the 48-hour booking window.
+            new(Patient(0), Doctor(DoctorSpecialisation.Cardiology), today.AddDays(3), new TimeOnly(9, 0), AppointmentStatus.Pending, null, null),
+            new(Patient(1), Doctor(DoctorSpecialisation.Dermatology), today.AddDays(3), new TimeOnly(10, 0), AppointmentStatus.Confirmed, null, null),
+            new(Patient(2), Doctor(DoctorSpecialisation.Neurology), today.AddDays(3), new TimeOnly(11, 0), AppointmentStatus.Cancelled, "Patient requested reschedule. - Cancelled by admin", null),
+            new(Patient(3), Doctor(DoctorSpecialisation.Orthopaedics), today.AddDays(4), new TimeOnly(9, 30), AppointmentStatus.Pending, null, null),
+            new(Patient(4), Doctor(DoctorSpecialisation.Pediatrics), today.AddDays(4), new TimeOnly(10, 30), AppointmentStatus.Confirmed, null, null),
+            new(Patient(5), Doctor(DoctorSpecialisation.GeneralMedicine), today.AddDays(4), new TimeOnly(11, 30), AppointmentStatus.Pending, null, null),
+            new(Patient(6), Doctor(DoctorSpecialisation.Psychiatry), today.AddDays(5), new TimeOnly(13, 0), AppointmentStatus.Confirmed, null, null),
+            new(Patient(7), Doctor(DoctorSpecialisation.Radiology), today.AddDays(5), new TimeOnly(14, 0), AppointmentStatus.Pending, null, null),
+            new(Patient(8), Doctor(DoctorSpecialisation.Gynecology), today.AddDays(6), new TimeOnly(9, 0), AppointmentStatus.Cancelled, "Doctor unavailable. - Cancelled by admin", null),
+            new(Patient(9), Doctor(DoctorSpecialisation.ENT), today.AddDays(6), new TimeOnly(10, 0), AppointmentStatus.Pending, null, null),
+
+            // Past completed/cancelled appointments for patient history.
             new(Patient(0), Doctor(DoctorSpecialisation.Cardiology), today.AddDays(-1), new TimeOnly(9, 0), AppointmentStatus.Completed, null,
                 new SeedHealthRecord(today.AddDays(-1), "Hypertension follow-up", "Antihypertensive therapy continued as reviewed by cardiology", "Blood pressure trend reviewed; lifestyle measures reinforced.")),
             new(Patient(1), Doctor(DoctorSpecialisation.Dermatology), today.AddDays(-1), new TimeOnly(10, 0), AppointmentStatus.Completed, null,
                 new SeedHealthRecord(today.AddDays(-1), "Atopic dermatitis flare", "Topical anti-inflammatory skin treatment prescribed", "Moisturiser use and trigger avoidance discussed.")),
             new(Patient(2), Doctor(DoctorSpecialisation.Neurology), today.AddDays(-2), new TimeOnly(11, 0), AppointmentStatus.Completed, null,
                 new SeedHealthRecord(today.AddDays(-2), "Migraine without acute neurological deficit", "Migraine management plan reviewed", "Headache diary advised; warning symptoms explained.")),
-            new(Patient(3), Doctor(DoctorSpecialisation.Orthopaedics), today.AddDays(-2), new TimeOnly(12, 0), AppointmentStatus.Completed, null,
+            new(Patient(3), Doctor(DoctorSpecialisation.Orthopaedics), today.AddDays(-2), new TimeOnly(14, 0), AppointmentStatus.Completed, null,
                 new SeedHealthRecord(today.AddDays(-2), "Right knee ligament strain", "Analgesic support and physiotherapy referral provided", "Avoid high-impact activity until reassessed.")),
             new(Patient(4), Doctor(DoctorSpecialisation.Pediatrics), today.AddDays(-3), new TimeOnly(9, 30), AppointmentStatus.Completed, null,
                 new SeedHealthRecord(today.AddDays(-3), "Viral upper respiratory infection", "Symptomatic paediatric care advised", "Hydration and fever monitoring discussed with guardian.")),
@@ -316,27 +327,8 @@ public static class IdentityDataSeeder
                 new SeedHealthRecord(today.AddDays(-5), "Irregular menstrual cycle assessment", "Hormonal evaluation and follow-up plan advised", "Pelvic ultrasound review planned if symptoms persist.")),
             new(Patient(9), Doctor(DoctorSpecialisation.ENT), today.AddDays(-5), new TimeOnly(16, 0), AppointmentStatus.Completed, null,
                 new SeedHealthRecord(today.AddDays(-5), "Acute otitis externa", "ENT ear care treatment prescribed", "Keep ear dry; follow up if pain or discharge persists.")),
-
-            new(Patient(10), Doctor(DoctorSpecialisation.Cardiology), today.AddDays(-6), new TimeOnly(9, 0), AppointmentStatus.Cancelled, "Clinic emergency. Cancelled by admin.", null),
-            new(Patient(11), Doctor(DoctorSpecialisation.Dermatology), today.AddDays(-6), new TimeOnly(10, 0), AppointmentStatus.Cancelled, "Patient cancelled due to travel. Cancelled by patient.", null),
-            new(Patient(12), Doctor(DoctorSpecialisation.Neurology), today.AddDays(-7), new TimeOnly(11, 0), AppointmentStatus.Completed, null,
-                new SeedHealthRecord(today.AddDays(-7), "Peripheral neuropathy evaluation", "Neurological examination and symptom-control plan documented", "Follow-up nerve conduction study considered if symptoms progress.")),
-            new(Patient(13), Doctor(DoctorSpecialisation.Orthopaedics), today.AddDays(-7), new TimeOnly(12, 0), AppointmentStatus.Completed, null,
-                new SeedHealthRecord(today.AddDays(-7), "Shoulder impingement syndrome", "Physiotherapy and activity modification advised", "Review after therapy trial.")),
-            new(Patient(14), Doctor(DoctorSpecialisation.Pediatrics), today.AddDays(-8), new TimeOnly(13, 0), AppointmentStatus.Completed, null,
-                new SeedHealthRecord(today.AddDays(-8), "Routine child wellness review", "Growth and immunisation status reviewed", "Developmental milestones appropriate for age.")),
-            new(Patient(15), Doctor(DoctorSpecialisation.GeneralMedicine), today.AddDays(-8), new TimeOnly(14, 0), AppointmentStatus.Completed, null,
-                new SeedHealthRecord(today.AddDays(-8), "Vitamin D deficiency follow-up", "Supplementation plan reviewed", "Repeat level check advised during follow-up.")),
-            new(Patient(16), Doctor(DoctorSpecialisation.Psychiatry), today.AddDays(-9), new TimeOnly(15, 0), AppointmentStatus.Completed, null,
-                new SeedHealthRecord(today.AddDays(-9), "Depressive symptoms follow-up", "Therapy progress and medication tolerance reviewed", "Safety plan and next review documented.")),
-            new(Patient(17), Doctor(DoctorSpecialisation.ENT), today.AddDays(-9), new TimeOnly(16, 0), AppointmentStatus.Completed, null,
-                new SeedHealthRecord(today.AddDays(-9), "Chronic sinusitis review", "Nasal care plan reviewed", "ENT follow-up advised if obstruction persists.")),
-
-            new(Patient(0), Doctor(DoctorSpecialisation.Radiology), today, new TimeOnly(9, 30), AppointmentStatus.Confirmed, null, null),
-            new(Patient(1), Doctor(DoctorSpecialisation.Gynecology), today, new TimeOnly(10, 30), AppointmentStatus.Pending, null, null),
-            new(Patient(2), Doctor(DoctorSpecialisation.ENT), today, new TimeOnly(11, 30), AppointmentStatus.Cancelled, "Patient requested cancellation. Cancelled by admin.", null),
-            new(Patient(3), Doctor(DoctorSpecialisation.GeneralMedicine), today, new TimeOnly(12, 30), AppointmentStatus.Completed, null,
-                new SeedHealthRecord(today, "Acute lower back pain", "Short-term pain management and posture advice provided", "No neurological red flags documented."))
+            new(Patient(10), Doctor(DoctorSpecialisation.Cardiology), today.AddDays(-6), new TimeOnly(9, 0), AppointmentStatus.Cancelled, "Clinic emergency. - Cancelled by admin", null),
+            new(Patient(11), Doctor(DoctorSpecialisation.Dermatology), today.AddDays(-6), new TimeOnly(10, 0), AppointmentStatus.Cancelled, "Patient cancelled due to travel. - Cancelled by patient", null)
         ];
     }
 

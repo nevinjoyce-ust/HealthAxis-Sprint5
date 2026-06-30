@@ -27,6 +27,18 @@ public class DoctorsController(IDoctorService doctorService) : ControllerBase
         return Ok(doctors);
     }
 
+    [HttpGet("available-slots")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAvailableSlots(
+        [FromQuery] DateOnly date,
+        [FromQuery] DoctorSpecialisation? specialisation,
+        [FromQuery] PaginationQueryDto pagination)
+    {
+        var doctors = await doctorService.GetAvailableSlotsAsync(date, specialisation, pagination);
+
+        return Ok(doctors);
+    }
+
     [HttpGet("{id:int}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetDoctorById(int id)
@@ -53,6 +65,15 @@ public class DoctorsController(IDoctorService doctorService) : ControllerBase
         }
 
         return Ok(availability);
+    }
+
+    [HttpGet("{id:int}/slots")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetDoctorSlots(int id, [FromQuery] DateOnly date)
+    {
+        var slots = await doctorService.GetDoctorSlotsAsync(id, date);
+
+        return Ok(slots);
     }
 
     [HttpPut("{id:int}/availability")]
