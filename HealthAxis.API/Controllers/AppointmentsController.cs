@@ -1,12 +1,13 @@
-using System.Security.Claims;
 using HealthAxis.API.Constants;
+using HealthAxis.API.Extensions;
+using HealthAxis.API.Services;
 using HealthAxis.Shared.Constants;
 using HealthAxis.Shared.Dtos;
 using HealthAxis.Shared.Dtos.Appointment;
-using HealthAxis.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace HealthAxis.API.Controllers;
 
@@ -15,6 +16,48 @@ namespace HealthAxis.API.Controllers;
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.PatientDoctorAdmin)]
 public class AppointmentsController(IAppointmentService appointmentService) : ControllerBase
 {
+    [HttpGet("me")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.PatientDoctor)]
+    public async Task<IActionResult> GetCurrentUserAppointments(
+    [FromQuery] DateOnly? date,
+    [FromQuery] PaginationQueryDto pagination)
+    {
+        if (User.IsInRole(AppRoles.Patient))
+        {
+            var patientId = User.GetPatientId();
+
+            if (patientId == null)
+            {
+                return Forbid();
+            }
+
+            var appointments = await appointmentService.GetAppointmentsByPatientIdAsync(
+                patientId.Value,
+                null,
+                pagination);
+
+            return Ok(appointments);
+        }
+
+        if (User.IsInRole(AppRoles.Doctor))
+        {
+            var doctorId = User.GetDoctorId();
+
+            if (doctorId == null)
+            {
+                return Forbid();
+            }
+
+            var appointments = date.HasValue
+                ? await appointmentService.GetAppointmentsByDoctorIdAndDateAsync(doctorId.Value, date.Value, pagination)
+                : await appointmentService.GetAppointmentsByDoctorIdAsync(doctorId.Value, null, pagination);
+
+            return Ok(appointments);
+        }
+
+        return Forbid();
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetAppointments(
         [FromQuery] DateOnly? date,
@@ -28,7 +71,7 @@ public class AppointmentsController(IAppointmentService appointmentService) : Co
 
         if (User.IsInRole(AppRoles.Patient))
         {
-            var patientId = GetPatientIdFromToken();
+            var patientId = User.GetPatientId();
 
             if (patientId == null)
             {
@@ -41,7 +84,7 @@ public class AppointmentsController(IAppointmentService appointmentService) : Co
 
         if (User.IsInRole(AppRoles.Doctor))
         {
-            var doctorId = GetDoctorIdFromToken();
+            var doctorId = User.GetDoctorId();
 
             if (doctorId == null)
             {
@@ -63,12 +106,12 @@ public class AppointmentsController(IAppointmentService appointmentService) : Co
     {
         var appointment = await appointmentService.GetAppointmentByIdAsync(id);
 
-        if (User.IsInRole(AppRoles.Patient) && GetPatientIdFromToken() != appointment.PatientId)
+        if (User.IsInRole(AppRoles.Patient) && User.GetPatientId() != appointment.PatientId)
         {
             return Forbid();
         }
 
-        if (User.IsInRole(AppRoles.Doctor) && GetDoctorIdFromToken() != appointment.DoctorId)
+        if (User.IsInRole(AppRoles.Doctor) && User.GetDoctorId() != appointment.DoctorId)
         {
             return Forbid();
         }
@@ -82,7 +125,7 @@ public class AppointmentsController(IAppointmentService appointmentService) : Co
     {
         if (User.IsInRole(AppRoles.Patient))
         {
-            var patientId = GetPatientIdFromToken();
+            var patientId = User.GetPatientId();
 
             if (patientId == null || patientId.Value != request.PatientId)
             {
@@ -101,7 +144,7 @@ public class AppointmentsController(IAppointmentService appointmentService) : Co
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.PatientDoctorAdmin)]
     public async Task<IActionResult> UpdateAppointmentStatus(int id, UpdateAppointmentStatusDto request)
     {
-        var currentRole = GetCurrentRole();
+        var currentRole = User.GetCurrentRole();
 
         if (currentRole == null)
         {
@@ -112,47 +155,10 @@ public class AppointmentsController(IAppointmentService appointmentService) : Co
             id,
             request,
             currentRole,
-            GetPatientIdFromToken(),
-            GetDoctorIdFromToken());
+            User.GetPatientId(),
+            User.GetDoctorId());
 
         return Ok(appointment);
     }
 
-    private string? GetCurrentRole()
-    {
-        if (User.IsInRole(AppRoles.Admin))
-        {
-            return AppRoles.Admin;
-        }
-
-        if (User.IsInRole(AppRoles.Doctor))
-        {
-            return AppRoles.Doctor;
-        }
-
-        if (User.IsInRole(AppRoles.Patient))
-        {
-            return AppRoles.Patient;
-        }
-
-        return null;
-    }
-
-    private int? GetPatientIdFromToken()
-    {
-        var claimValue = User.FindFirstValue(AppClaimTypes.PatientId);
-
-        return int.TryParse(claimValue, out var patientId)
-            ? patientId
-            : null;
-    }
-
-    private int? GetDoctorIdFromToken()
-    {
-        var claimValue = User.FindFirstValue(AppClaimTypes.DoctorId);
-
-        return int.TryParse(claimValue, out var doctorId)
-            ? doctorId
-            : null;
-    }
 }

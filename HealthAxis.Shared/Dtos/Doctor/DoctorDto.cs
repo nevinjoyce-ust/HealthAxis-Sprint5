@@ -1,5 +1,6 @@
 using HealthAxis.Shared.Enums;
 using HealthAxis.Shared.Validation;
+using System.ComponentModel.DataAnnotations;
 
 namespace HealthAxis.Shared.Dtos.Doctor;
 

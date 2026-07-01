@@ -1,7 +1,8 @@
-﻿using System.Net;
-using System.Net.Http.Headers;
+﻿using HealthAxis.Admin.Constants;
 using HealthAxis.Admin.Services;
 using Microsoft.AspNetCore.Components;
+using System.Net;
+using System.Net.Http.Headers;
 
 namespace HealthAxis.Admin.Auth;
 
@@ -39,7 +40,9 @@ public class AuthTokenHandler : DelegatingHandler
         {
             await _tokenService.ClearTokensAsync();
             _authStateProvider.NotifyUserLoggedOut();
-            _navigationManager.NavigateTo("/login?reason=session-expired", forceLoad: false);
+            _navigationManager.NavigateTo(
+                $"{AppUrls.AngularLoginUrl}?reason=session-expired",
+                forceLoad: true);
         }
 
         return response;

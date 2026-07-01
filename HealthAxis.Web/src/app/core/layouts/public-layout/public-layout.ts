@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
+
+import { AuthService } from '../../services/auth-service';
 
 @Component({
   selector: 'app-public-layout',
@@ -7,4 +9,21 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
   templateUrl: './public-layout.html',
   styleUrl: './public-layout.css'
 })
-export class PublicLayout {}
+export class PublicLayout {
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+
+  get isLoggedIn(): boolean {
+    return this.auth.isLoggedIn();
+  }
+
+  scrollToDoctors(): void {
+    this.router.navigate(['/'], { fragment: 'doctors' }).then(() => {
+      setTimeout(() => {
+        document
+          .getElementById('doctors')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }
+}

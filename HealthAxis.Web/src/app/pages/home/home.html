@@ -15,17 +15,25 @@
       </p>
 
       <div class="mt-8 flex flex-wrap gap-3">
-        <a
-          routerLink="/login"
-          class="rounded-full bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700">
-          Login
-        </a>
+        @if (!isLoggedIn) {
+          <a
+            routerLink="/login"
+            class="rounded-full bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700">
+            Login
+          </a>
 
-        <a
-          routerLink="/register"
-          class="rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
-          Register
-        </a>
+          <a
+            routerLink="/register"
+            class="rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
+            Register
+          </a>
+        } @else {
+          <a
+            routerLink="/patient/dashboard"
+            class="rounded-full bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700">
+            Go to Dashboard
+          </a>
+        }
       </div>
     </div>
 
@@ -48,6 +56,6 @@
   </div>
 </section>
 
-<section id="doctors" class="mx-auto max-w-7xl px-6 pb-20">
+<section id="doctors" class="mx-auto max-w-7xl scroll-mt-28 px-6 pb-20">
   <app-doctor-slot-search mode="public" />
 </section>

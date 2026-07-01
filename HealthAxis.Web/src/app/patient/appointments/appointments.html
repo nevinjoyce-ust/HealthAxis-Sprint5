@@ -9,6 +9,30 @@
     </h1>
   </header>
 
+  @if (isAnyLoading) {
+    <section class="rounded-3xl border border-blue-100 bg-blue-50 px-5 py-4 shadow-sm">
+      <p class="text-sm font-bold text-blue-800">
+        Loading appointments...
+      </p>
+    </section>
+  }
+
+  @if (appointmentsErrorMessage()) {
+    <section class="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 shadow-sm">
+      <p class="text-sm font-bold text-red-800">
+        {{ appointmentsErrorMessage() }}
+      </p>
+    </section>
+  }
+
+  @if (doctorsErrorMessage()) {
+    <section class="rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 shadow-sm">
+      <p class="text-sm font-bold text-amber-900">
+        {{ doctorsErrorMessage() }} Doctor specialisations may show as unavailable.
+      </p>
+    </section>
+  }
+
   <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
     <div class="flex items-center justify-between gap-4">
       <p class="text-lg font-black text-blue-700">
@@ -189,7 +213,7 @@
           @if (pagedAppointments.length === 0) {
             <tr>
               <td colspan="6" class="px-4 py-8 text-center text-sm font-semibold text-slate-500">
-                No appointments match the selected filters.
+                No appointments to show.
               </td>
             </tr>
           }
@@ -283,6 +307,12 @@
         <p class="font-semibold text-slate-700">
           {{ formatDate(selectedCancelAppointment.appointmentDate) }} · {{ formatTime(selectedCancelAppointment.appointmentTime) }} with {{ selectedCancelAppointment.doctorName }}
         </p>
+
+        @if (cancellationErrorMessage()) {
+          <p class="rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100">
+            {{ cancellationErrorMessage() }}
+          </p>
+        }
 
         <div>
           <label for="cancellationReason" class="text-sm font-bold text-slate-700">Cancellation reason</label>

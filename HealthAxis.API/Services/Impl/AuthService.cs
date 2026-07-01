@@ -345,6 +345,32 @@ public class AuthService(
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    public async Task<(bool Success, string Message, AuthResponseDto? Response)> CreateAuthResponseForUserIdAsync(string userId)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+
+        if (user == null)
+        {
+            return (false, "User account not found.", null);
+        }
+
+        var profileResult = await BuildUserProfileAsync(user);
+
+        if (!profileResult.Success)
+        {
+            return (false, profileResult.Message, null);
+        }
+
+        var response = await GenerateAuthResponseAsync(
+            user,
+            profileResult.Roles,
+            profileResult.Role,
+            profileResult.PatientId,
+            profileResult.DoctorId,
+            "User authenticated successfully.");
+
+        return (true, response.Message, response);
+    }
     // Refresh token support is intentionally paused for now.
     /*
     private static string GenerateRefreshToken()

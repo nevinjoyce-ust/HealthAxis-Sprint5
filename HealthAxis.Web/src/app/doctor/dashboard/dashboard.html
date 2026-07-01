@@ -1,0 +1,98 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <p class="text-sm font-bold uppercase tracking-wider text-blue-600">Doctor Dashboard</p>
+      @if (currentDoctor()) {
+        <h1 class="mt-2 text-4xl font-black tracking-tight text-slate-950">Welcome, Dr. {{ firstName() }}</h1>
+      } @else {
+        <h1 class="mt-2 text-4xl font-black tracking-tight text-slate-950">Loading profile...</h1>
+      }
+    </div>
+
+    <button
+      type="button"
+      (click)="openActivationModal(!isDoctorActive())"
+      [disabled]="!currentDoctor()"
+      [class]="isDoctorActive()
+        ? 'inline-flex items-center gap-3 rounded-full bg-green-100 px-5 py-3 text-sm font-bold text-green-700 ring-1 ring-green-200 hover:bg-green-200 disabled:cursor-not-allowed disabled:opacity-50'
+        : 'inline-flex items-center gap-3 rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50'">
+      <span [class]="isDoctorActive() ? 'h-3 w-3 rounded-full bg-green-600' : 'h-3 w-3 rounded-full bg-slate-400'"></span>
+      {{ isDoctorActive() ? 'Active' : 'Inactive' }}
+    </button>
+  </header>
+
+  @if (isAnyLoading()) {
+    <section class="rounded-3xl border border-blue-100 bg-blue-50 px-5 py-4 shadow-sm">
+      <p class="text-sm font-bold text-blue-800">Loading dashboard data...</p>
+    </section>
+  }
+
+  @if (doctorErrorMessage() || appointmentsErrorMessage() || healthRecordsErrorMessage()) {
+    <section class="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 shadow-sm">
+      @if (doctorErrorMessage()) {<p class="text-sm font-bold text-red-800">{{ doctorErrorMessage() }}</p>}
+      @if (appointmentsErrorMessage()) {<p class="text-sm font-bold text-red-800">{{ appointmentsErrorMessage() }}</p>}
+      @if (healthRecordsErrorMessage()) {<p class="text-sm font-bold text-red-800">{{ healthRecordsErrorMessage() }}</p>}
+    </section>
+  }
+
+  <section class="rounded-3xl border border-blue-100 bg-white/90 p-6 shadow-sm">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-lg font-black text-blue-700">Today's appointments</p>
+      <a routerLink="/doctor/appointments" [queryParams]="{ time: 'future', status: 'Confirmed' }" class="rounded-full bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200">View all</a>
+    </div>
+
+    <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">Time</th><th class="px-4 py-3">Patient</th><th class="px-4 py-3">Status</th><th class="px-4 py-3"></th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          @for (appointment of todayAppointments(); track appointment.id) {
+            <tr><td class="px-4 py-4 font-semibold text-slate-700">{{ formatTime(appointment.appointmentTime) }}</td><td class="px-4 py-4 text-slate-600">{{ appointment.patientName }}</td><td class="px-4 py-4"><span class="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">Confirmed</span></td><td class="px-4 py-4 text-right"><div class="flex flex-wrap justify-end gap-2"><a routerLink="/doctor/patient-history" [queryParams]="{ patientId: appointment.patientId, appointmentId: appointment.id }" class="rounded-full bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700">View history</a><button type="button" (click)="openCompleteConsultation(appointment)" class="rounded-full bg-green-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-green-700">Complete consultation</button></div></td></tr>
+          }
+          @if (todayAppointments().length === 0) {<tr><td colspan="4" class="px-4 py-8 text-center text-sm font-semibold text-slate-500">No appointments to show.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="grid gap-5 xl:grid-cols-2">
+    <article class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+      <div class="flex items-center justify-between gap-4"><p class="text-lg font-black text-amber-700">Pending appointments</p><a routerLink="/doctor/appointments" [queryParams]="{ time: 'future', status: 'Pending' }" class="rounded-full bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200">View all</a></div>
+      <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white"><table class="w-full text-left text-sm"><thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">Time</th><th class="px-4 py-3">Patient</th><th class="px-4 py-3"></th></tr></thead><tbody class="divide-y divide-slate-100">@for (appointment of pendingPreview(); track appointment.id) {<tr [class]="isUrgentPendingAppointment(appointment) ? 'font-black text-slate-950' : ''"><td class="px-4 py-4">{{ formatDate(appointment.appointmentDate) }}</td><td class="px-4 py-4">{{ formatTime(appointment.appointmentTime) }}</td><td class="px-4 py-4">{{ appointment.patientName }}</td><td class="px-4 py-4 text-right"><div class="flex flex-wrap justify-end gap-2">@if (isUrgentPendingAppointment(appointment)) {<span class="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">&lt;24h</span>}<button type="button" (click)="confirmPendingAppointment(appointment)" class="rounded-full bg-green-600 px-3 py-2 text-xs font-bold text-white hover:bg-green-700">Confirm</button><button type="button" (click)="openCancelAppointment(appointment)" class="rounded-full bg-red-600 px-3 py-2 text-xs font-bold text-white hover:bg-red-700">Cancel</button></div></td></tr>} @if (pendingPreview().length === 0) {<tr><td colspan="4" class="px-4 py-8 text-center text-sm font-semibold text-slate-500">No appointments to show.</td></tr>}</tbody></table></div>
+    </article>
+
+    <article class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+      <div class="flex items-center justify-between gap-4"><p class="text-lg font-black text-green-700">Upcoming confirmed</p><a routerLink="/doctor/appointments" [queryParams]="{ time: 'future', status: 'Confirmed' }" class="rounded-full bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200">View all</a></div>
+      <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white"><table class="w-full text-left text-sm"><thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">Time</th><th class="px-4 py-3">Patient</th><th class="px-4 py-3"></th></tr></thead><tbody class="divide-y divide-slate-100">@for (appointment of upcomingConfirmedPreview(); track appointment.id) {<tr><td class="px-4 py-4 font-semibold text-slate-700">{{ formatDate(appointment.appointmentDate) }}</td><td class="px-4 py-4 font-semibold text-slate-700">{{ formatTime(appointment.appointmentTime) }}</td><td class="px-4 py-4 text-slate-600">{{ appointment.patientName }}</td><td class="px-4 py-4 text-right"><div class="flex flex-wrap justify-end gap-2"><a routerLink="/doctor/patient-history" [queryParams]="{ patientId: appointment.patientId, appointmentId: appointment.id }" class="rounded-full bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">View history</a>@if (canCancelConfirmedAppointment(appointment)) {<button type="button" (click)="openCancelAppointment(appointment)" class="rounded-full bg-red-600 px-3 py-2 text-xs font-bold text-white hover:bg-red-700">Cancel</button>}</div></td></tr>} @if (upcomingConfirmedPreview().length === 0) {<tr><td colspan="4" class="px-4 py-8 text-center text-sm font-semibold text-slate-500">No appointments to show.</td></tr>}</tbody></table></div>
+    </article>
+  </section>
+
+  <section class="grid gap-5 xl:grid-cols-2">
+    <article class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+      <p class="text-lg font-black text-blue-700">Health records</p>
+      <div class="mt-5 rounded-2xl border border-slate-200 bg-white p-4"><div class="flex items-center justify-between gap-3"><p class="font-black text-slate-950">Created by you</p><a routerLink="/doctor/health-records" [queryParams]="{ tab: 'created' }" class="rounded-full bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200">View all</a></div><div class="mt-4 overflow-hidden rounded-2xl border border-slate-100"><table class="w-full text-left text-sm"><tbody class="divide-y divide-slate-100">@for (record of doctorCreatedHealthRecordPreview(); track record.id) {<tr><td class="px-4 py-3 font-semibold">{{ formatDate(record.visitDate) }}</td><td class="px-4 py-3 text-slate-600">{{ record.patientName }}</td><td class="px-4 py-3 text-right"><button type="button" (click)="openHealthRecordDetails(record)" class="rounded-full bg-blue-600 px-3 py-2 text-xs font-bold text-white">View</button></td></tr>} @if (doctorCreatedHealthRecordPreview().length === 0) {<tr><td colspan="3" class="px-4 py-6 text-center text-sm font-semibold text-slate-500">No records to show.</td></tr>}</tbody></table></div></div>
+      <div class="mt-5 rounded-2xl border border-slate-200 bg-white p-4"><p class="font-black text-slate-950">Accessible patient histories</p><div class="mt-4 overflow-hidden rounded-2xl border border-slate-100"><table class="w-full text-left text-sm"><tbody class="divide-y divide-slate-100">@for (patient of accessiblePatientHistories(); track patient.patientId) {<tr><td class="px-4 py-3 font-semibold">{{ patient.patientName }}</td><td class="px-4 py-3 text-slate-600">{{ formatDate(patient.appointmentDate) }} · {{ formatTime(patient.appointmentTime) }}</td><td class="px-4 py-3 text-right"><a routerLink="/doctor/patient-history" [queryParams]="{ patientId: patient.patientId, appointmentId: patient.appointmentId }" class="rounded-full bg-blue-600 px-3 py-2 text-xs font-bold text-white">View more</a></td></tr>} @if (accessiblePatientHistories().length === 0) {<tr><td colspan="3" class="px-4 py-6 text-center text-sm font-semibold text-slate-500">No patient histories to show.</td></tr>}</tbody></table></div></div>
+    </article>
+
+    <article class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm"><div class="flex items-center justify-between gap-4"><p class="text-lg font-black text-red-600">Cancelled appointments</p><a routerLink="/doctor/appointments" [queryParams]="{ status: 'Cancelled' }" class="rounded-full bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200">View all</a></div><div class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white"><table class="w-full text-left text-sm"><tbody class="divide-y divide-slate-100">@for (appointment of cancelledPreview(); track appointment.id) {<tr><td class="px-4 py-4 font-semibold">{{ formatDate(appointment.appointmentDate) }}</td><td class="px-4 py-4 text-slate-600">{{ appointment.patientName }}</td><td class="px-4 py-4 text-right"><button type="button" (click)="openCancellationReason(appointment)" class="rounded-full bg-red-50 px-4 py-2 text-xs font-bold text-red-700 ring-1 ring-red-100 hover:bg-red-100">View reason</button></td></tr>} @if (cancelledPreview().length === 0) {<tr><td colspan="3" class="px-4 py-8 text-center text-sm font-semibold text-slate-500">No appointments to show.</td></tr>}</tbody></table></div></article>
+  </section>
+</div>
+
+@if (selectedActivationState !== null) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm"><section class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"><h2 class="text-2xl font-black text-slate-950">{{ selectedActivationState ? 'Activate profile?' : 'Deactivate profile?' }}</h2><p class="mt-3 text-sm font-semibold text-slate-500">{{ selectedActivationState ? 'You will start accepting new appointment requests.' : 'You will stop accepting new appointment requests.' }}</p>@if (activationErrorMessage()) {<p class="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100">{{ activationErrorMessage() }}</p>}<div class="mt-6 flex gap-3"><button type="button" (click)="confirmActivationChange()" class="rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white">Confirm</button><button type="button" (click)="closeActivationModal()" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700">Cancel</button></div></section></div>
+}
+
+@if (selectedCancelAppointment) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm"><section class="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl"><h2 class="text-2xl font-black text-slate-950">Cancel appointment</h2><p class="mt-3 text-sm font-semibold text-slate-600">{{ formatDate(selectedCancelAppointment.appointmentDate) }} · {{ formatTime(selectedCancelAppointment.appointmentTime) }} with {{ selectedCancelAppointment.patientName }}</p>@if (cancellationErrorMessage()) {<p class="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100">{{ cancellationErrorMessage() }}</p>}<label for="cancellationReason" class="mt-5 block text-sm font-bold text-slate-700">Cancellation reason</label><textarea id="cancellationReason" [(ngModel)]="cancellationReason" rows="4" class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"></textarea><div class="mt-6 flex gap-3"><button type="button" (click)="submitCancellation()" [disabled]="!cancellationReason.trim()" class="rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">Cancel appointment</button><button type="button" (click)="closeCancelAppointment()" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700">Close</button></div></section></div>
+}
+
+@if (selectedCompleteAppointment) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm"><section class="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl"><h2 class="text-2xl font-black text-slate-950">Complete consultation</h2><p class="mt-3 text-sm font-semibold text-slate-600">Create health record for {{ selectedCompleteAppointment.patientName }}</p>@if (completionErrorMessage()) {<p class="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100">{{ completionErrorMessage() }}</p>}<div class="mt-5 space-y-4"><div><label class="text-sm font-bold text-slate-700">Diagnosis</label><input [(ngModel)]="diagnosis" class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" /></div><div><label class="text-sm font-bold text-slate-700">Prescription</label><textarea [(ngModel)]="prescription" rows="3" class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"></textarea></div><div><label class="text-sm font-bold text-slate-700">Notes</label><textarea [(ngModel)]="notes" rows="3" class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"></textarea></div></div><div class="mt-6 flex gap-3"><button type="button" (click)="submitHealthRecord()" [disabled]="!diagnosis.trim() || !prescription.trim()" class="rounded-full bg-green-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">Submit record</button><button type="button" (click)="closeCompleteConsultation()" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700">Close</button></div></section></div>
+}
+
+@if (selectedHealthRecord) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm"><section class="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl"><div class="flex items-start justify-between gap-4"><h2 class="text-2xl font-black text-slate-950">Health record</h2><button type="button" (click)="closeHealthRecordDetails()" class="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600">Close</button></div><div class="mt-5 space-y-4 text-sm"><div><p class="font-bold text-slate-500">Date</p><p class="mt-1 font-semibold text-slate-900">{{ formatDate(selectedHealthRecord.visitDate) }}</p></div><div><p class="font-bold text-slate-500">Patient</p><p class="mt-1 font-semibold text-slate-900">{{ selectedHealthRecord.patientName }}</p></div><div><p class="font-bold text-slate-500">Diagnosis</p><p class="mt-1 text-slate-800">{{ selectedHealthRecord.diagnosis }}</p></div><div><p class="font-bold text-slate-500">Prescription</p><p class="mt-1 text-slate-800">{{ selectedHealthRecord.prescription }}</p></div>@if (selectedHealthRecord.notes) {<div><p class="font-bold text-slate-500">Notes</p><p class="mt-1 text-slate-800">{{ selectedHealthRecord.notes }}</p></div>}</div></section></div>
+}
+
+@if (selectedCancellationReason) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm"><section class="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl"><div class="flex items-start justify-between gap-4"><h2 class="text-2xl font-black text-slate-950">Cancellation reason</h2><button type="button" (click)="closeCancellationReason()" class="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600">Close</button></div><p class="mt-5 text-sm text-slate-800">{{ selectedCancellationReason.cancellationReason }}</p></section></div>
+}

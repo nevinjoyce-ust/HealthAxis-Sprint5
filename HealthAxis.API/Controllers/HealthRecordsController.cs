@@ -1,11 +1,12 @@
-using System.Security.Claims;
+using HealthAxis.API.Extensions;
+using HealthAxis.API.Services;
 using HealthAxis.Shared.Constants;
 using HealthAxis.Shared.Dtos;
 using HealthAxis.Shared.Dtos.HealthRecord;
-using HealthAxis.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace HealthAxis.API.Controllers;
 
@@ -14,6 +15,45 @@ namespace HealthAxis.API.Controllers;
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.PatientDoctor)]
 public class HealthRecordsController(IHealthRecordService healthRecordService) : ControllerBase
 {
+    [HttpGet("me")]
+    public async Task<IActionResult> GetCurrentUserHealthRecords(
+    [FromQuery] PaginationQueryDto pagination)
+    {
+        if (User.IsInRole(AppRoles.Patient))
+        {
+            var patientId = User.GetPatientId();
+
+            if (patientId == null)
+            {
+                return Forbid();
+            }
+
+            var records = await healthRecordService.GetHealthRecordsByPatientIdAsync(
+                patientId.Value,
+                pagination);
+
+            return Ok(records);
+        }
+
+        if (User.IsInRole(AppRoles.Doctor))
+        {
+            var doctorId = User.GetDoctorId();
+
+            if (doctorId == null)
+            {
+                return Forbid();
+            }
+
+            var records = await healthRecordService.GetHealthRecordsByDoctorIdAsync(
+                doctorId.Value,
+                pagination);
+
+            return Ok(records);
+        }
+
+        return Forbid();
+    }
+
     [HttpGet("patient/{patientId:int}")]
     public async Task<IActionResult> GetHealthRecordsByPatientId(
         int patientId,
@@ -32,7 +72,7 @@ public class HealthRecordsController(IHealthRecordService healthRecordService) :
 
         if (User.IsInRole(AppRoles.Doctor))
         {
-            var doctorId = GetDoctorIdFromToken();
+            var doctorId = User.GetDoctorId();
 
             if (doctorId == null)
             {
@@ -62,7 +102,7 @@ public class HealthRecordsController(IHealthRecordService healthRecordService) :
 
         if (User.IsInRole(AppRoles.Doctor))
         {
-            var doctorId = GetDoctorIdFromToken();
+            var doctorId = User.GetDoctorId();
 
             if (doctorId == null || doctorId.Value != record.DoctorId)
             {
@@ -77,7 +117,7 @@ public class HealthRecordsController(IHealthRecordService healthRecordService) :
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.Doctor)]
     public async Task<IActionResult> CreateHealthRecord(CreateHealthRecordDto request)
     {
-        var doctorId = GetDoctorIdFromToken();
+        var doctorId = User.GetDoctorId();
 
         if (doctorId == null)
         {
@@ -91,18 +131,7 @@ public class HealthRecordsController(IHealthRecordService healthRecordService) :
 
     private bool IsOwnPatientId(int patientId)
     {
-        var claimValue = User.FindFirstValue(AppClaimTypes.PatientId);
-
-        return int.TryParse(claimValue, out var loggedInPatientId) &&
-               loggedInPatientId == patientId;
+        return User.GetPatientId() == patientId;
     }
 
-    private int? GetDoctorIdFromToken()
-    {
-        var claimValue = User.FindFirstValue(AppClaimTypes.DoctorId);
-
-        return int.TryParse(claimValue, out var doctorId)
-            ? doctorId
-            : null;
-    }
 }

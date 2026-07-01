@@ -49,6 +49,21 @@ public class HealthRecordRepository(HealthAxisDbContext context) : Repository<He
             .FirstOrDefaultAsync(record => record.AppointmentId == appointmentId);
     }
 
+    public async Task<PagedResult<HealthRecord>> GetHealthRecordsByDoctorIdAsync(
+    int doctorId,
+    int pageNumber,
+    int pageSize)
+    {
+        var query = GetHealthRecordsWithDetails()
+            .Where(record =>
+                record.Appointment != null &&
+                record.Appointment.DoctorId == doctorId)
+            .OrderByDescending(record => record.VisitDate)
+            .ThenByDescending(record => record.Id);
+
+        return await ToPagedResultAsync(query, pageNumber, pageSize);
+    }
+
     private IQueryable<HealthRecord> GetHealthRecordsWithDetails()
     {
         return _context.HealthRecords

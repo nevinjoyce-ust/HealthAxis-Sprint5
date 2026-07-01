@@ -1,8 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { MockData } from '../../core/services/mock-data';
+import { PatientDto, PatientService } from '../../core/services/patient-service';
 import {
   Appointment,
   DoctorSpecialisation,
@@ -16,8 +16,24 @@ import {
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
-export class PatientDashboard {
-  private readonly mockData = inject(MockData);
+export class PatientDashboard implements OnInit {
+  private readonly patientService = inject(PatientService);
+
+  readonly isPatientLoading = signal(false);
+  readonly isAppointmentsLoading = signal(false);
+  readonly isHealthRecordsLoading = signal(false);
+  readonly isDoctorsLoading = signal(false);
+
+  readonly patientErrorMessage = signal('');
+  readonly appointmentsErrorMessage = signal('');
+  readonly healthRecordsErrorMessage = signal('');
+  readonly doctorsErrorMessage = signal('');
+  readonly cancellationErrorMessage = signal('');
+
+  readonly patient = signal<PatientDto | null>(null);
+  readonly doctors = signal<PublicDoctor[]>([]);
+  readonly appointments = signal<Appointment[]>([]);
+  readonly healthRecords = signal<HealthRecord[]>([]);
 
   bookingDate = this.getDefaultBookingDate();
   bookingSpecialisation = '';
@@ -25,54 +41,185 @@ export class PatientDashboard {
   doctorSearchText = '';
   doctorSearchSpecialisation = '';
 
-  doctors: PublicDoctor[] = this.mockData.getPublicDoctors();
-  futureAppointments: Appointment[] = this.mockData.getFuturePatientAppointments();
-  pastAppointments: Appointment[] = this.mockData.getPastPatientAppointments();
-  healthRecords: HealthRecord[] = this.mockData.getPatientHealthRecords();
-
   selectedHealthRecord: HealthRecord | null = null;
   selectedCancelledAppointment: Appointment | null = null;
   selectedCancelAppointment: Appointment | null = null;
   cancellationReason = '';
 
-  todayAppointments = this.futureAppointments.filter(
-    appointment =>
-      appointment.appointmentDate === this.today &&
-      appointment.status !== 'Cancelled'
-  );
+  readonly today = computed(() => this.formatDateOnly(new Date()));
 
-  confirmedUpcomingAppointments = this.futureAppointments.filter(
-    appointment =>
-      appointment.status === 'Confirmed' &&
-      appointment.appointmentDate > this.today
-  );
+  readonly firstName = computed(() => {
+    return this.patient()?.fullName?.split(' ')[0] || 'Patient';
+  });
 
-  pendingUpcomingAppointments = this.futureAppointments.filter(
-    appointment =>
-      appointment.status === 'Pending' &&
-      appointment.appointmentDate > this.today
-  );
+  readonly isAnySectionLoading = computed(() => {
+    return this.isPatientLoading() ||
+      this.isAppointmentsLoading() ||
+      this.isHealthRecordsLoading() ||
+      this.isDoctorsLoading();
+  });
 
-  pendingUpcomingPreview = this.pendingUpcomingAppointments.slice(0, 5);
+  readonly futureAppointments = computed(() => {
+    return this.appointments()
+      .filter(appointment => appointment.appointmentDate >= this.today())
+      .sort((first, second) => this.compareAppointmentDateTime(first, second));
+  });
 
-  futureCancelledAppointments = this.futureAppointments.filter(
-    appointment => appointment.status === 'Cancelled'
-  );
+  readonly pastAppointments = computed(() => {
+    return this.appointments()
+      .filter(appointment => appointment.appointmentDate < this.today())
+      .sort((first, second) => this.compareAppointmentDateTime(second, first));
+  });
 
-  healthRecordPreview = this.healthRecords.slice(0, 4);
+  readonly todayAppointments = computed(() => {
+    return this.futureAppointments().filter(
+      appointment => appointment.appointmentDate === this.today() && appointment.status !== 'Cancelled'
+    );
+  });
 
-  pastCancelledPreview = this.pastAppointments
-    .filter(appointment => appointment.status === 'Cancelled')
-    .slice(0, 4);
+  readonly confirmedUpcomingAppointments = computed(() => {
+    return this.futureAppointments().filter(
+      appointment => appointment.status === 'Confirmed' && appointment.appointmentDate > this.today()
+    );
+  });
 
-  get today(): string {
-    return new Date().toISOString().split('T')[0];
+  readonly pendingUpcomingAppointments = computed(() => {
+    return this.futureAppointments().filter(
+      appointment => appointment.status === 'Pending' && appointment.appointmentDate > this.today()
+    );
+  });
+
+  readonly pendingUpcomingPreview = computed(() => {
+    return this.pendingUpcomingAppointments().slice(0, 5);
+  });
+
+  readonly futureCancelledAppointments = computed(() => {
+    return this.futureAppointments().filter(appointment => appointment.status === 'Cancelled');
+  });
+
+  readonly healthRecordPreview = computed(() => {
+    return [...this.healthRecords()]
+      .sort((first, second) => second.visitDate.localeCompare(first.visitDate))
+      .slice(0, 4);
+  });
+
+  readonly pastCancelledPreview = computed(() => {
+    return this.pastAppointments()
+      .filter(appointment => appointment.status === 'Cancelled')
+      .slice(0, 4);
+  });
+
+  readonly hasNonCancelledUpcomingAppointments = computed(() => {
+    return this.todayAppointments().length > 0 ||
+      this.confirmedUpcomingAppointments().length > 0 ||
+      this.pendingUpcomingAppointments().length > 0;
+  });
+
+  ngOnInit(): void {
+    this.loadDashboardData();
   }
 
-  get hasNonCancelledUpcomingAppointments(): boolean {
-    return this.todayAppointments.length > 0 ||
-      this.confirmedUpcomingAppointments.length > 0 ||
-      this.pendingUpcomingAppointments.length > 0;
+  loadDashboardData(): void {
+    this.loadPatient();
+    this.loadAppointments();
+    this.loadHealthRecords();
+    this.loadDoctors();
+  }
+
+  loadPatient(): void {
+    this.isPatientLoading.set(true);
+    this.patientErrorMessage.set('');
+
+    try {
+      this.patientService.getCurrentPatient()
+        .subscribe({
+          next: patient => {
+            this.patient.set(patient);
+            this.isPatientLoading.set(false);
+          },
+          error: error => {
+            console.error('Failed to load current patient.', error);
+            this.patientErrorMessage.set(error?.error?.message ?? 'Unable to load profile details.');
+            this.isPatientLoading.set(false);
+          }
+        });
+    } catch (error) {
+      console.error('Failed to start patient profile request.', error);
+      this.patientErrorMessage.set('Unable to load profile details.');
+      this.isPatientLoading.set(false);
+    }
+  }
+
+  loadAppointments(): void {
+    this.isAppointmentsLoading.set(true);
+    this.appointmentsErrorMessage.set('');
+
+    try {
+      this.patientService.getCurrentPatientAppointments()
+        .subscribe({
+          next: appointments => {
+            this.appointments.set(appointments);
+            this.isAppointmentsLoading.set(false);
+          },
+          error: error => {
+            console.error('Failed to load patient appointments.', error);
+            this.appointmentsErrorMessage.set(error?.error?.message ?? 'Unable to load appointments.');
+            this.isAppointmentsLoading.set(false);
+          }
+        });
+    } catch (error) {
+      console.error('Failed to start patient appointments request.', error);
+      this.appointmentsErrorMessage.set('Unable to load appointments.');
+      this.isAppointmentsLoading.set(false);
+    }
+  }
+
+  loadHealthRecords(): void {
+    this.isHealthRecordsLoading.set(true);
+    this.healthRecordsErrorMessage.set('');
+
+    try {
+      this.patientService.getCurrentPatientHealthRecords()
+        .subscribe({
+          next: healthRecords => {
+            this.healthRecords.set(healthRecords);
+            this.isHealthRecordsLoading.set(false);
+          },
+          error: error => {
+            console.error('Failed to load patient health records.', error);
+            this.healthRecordsErrorMessage.set(error?.error?.message ?? 'Unable to load health records.');
+            this.isHealthRecordsLoading.set(false);
+          }
+        });
+    } catch (error) {
+      console.error('Failed to start patient health records request.', error);
+      this.healthRecordsErrorMessage.set('Unable to load health records.');
+      this.isHealthRecordsLoading.set(false);
+    }
+  }
+
+  loadDoctors(): void {
+    this.isDoctorsLoading.set(true);
+    this.doctorsErrorMessage.set('');
+
+    try {
+      this.patientService.getPublicDoctors()
+        .subscribe({
+          next: doctors => {
+            this.doctors.set(doctors);
+            this.isDoctorsLoading.set(false);
+          },
+          error: error => {
+            console.error('Failed to load doctors.', error);
+            this.doctorsErrorMessage.set(error?.error?.message ?? 'Unable to load doctors.');
+            this.isDoctorsLoading.set(false);
+          }
+        });
+    } catch (error) {
+      console.error('Failed to start doctors request.', error);
+      this.doctorsErrorMessage.set('Unable to load doctors.');
+      this.isDoctorsLoading.set(false);
+    }
   }
 
   openHealthRecordDetails(record: HealthRecord): void {
@@ -94,11 +241,13 @@ export class PatientDashboard {
   openCancelAppointment(appointment: Appointment): void {
     this.selectedCancelAppointment = appointment;
     this.cancellationReason = '';
+    this.cancellationErrorMessage.set('');
   }
 
   closeCancelAppointment(): void {
     this.selectedCancelAppointment = null;
     this.cancellationReason = '';
+    this.cancellationErrorMessage.set('');
   }
 
   submitCancellation(): void {
@@ -106,24 +255,25 @@ export class PatientDashboard {
       return;
     }
 
-    this.futureAppointments = this.futureAppointments.map(appointment => {
-      if (appointment.id !== this.selectedCancelAppointment?.id) {
-        return appointment;
-      }
+    this.cancellationErrorMessage.set('');
 
-      return {
-        ...appointment,
-        status: 'Cancelled',
-        cancellationReason: `${this.cancellationReason.trim()} - Cancelled by patient`
-      };
-    });
+    this.patientService.cancelAppointment(this.selectedCancelAppointment.id, this.cancellationReason.trim())
+      .subscribe({
+        next: updatedAppointment => {
+          this.appointments.update(appointments => appointments.map(appointment =>
+            appointment.id === updatedAppointment.id ? updatedAppointment : appointment));
 
-    this.recalculateAppointmentPreviews();
-    this.closeCancelAppointment();
+          this.closeCancelAppointment();
+        },
+        error: error => {
+          console.error('Failed to cancel appointment.', error);
+          this.cancellationErrorMessage.set(error?.error?.message ?? 'Unable to cancel appointment.');
+        }
+      });
   }
 
   getDoctorSpecialisation(doctorId: number): string {
-    const doctor = this.doctors.find(existingDoctor => existingDoctor.id === doctorId);
+    const doctor = this.doctors().find(existingDoctor => existingDoctor.id === doctorId);
 
     return doctor
       ? this.formatSpecialisation(doctor.specialisation)
@@ -161,36 +311,23 @@ export class PatientDashboard {
     });
   }
 
-  private recalculateAppointmentPreviews(): void {
-    this.todayAppointments = this.futureAppointments.filter(
-      appointment =>
-        appointment.appointmentDate === this.today &&
-        appointment.status !== 'Cancelled'
-    );
-
-    this.confirmedUpcomingAppointments = this.futureAppointments.filter(
-      appointment =>
-        appointment.status === 'Confirmed' &&
-        appointment.appointmentDate > this.today
-    );
-
-    this.pendingUpcomingAppointments = this.futureAppointments.filter(
-      appointment =>
-        appointment.status === 'Pending' &&
-        appointment.appointmentDate > this.today
-    );
-
-    this.pendingUpcomingPreview = this.pendingUpcomingAppointments.slice(0, 5);
-
-    this.futureCancelledAppointments = this.futureAppointments.filter(
-      appointment => appointment.status === 'Cancelled'
-    );
+  private compareAppointmentDateTime(first: Appointment, second: Appointment): number {
+    return `${first.appointmentDate}T${first.appointmentTime}`
+      .localeCompare(`${second.appointmentDate}T${second.appointmentTime}`);
   }
 
   private getDefaultBookingDate(): string {
     const date = new Date();
     date.setDate(date.getDate() + 3);
 
-    return date.toISOString().split('T')[0];
+    return this.formatDateOnly(date);
+  }
+
+  private formatDateOnly(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
   }
 }

@@ -75,17 +75,18 @@
 </div>
 
 @code {
+
+
     private readonly LoginDto _loginRequest = new();
     private bool _isLoading;
     private string? _errorMessage;
 
+    
     protected override void OnInitialized()
     {
-        if (HasQueryParameter("reason", "session-expired"))
-        {
-            _errorMessage = "Session expired. Please login again.";
-        }
+        NavigationManager.NavigateTo(AppUrls.AngularLoginUrl, forceLoad: true);
     }
+
 
     private async Task HandleLoginAsync()
     {

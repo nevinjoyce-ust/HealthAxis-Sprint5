@@ -1,8 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import { MockData } from '../../core/services/mock-data';
+import { PatientService } from '../../core/services/patient-service';
 import {
   Appointment,
   AppointmentStatus,
@@ -18,8 +18,8 @@ type AppointmentTimeFilter = 'all' | 'future' | 'past' | 'dateRange';
   templateUrl: './appointments.html',
   styleUrl: './appointments.css'
 })
-export class Appointments {
-  private readonly mockData = inject(MockData);
+export class Appointments implements OnInit {
+  private readonly patientService = inject(PatientService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -28,8 +28,14 @@ export class Appointments {
   private hasSetInitialFilterVisibility = false;
   private isApplyingQueryParams = false;
 
-  appointments: Appointment[] = this.mockData.getPatientAppointments();
-  doctors: PublicDoctor[] = this.mockData.getPublicDoctors();
+  readonly appointments = signal<Appointment[]>([]);
+  readonly doctors = signal<PublicDoctor[]>([]);
+
+  readonly isAppointmentsLoading = signal(false);
+  readonly isDoctorsLoading = signal(false);
+  readonly appointmentsErrorMessage = signal('');
+  readonly doctorsErrorMessage = signal('');
+  readonly cancellationErrorMessage = signal('');
 
   showFilters = false;
 
@@ -92,8 +98,17 @@ export class Appointments {
     });
   }
 
+  ngOnInit(): void {
+    this.loadAppointments();
+    this.loadDoctors();
+  }
+
+  get isAnyLoading(): boolean {
+    return this.isAppointmentsLoading() || this.isDoctorsLoading();
+  }
+
   get filteredAppointments(): Appointment[] {
-    return this.appointments
+    return this.appointments()
       .filter(appointment => this.matchesTimeFilter(appointment))
       .filter(appointment => this.matchesStatusFilter(appointment))
       .filter(appointment => this.matchesSearchText(appointment))
@@ -115,6 +130,43 @@ export class Appointments {
 
   get hasNextPage(): boolean {
     return this.currentPage < this.totalPages;
+  }
+
+  loadAppointments(): void {
+    this.isAppointmentsLoading.set(true);
+    this.appointmentsErrorMessage.set('');
+
+    this.patientService.getCurrentPatientAppointments()
+      .subscribe({
+        next: appointments => {
+          this.appointments.set(appointments);
+          this.currentPage = 1;
+          this.isAppointmentsLoading.set(false);
+        },
+        error: error => {
+          console.error('Failed to load patient appointments.', error);
+          this.appointmentsErrorMessage.set(error?.error?.message ?? 'Unable to load appointments.');
+          this.isAppointmentsLoading.set(false);
+        }
+      });
+  }
+
+  loadDoctors(): void {
+    this.isDoctorsLoading.set(true);
+    this.doctorsErrorMessage.set('');
+
+    this.patientService.getPublicDoctors()
+      .subscribe({
+        next: doctors => {
+          this.doctors.set(doctors);
+          this.isDoctorsLoading.set(false);
+        },
+        error: error => {
+          console.error('Failed to load doctors.', error);
+          this.doctorsErrorMessage.set(error?.error?.message ?? 'Unable to load doctor details.');
+          this.isDoctorsLoading.set(false);
+        }
+      });
   }
 
   toggleFilters(): void {
@@ -205,11 +257,13 @@ export class Appointments {
   openCancelAppointment(appointment: Appointment): void {
     this.selectedCancelAppointment = appointment;
     this.cancellationReason = '';
+    this.cancellationErrorMessage.set('');
   }
 
   closeCancelAppointment(): void {
     this.selectedCancelAppointment = null;
     this.cancellationReason = '';
+    this.cancellationErrorMessage.set('');
   }
 
   submitCancellation(): void {
@@ -217,19 +271,21 @@ export class Appointments {
       return;
     }
 
-    this.appointments = this.appointments.map(appointment => {
-      if (appointment.id !== this.selectedCancelAppointment?.id) {
-        return appointment;
-      }
+    this.cancellationErrorMessage.set('');
 
-      return {
-        ...appointment,
-        status: 'Cancelled',
-        cancellationReason: `${this.cancellationReason.trim()} - Cancelled by patient`
-      };
-    });
+    this.patientService.cancelAppointment(this.selectedCancelAppointment.id, this.cancellationReason.trim())
+      .subscribe({
+        next: updatedAppointment => {
+          this.appointments.update(appointments => appointments.map(appointment =>
+            appointment.id === updatedAppointment.id ? updatedAppointment : appointment));
 
-    this.closeCancelAppointment();
+          this.closeCancelAppointment();
+        },
+        error: error => {
+          console.error('Failed to cancel appointment.', error);
+          this.cancellationErrorMessage.set(error?.error?.message ?? 'Unable to cancel appointment.');
+        }
+      });
   }
 
   canPatientCancel(appointment: Appointment): boolean {
@@ -241,7 +297,7 @@ export class Appointments {
   }
 
   getDoctorSpecialisation(doctorId: number): string {
-    const doctor = this.doctors.find(existingDoctor => existingDoctor.id === doctorId);
+    const doctor = this.doctors().find(existingDoctor => existingDoctor.id === doctorId);
     return doctor ? this.formatSpecialisation(doctor.specialisation) : 'Not available';
   }
 

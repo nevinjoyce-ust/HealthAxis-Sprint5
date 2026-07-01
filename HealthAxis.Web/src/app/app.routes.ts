@@ -1,5 +1,8 @@
 import { Routes } from '@angular/router';
 
+import { authGuard } from './core/guards/auth-guard';
+import { roleGuard } from './core/guards/role-guard';
+
 export const routes: Routes = [
   {
     path: '',
@@ -28,6 +31,8 @@ export const routes: Routes = [
   },
   {
     path: 'patient',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['Patient'] },
     loadComponent: () =>
       import('./core/layouts/patient-layout/patient-layout').then(m => m.PatientLayout),
     children: [
@@ -71,6 +76,50 @@ export const routes: Routes = [
         title: 'Patient Profile - HealthAxis',
         loadComponent: () =>
           import('./patient/profile/profile').then(m => m.Profile)
+      }
+    ]
+  },
+  {
+    path: 'doctor',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['Doctor'] },
+    loadComponent: () =>
+      import('./core/layouts/doctor-layout/doctor-layout').then(m => m.DoctorLayout),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'dashboard'
+      },
+      {
+        path: 'dashboard',
+        title: 'Doctor Dashboard - HealthAxis',
+        loadComponent: () =>
+          import('./doctor/dashboard/dashboard').then(m => m.DoctorDashboard)
+      },
+      {
+        path: 'appointments',
+        title: 'Doctor Appointments - HealthAxis',
+        loadComponent: () =>
+          import('./doctor/appointments/appointments').then(m => m.Appointments)
+      },
+      {
+        path: 'health-records',
+        title: 'Doctor Health Records - HealthAxis',
+        loadComponent: () =>
+          import('./doctor/health-records/health-records').then(m => m.HealthRecords)
+      },
+      {
+        path: 'patient-history',
+        title: 'Patient History - HealthAxis',
+        loadComponent: () =>
+          import('./doctor/patient-history/patient-history').then(m => m.PatientHistory)
+      },
+      {
+        path: 'profile',
+        title: 'Doctor Profile - HealthAxis',
+        loadComponent: () =>
+          import('./doctor/profile/profile').then(m => m.Profile)
       }
     ]
   },

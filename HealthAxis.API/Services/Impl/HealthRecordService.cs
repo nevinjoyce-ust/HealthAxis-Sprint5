@@ -139,7 +139,17 @@ public class HealthRecordService(
             throw;
         }
     }
+    public async Task<PagedResultDto<HealthRecordDto>> GetHealthRecordsByDoctorIdAsync(
+    int doctorId,
+    PaginationQueryDto pagination)
+    {
+        var records = await healthRecordRepository.GetHealthRecordsByDoctorIdAsync(
+            doctorId,
+            pagination.PageNumber,
+            pagination.PageSize);
 
+        return MapPagedResult<HealthRecord, HealthRecordDto>(records);
+    }
     private PagedResultDto<TDestination> MapPagedResult<TSource, TDestination>(PagedResult<TSource> pagedResult)
     {
         return new PagedResultDto<TDestination>

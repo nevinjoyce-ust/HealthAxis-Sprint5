@@ -1,8 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { MockData } from '../../core/services/mock-data';
+import { PatientService } from '../../core/services/patient-service';
 import {
   DoctorSpecialisation,
   PublicDoctor
@@ -16,12 +16,14 @@ type DoctorSortOption = 'experience' | 'fee';
   templateUrl: './doctors.html',
   styleUrl: './doctors.css'
 })
-export class Doctors {
-  private readonly mockData = inject(MockData);
+export class Doctors implements OnInit {
+  private readonly patientService = inject(PatientService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  doctors: PublicDoctor[] = this.mockData.getPublicDoctors();
+  readonly doctors = signal<PublicDoctor[]>([]);
+  readonly isDoctorsLoading = signal(false);
+  readonly doctorsErrorMessage = signal('');
 
   searchText = '';
   selectedSpecialisation: DoctorSpecialisation | '' = '';
@@ -60,8 +62,12 @@ export class Doctors {
     });
   }
 
+  ngOnInit(): void {
+    this.loadDoctors();
+  }
+
   get filteredDoctors(): PublicDoctor[] {
-    return this.doctors
+    return this.doctors()
       .filter(doctor => this.matchesAvailability(doctor))
       .filter(doctor => this.matchesSpecialisation(doctor))
       .filter(doctor => this.matchesSearchText(doctor))
@@ -70,6 +76,24 @@ export class Doctors {
 
   get minimumDate(): string {
     return new Date().toISOString().split('T')[0];
+  }
+
+  loadDoctors(): void {
+    this.isDoctorsLoading.set(true);
+    this.doctorsErrorMessage.set('');
+
+    this.patientService.getPublicDoctors()
+      .subscribe({
+        next: doctors => {
+          this.doctors.set(doctors);
+          this.isDoctorsLoading.set(false);
+        },
+        error: error => {
+          console.error('Failed to load doctors.', error);
+          this.doctorsErrorMessage.set(error?.error?.message ?? 'Unable to load doctors.');
+          this.isDoctorsLoading.set(false);
+        }
+      });
   }
 
   updateQueryParams(): void {

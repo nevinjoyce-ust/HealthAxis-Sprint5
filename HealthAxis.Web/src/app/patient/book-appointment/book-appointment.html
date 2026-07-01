@@ -9,6 +9,22 @@
     </h1>
   </header>
 
+  @if (isLoadingSlots()) {
+    <section class="rounded-3xl border border-blue-100 bg-blue-50 px-5 py-4 shadow-sm">
+      <p class="text-sm font-bold text-blue-800">
+        Loading available slots...
+      </p>
+    </section>
+  }
+
+  @if (slotsErrorMessage()) {
+    <section class="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 shadow-sm">
+      <p class="text-sm font-bold text-red-800">
+        {{ slotsErrorMessage() }}
+      </p>
+    </section>
+  }
+
   <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
     <p class="text-lg font-black text-blue-700">
       Search available slots
@@ -120,7 +136,7 @@
 
       @if (filteredDoctorSlots.length === 0) {
         <div class="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm font-semibold text-slate-500 xl:col-span-2">
-          No doctors or slots match the selected filters.
+          No doctors or slots to show.
         </div>
       }
     </div>
@@ -172,14 +188,21 @@
             <p class="font-bold text-slate-500">Consultation fee</p>
             <p class="mt-1 font-semibold text-slate-900">₹{{ selectedSlot.doctor.consultationFee }}</p>
           </div>
+
+          @if (bookingErrorMessage()) {
+            <p class="rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100">
+              {{ bookingErrorMessage() }}
+            </p>
+          }
         </div>
 
         <div class="mt-6 flex flex-wrap gap-3">
           <button
             type="button"
             (click)="confirmBooking()"
-            class="rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700">
-            Confirm booking
+            [disabled]="isBooking()"
+            class="rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
+            {{ isBooking() ? 'Booking...' : 'Confirm booking' }}
           </button>
 
           <button

@@ -1,0 +1,71 @@
+﻿@page "/auth/callback"
+
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.WebUtilities
+@using HealthAxis.Admin.Auth
+@using HealthAxis.Admin.Services
+@using HealthAxis.Shared.Dtos.Auth
+
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject ITokenService TokenService
+@inject CustomAuthenticationStateProvider AuthStateProvider
+
+<section class="p-4">
+    <h1>Signing you in...</h1>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <p class="text-danger">@errorMessage</p>
+    }
+</section>
+
+@code {
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        if (!query.TryGetValue("code", out var codeValues))
+        {
+            errorMessage = "Missing admin handoff code.";
+            return;
+        }
+
+        var code = codeValues.FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            errorMessage = "Invalid admin handoff code.";
+            return;
+        }
+
+        var response = await Http.PostAsJsonAsync(
+            "api/auth/admin-handoff-exchange",
+            new AdminHandoffExchangeDto
+            {
+                Code = code
+            });
+
+        if (!response.IsSuccessStatusCode)
+        {
+            errorMessage = "Unable to complete admin sign-in.";
+            return;
+        }
+
+        var authResponse = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+
+        if (authResponse == null || string.IsNullOrWhiteSpace(authResponse.AccessToken))
+        {
+            errorMessage = "Admin sign-in response did not include an access token.";
+            return;
+        }
+
+        await TokenService.SetAccessTokenAsync(authResponse.AccessToken);
+        AuthStateProvider.NotifyUserLoggedIn(authResponse.AccessToken);
+
+        NavigationManager.NavigateTo("/dashboard", forceLoad: false);
+    }
+}

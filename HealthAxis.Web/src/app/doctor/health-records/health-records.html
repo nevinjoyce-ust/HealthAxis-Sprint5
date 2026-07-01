@@ -1,0 +1,260 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <header>
+    <p class="text-sm font-bold uppercase tracking-wider text-blue-600">
+      Doctor Portal
+    </p>
+
+    <h1 class="mt-2 text-4xl font-black tracking-tight text-slate-950">
+      Health Records
+    </h1>
+  </header>
+
+  @if (isAnyLoading) {
+    <section class="rounded-3xl border border-blue-100 bg-blue-50 px-5 py-4 shadow-sm">
+      <p class="text-sm font-bold text-blue-800">
+        Loading health records...
+      </p>
+    </section>
+  }
+
+  @if (healthRecordsErrorMessage() || appointmentsErrorMessage()) {
+    <section class="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 shadow-sm">
+      @if (healthRecordsErrorMessage()) {
+        <p class="text-sm font-bold text-red-800">{{ healthRecordsErrorMessage() }}</p>
+      }
+      @if (appointmentsErrorMessage()) {
+        <p class="text-sm font-bold text-red-800">{{ appointmentsErrorMessage() }}</p>
+      }
+    </section>
+  }
+
+  <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex flex-wrap gap-3">
+        <button
+          type="button"
+          (click)="setActiveTab('created')"
+          [class]="activeTab === 'created'
+            ? 'rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700'
+            : 'rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200'">
+          Created by you
+        </button>
+
+        <button
+          type="button"
+          (click)="setActiveTab('accessible')"
+          [class]="activeTab === 'accessible'
+            ? 'rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700'
+            : 'rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200'">
+          Accessible patient histories
+        </button>
+      </div>
+
+      <button
+        type="button"
+        (click)="toggleFilters()"
+        class="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200">
+        {{ showFilters ? 'Hide filters' : 'View filters' }}
+      </button>
+    </div>
+
+    @if (showFilters) {
+      <div class="mt-5 grid gap-4 lg:grid-cols-[1fr_220px_220px_auto] lg:items-end">
+        <div>
+          <label for="searchText" class="text-sm font-bold text-slate-700">Search</label>
+          <input
+            id="searchText"
+            [(ngModel)]="searchText"
+            [placeholder]="activeTab === 'created' ? 'Patient name or diagnosis' : 'Patient name'"
+            class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+        </div>
+
+        @if (activeTab === 'created') {
+          <div>
+            <label for="fromDate" class="text-sm font-bold text-slate-700">From</label>
+            <input
+              id="fromDate"
+              type="date"
+              [(ngModel)]="fromDate"
+              class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+          </div>
+
+          <div>
+            <label for="toDate" class="text-sm font-bold text-slate-700">To</label>
+            <input
+              id="toDate"
+              type="date"
+              [(ngModel)]="toDate"
+              class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+          </div>
+        }
+
+        <button
+          type="button"
+          (click)="clearFilters()"
+          class="rounded-full bg-slate-100 px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200">
+          Clear
+        </button>
+      </div>
+    }
+  </section>
+
+  @if (activeTab === 'created') {
+    <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-lg font-black text-blue-700">
+          Records created by you
+        </p>
+
+        <p class="text-sm font-semibold text-slate-500">
+          Showing {{ doctorCreatedHealthRecords.length }} record(s)
+        </p>
+      </div>
+
+      <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="px-4 py-3">Date</th>
+              <th class="px-4 py-3">Patient</th>
+              <th class="px-4 py-3">Diagnosis</th>
+              <th class="px-4 py-3">Details</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-slate-100">
+            @for (record of doctorCreatedHealthRecords; track record.id) {
+              <tr>
+                <td class="px-4 py-4 font-semibold text-slate-700">{{ formatDate(record.visitDate) }}</td>
+                <td class="px-4 py-4 text-slate-600">{{ record.patientName }}</td>
+                <td class="px-4 py-4 text-slate-600">{{ record.diagnosis }}</td>
+                <td class="px-4 py-4">
+                  <button
+                    type="button"
+                    (click)="openHealthRecordDetails(record)"
+                    class="rounded-full bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">
+                    View
+                  </button>
+                </td>
+              </tr>
+            }
+
+            @if (doctorCreatedHealthRecords.length === 0) {
+              <tr>
+                <td colspan="4" class="px-4 py-8 text-center text-sm font-semibold text-slate-500">
+                  No records to show.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  @if (activeTab === 'accessible') {
+    <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-lg font-black text-green-700">
+          Accessible patient histories
+        </p>
+
+        <p class="text-sm font-semibold text-slate-500">
+          Showing {{ accessiblePatientHistories.length }} patient(s)
+        </p>
+      </div>
+
+      <p class="mt-3 rounded-2xl bg-green-50 px-4 py-3 text-sm font-semibold text-green-800 ring-1 ring-green-100">
+        Full history access is available only for patients with confirmed appointments today or in the future.
+      </p>
+
+      <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="px-4 py-3">Patient</th>
+              <th class="px-4 py-3">Confirmed appointment</th>
+              <th class="px-4 py-3">Action</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-slate-100">
+            @for (patient of accessiblePatientHistories; track patient.patientId) {
+              <tr>
+                <td class="px-4 py-4 font-semibold text-slate-700">{{ patient.patientName }}</td>
+                <td class="px-4 py-4 text-slate-600">
+                  {{ formatDate(patient.appointmentDate) }} · {{ formatTime(patient.appointmentTime) }}
+                </td>
+                <td class="px-4 py-4">
+                  <a
+                    routerLink="/doctor/patient-history"
+                    [queryParams]="{ patientId: patient.patientId, appointmentId: patient.appointmentId }"
+                    class="rounded-full bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">
+                    View more
+                  </a>
+                </td>
+              </tr>
+            }
+
+            @if (accessiblePatientHistories.length === 0) {
+              <tr>
+                <td colspan="3" class="px-4 py-8 text-center text-sm font-semibold text-slate-500">
+                  No patient histories to show.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>
+
+@if (selectedHealthRecord) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
+    <section class="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="text-sm font-bold uppercase tracking-wider text-blue-600">Health Record</p>
+          <h2 class="mt-2 text-2xl font-black text-slate-950">Record details</h2>
+        </div>
+
+        <button
+          type="button"
+          (click)="closeHealthRecordDetails()"
+          class="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200">
+          Close
+        </button>
+      </div>
+
+      <div class="mt-5 space-y-4 text-sm">
+        <div>
+          <p class="font-bold text-slate-500">Visit date</p>
+          <p class="mt-1 font-semibold text-slate-900">{{ formatDate(selectedHealthRecord.visitDate) }}</p>
+        </div>
+
+        <div>
+          <p class="font-bold text-slate-500">Patient</p>
+          <p class="mt-1 font-semibold text-slate-900">{{ selectedHealthRecord.patientName }}</p>
+        </div>
+
+        <div>
+          <p class="font-bold text-slate-500">Diagnosis</p>
+          <p class="mt-1 text-slate-800">{{ selectedHealthRecord.diagnosis }}</p>
+        </div>
+
+        <div>
+          <p class="font-bold text-slate-500">Prescription</p>
+          <p class="mt-1 text-slate-800">{{ selectedHealthRecord.prescription }}</p>
+        </div>
+
+        @if (selectedHealthRecord.notes) {
+          <div>
+            <p class="font-bold text-slate-500">Notes</p>
+            <p class="mt-1 text-slate-800">{{ selectedHealthRecord.notes }}</p>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+}

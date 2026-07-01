@@ -1,7 +1,7 @@
-using System.Security.Claims;
+using HealthAxis.API.Extensions;
+using HealthAxis.API.Services;
 using HealthAxis.Shared.Constants;
 using HealthAxis.Shared.Dtos.Patient;
-using HealthAxis.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +13,38 @@ namespace HealthAxis.API.Controllers;
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class PatientsController(IPatientService patientService) : ControllerBase
 {
+    [HttpGet("me")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.Patient)]
+    public async Task<IActionResult> GetCurrentPatient()
+    {
+        var patientId = User.GetPatientId();
+
+        if (patientId == null)
+        {
+            return Forbid();
+        }
+
+        var patient = await patientService.GetPatientByIdAsync(patientId.Value);
+
+        return Ok(patient);
+    }
+
+    [HttpPut("me")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.Patient)]
+    public async Task<IActionResult> UpdateCurrentPatient(UpdatePatientDto request)
+    {
+        var patientId = User.GetPatientId();
+
+        if (patientId == null)
+        {
+            return Forbid();
+        }
+
+        var patient = await patientService.UpdatePatientAsync(patientId.Value, request);
+
+        return Ok(patient);
+    }
+
     [HttpGet("{id:int}")]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.PatientAdmin)]
     public async Task<IActionResult> GetPatientById(int id)
@@ -43,9 +75,6 @@ public class PatientsController(IPatientService patientService) : ControllerBase
 
     private bool IsOwnPatientId(int patientId)
     {
-        var claimValue = User.FindFirstValue(AppClaimTypes.PatientId);
-
-        return int.TryParse(claimValue, out var loggedInPatientId) &&
-               loggedInPatientId == patientId;
+        return User.GetPatientId() == patientId;
     }
 }

@@ -1,11 +1,12 @@
-using System.Security.Claims;
 using HealthAxis.API.Constants;
-using HealthAxis.Shared.Dtos.Auth;
 using HealthAxis.API.Services;
+using HealthAxis.Shared.Constants;
+using HealthAxis.Shared.Dtos.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace HealthAxis.API.Controllers;
 
@@ -13,7 +14,8 @@ namespace HealthAxis.API.Controllers;
 [Route("api/auth")]
 public class AuthController(
     IAuthService authService,
-    UserManager<IdentityUser> userManager) : ControllerBase
+    UserManager<IdentityUser> userManager,
+    IAdminHandoffService adminHandoffService) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterDto request)
@@ -91,5 +93,50 @@ public class AuthController(
         }
 
         return Ok(new { message = "Password changed successfully." });
+    }
+
+    [HttpPost("admin-handoff-code")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.Admin)]
+    public IActionResult CreateAdminHandoffCode()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Forbid();
+        }
+
+        var code = adminHandoffService.CreateCode(userId);
+
+        return Ok(new AdminHandoffCodeResponseDto
+        {
+            Code = code,
+            ExpiresInSeconds = 60
+        });
+    }
+    [HttpPost("admin-handoff-exchange")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ExchangeAdminHandoffCode(AdminHandoffExchangeDto request)
+    {
+        var userId = adminHandoffService.ConsumeCode(request.Code);
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized(new { message = "Invalid or expired admin handoff code." });
+        }
+
+        var result = await authService.CreateAuthResponseForUserIdAsync(userId);
+
+        if (!result.Success || result.Response == null)
+        {
+            return Unauthorized(new { message = result.Message });
+        }
+
+        if (!string.Equals(result.Response.Role, AppRoles.Admin, StringComparison.OrdinalIgnoreCase))
+        {
+            return Forbid();
+        }
+
+        return Ok(result.Response);
     }
 }

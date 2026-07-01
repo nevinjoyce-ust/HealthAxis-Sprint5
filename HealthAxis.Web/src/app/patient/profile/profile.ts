@@ -1,28 +1,14 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-interface PatientDto {
-  id: number;
-  userId: string;
-  fullName: string;
-  email: string;
-  dateOfBirth: string;
-  gender: string;
-  phoneNumber: string;
-  address: string;
-}
+import {
+  PatientDto,
+  PatientService,
+  UpdatePatientRequest
+} from '../../core/services/patient-service';
 
-interface UpdatePatientDto {
-  fullName: string;
-  email: string;
-  dateOfBirth: string;
-  gender: string;
-  phoneNumber: string;
-  address: string;
-}
-
-interface ChangePasswordDto {
+interface ChangePasswordForm {
   currentPassword: string;
   newPassword: string;
   confirmNewPassword: string;
@@ -34,29 +20,29 @@ interface ChangePasswordDto {
   templateUrl: './profile.html',
   styleUrl: './profile.css'
 })
-export class Profile {
+export class Profile implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly patientService = inject(PatientService);
+
+  readonly isLoading = signal(false);
+  readonly isSaving = signal(false);
+  readonly isChangingPassword = signal(false);
+
+  readonly profileErrorMessage = signal('');
+  readonly saveErrorMessage = signal('');
+  readonly passwordErrorMessage = signal('');
+
+  readonly patient = signal<PatientDto | null>(null);
 
   isEditMode = false;
   showPasswordChange = false;
   saveSuccess = false;
   passwordSuccess = false;
 
-  patient: PatientDto = {
-    id: 1,
-    userId: 'patient-user-1',
-    fullName: 'Nevin Joyce',
-    email: 'nevin.joyce@example.com',
-    dateOfBirth: '1996-08-14',
-    gender: 'Male',
-    phoneNumber: '+91 98765 43210',
-    address: 'Bengaluru, Karnataka'
-  };
+  updatePatient: UpdatePatientRequest = this.createEmptyUpdatePatientRequest();
 
-  updatePatient: UpdatePatientDto = this.createUpdatePatientDto(this.patient);
-
-  changePasswordRequest: ChangePasswordDto = {
+  changePasswordRequest: ChangePasswordForm = {
     currentPassword: '',
     newPassword: '',
     confirmNewPassword: ''
@@ -65,14 +51,50 @@ export class Profile {
   constructor() {
     this.route.queryParamMap.subscribe(params => {
       this.isEditMode = params.get('edit') === 'true';
-      this.updatePatient = this.createUpdatePatientDto(this.patient);
       this.saveSuccess = false;
+
+      const patient = this.patient();
+
+      if (patient) {
+        this.updatePatient = this.createUpdatePatientRequest(patient);
+      }
     });
   }
 
+  ngOnInit(): void {
+    this.loadProfile();
+  }
+
+  loadProfile(): void {
+    this.isLoading.set(true);
+    this.profileErrorMessage.set('');
+
+    this.patientService.getCurrentPatient()
+      .subscribe({
+        next: patient => {
+          this.patient.set(patient);
+          this.updatePatient = this.createUpdatePatientRequest(patient);
+          this.isLoading.set(false);
+        },
+        error: error => {
+          console.error('Failed to load patient profile.', error);
+          this.profileErrorMessage.set(error?.error?.message ?? 'Unable to load profile details.');
+          this.isLoading.set(false);
+        }
+      });
+  }
+
   startEditing(): void {
+    const patient = this.patient();
+
+    if (!patient) {
+      return;
+    }
+
     this.isEditMode = true;
-    this.updatePatient = this.createUpdatePatientDto(this.patient);
+    this.saveSuccess = false;
+    this.saveErrorMessage.set('');
+    this.updatePatient = this.createUpdatePatientRequest(patient);
 
     this.router.navigate([], {
       relativeTo: this.route,
@@ -83,8 +105,14 @@ export class Profile {
 
   cancelEditing(): void {
     this.isEditMode = false;
-    this.updatePatient = this.createUpdatePatientDto(this.patient);
     this.saveSuccess = false;
+    this.saveErrorMessage.set('');
+
+    const patient = this.patient();
+
+    if (patient) {
+      this.updatePatient = this.createUpdatePatientRequest(patient);
+    }
 
     this.router.navigate([], {
       relativeTo: this.route,
@@ -94,44 +122,73 @@ export class Profile {
   }
 
   saveProfile(): void {
-    if (!this.canSaveProfile) {
+    if (!this.canSaveProfile || this.isSaving()) {
       return;
     }
 
-    this.patient = {
-      ...this.patient,
-      ...this.updatePatient
-    };
+    this.isSaving.set(true);
+    this.saveSuccess = false;
+    this.saveErrorMessage.set('');
 
-    this.isEditMode = false;
-    this.saveSuccess = true;
+    this.patientService.updateCurrentPatient(this.updatePatient)
+      .subscribe({
+        next: patient => {
+          this.patient.set(patient);
+          this.updatePatient = this.createUpdatePatientRequest(patient);
+          this.isEditMode = false;
+          this.saveSuccess = true;
+          this.isSaving.set(false);
 
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { edit: null },
-      queryParamsHandling: 'merge'
-    });
+          this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: { edit: null },
+            queryParamsHandling: 'merge'
+          });
+        },
+        error: error => {
+          console.error('Failed to update patient profile.', error);
+          this.saveErrorMessage.set(error?.error?.message ?? 'Unable to update profile details.');
+          this.isSaving.set(false);
+        }
+      });
   }
 
   togglePasswordChange(): void {
     this.showPasswordChange = !this.showPasswordChange;
     this.passwordSuccess = false;
+    this.passwordErrorMessage.set('');
     this.resetPasswordForm();
   }
 
   changePassword(): void {
-    if (!this.canChangePassword) {
+    if (!this.canChangePassword || this.isChangingPassword()) {
       return;
     }
 
-    this.passwordSuccess = true;
-    this.showPasswordChange = false;
-    this.resetPasswordForm();
+    this.isChangingPassword.set(true);
+    this.passwordSuccess = false;
+    this.passwordErrorMessage.set('');
+
+    this.patientService.changePassword({
+      currentPassword: this.changePasswordRequest.currentPassword,
+      newPassword: this.changePasswordRequest.newPassword
+    }).subscribe({
+      next: () => {
+        this.passwordSuccess = true;
+        this.showPasswordChange = false;
+        this.isChangingPassword.set(false);
+        this.resetPasswordForm();
+      },
+      error: error => {
+        console.error('Failed to change password.', error);
+        this.passwordErrorMessage.set(error?.error?.message ?? 'Unable to change password.');
+        this.isChangingPassword.set(false);
+      }
+    });
   }
 
   get canSaveProfile(): boolean {
     return this.updatePatient.fullName.trim().length > 0 &&
-      this.updatePatient.email.trim().length > 0 &&
       this.updatePatient.dateOfBirth.trim().length > 0 &&
       this.updatePatient.gender.trim().length > 0 &&
       this.updatePatient.phoneNumber.trim().length > 0 &&
@@ -157,14 +214,23 @@ export class Profile {
     });
   }
 
-  private createUpdatePatientDto(patient: PatientDto): UpdatePatientDto {
+  private createUpdatePatientRequest(patient: PatientDto): UpdatePatientRequest {
     return {
       fullName: patient.fullName,
-      email: patient.email,
       dateOfBirth: patient.dateOfBirth,
       gender: patient.gender,
       phoneNumber: patient.phoneNumber,
       address: patient.address
+    };
+  }
+
+  private createEmptyUpdatePatientRequest(): UpdatePatientRequest {
+    return {
+      fullName: '',
+      dateOfBirth: '',
+      gender: '',
+      phoneNumber: '',
+      address: ''
     };
   }
 

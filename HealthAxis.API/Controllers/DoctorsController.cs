@@ -1,11 +1,11 @@
-using System.Security.Claims;
 using HealthAxis.API.Constants;
+using HealthAxis.API.Exceptions;
+using HealthAxis.API.Extensions;
+using HealthAxis.API.Services;
 using HealthAxis.Shared.Constants;
 using HealthAxis.Shared.Dtos;
 using HealthAxis.Shared.Dtos.Doctor;
 using HealthAxis.Shared.Enums;
-using HealthAxis.API.Exceptions;
-using HealthAxis.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -37,6 +37,46 @@ public class DoctorsController(IDoctorService doctorService) : ControllerBase
         var doctors = await doctorService.GetAvailableSlotsAsync(date, specialisation, pagination);
 
         return Ok(doctors);
+    }
+    [HttpGet("me")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.Doctor)]
+    public async Task<IActionResult> GetCurrentDoctor()
+    {
+        var doctorId = User.GetDoctorId();
+
+        if (doctorId == null)
+        {
+            return Forbid();
+        }
+
+        var doctor = await doctorService.GetDoctorByIdAsync(doctorId.Value);
+
+        if (doctor == null)
+        {
+            throw new NotFoundException(ErrorMessages.DoctorNotFound);
+        }
+
+        return Ok(doctor);
+    }
+
+    [HttpPut("me/availability")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.Doctor)]
+    public async Task<IActionResult> UpdateCurrentDoctorAvailability(UpdateDoctorAvailabilityDto request)
+    {
+        var doctorId = User.GetDoctorId();
+
+        if (doctorId == null)
+        {
+            return Forbid();
+        }
+
+        var availability = await doctorService.UpdateAvailabilityAsync(
+            doctorId.Value,
+            request,
+            AppRoles.Doctor,
+            doctorId.Value);
+
+        return Ok(availability);
     }
 
     [HttpGet("{id:int}")]
@@ -80,7 +120,7 @@ public class DoctorsController(IDoctorService doctorService) : ControllerBase
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = AppRoles.DoctorAdmin)]
     public async Task<IActionResult> UpdateAvailability(int id, UpdateDoctorAvailabilityDto request)
     {
-        var currentRole = GetCurrentRole();
+        var currentRole = User.GetCurrentRole();
 
         if (currentRole == null)
         {
@@ -91,32 +131,8 @@ public class DoctorsController(IDoctorService doctorService) : ControllerBase
             id,
             request,
             currentRole,
-            GetDoctorIdFromToken());
+            User.GetDoctorId());
 
         return Ok(availability);
-    }
-
-    private string? GetCurrentRole()
-    {
-        if (User.IsInRole(AppRoles.Admin))
-        {
-            return AppRoles.Admin;
-        }
-
-        if (User.IsInRole(AppRoles.Doctor))
-        {
-            return AppRoles.Doctor;
-        }
-
-        return null;
-    }
-
-    private int? GetDoctorIdFromToken()
-    {
-        var claimValue = User.FindFirstValue(AppClaimTypes.DoctorId);
-
-        return int.TryParse(claimValue, out var doctorId)
-            ? doctorId
-            : null;
     }
 }

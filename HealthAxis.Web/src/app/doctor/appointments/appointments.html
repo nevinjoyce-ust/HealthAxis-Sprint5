@@ -1,0 +1,183 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <header>
+    <p class="text-sm font-bold uppercase tracking-wider text-blue-600">Doctor Portal</p>
+    <h1 class="mt-2 text-4xl font-black tracking-tight text-slate-950">Appointments</h1>
+  </header>
+
+  @if (isAnyLoading) {
+    <section class="rounded-3xl border border-blue-100 bg-blue-50 px-5 py-4 shadow-sm">
+      <p class="text-sm font-bold text-blue-800">Loading appointments...</p>
+    </section>
+  }
+
+  @if (appointmentsErrorMessage() || healthRecordsErrorMessage()) {
+    <section class="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 shadow-sm">
+      @if (appointmentsErrorMessage()) {<p class="text-sm font-bold text-red-800">{{ appointmentsErrorMessage() }}</p>}
+      @if (healthRecordsErrorMessage()) {<p class="text-sm font-bold text-red-800">{{ healthRecordsErrorMessage() }}</p>}
+    </section>
+  }
+
+  <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-4">
+      <p class="text-lg font-black text-blue-700">Filters</p>
+      <button type="button" (click)="toggleFilters()" class="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200">
+        {{ showFilters ? 'Hide filters' : 'View filters' }}
+      </button>
+    </div>
+
+    @if (showFilters) {
+      <div class="mt-5 space-y-5">
+        <div class="grid gap-4 md:grid-cols-[280px_minmax(0,1fr)] md:items-start">
+          <div>
+            <label for="searchText" class="text-sm font-bold text-slate-700">Search</label>
+            <input id="searchText" [(ngModel)]="searchText" (ngModelChange)="onSearchChange()" placeholder="Enter patient name" class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+          </div>
+
+          <div>
+            <p class="text-sm font-bold text-slate-700">Status</p>
+            <div class="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+              @for (status of statusOptions; track status) {
+                <label [class]="isStatusDisabled(status) ? 'inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-full bg-slate-100 px-2 py-2 text-xs font-bold text-slate-400 opacity-60' : 'inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-slate-100 px-2 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200'">
+                  <input type="checkbox" [checked]="isStatusSelected(status)" [disabled]="isStatusDisabled(status)" (change)="onStatusFilterChange(status, $event)" class="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                  {{ status }}
+                </label>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2 lg:items-start">
+          <div>
+            <p class="text-sm font-bold text-slate-700">Dates</p>
+            <div class="mt-2 grid grid-cols-4 overflow-hidden rounded-2xl bg-slate-100 p-1">
+              @for (option of timeOptions; track option.value) {
+                <button type="button" (click)="setTimeFilter(option.value)" [class]="timeFilter === option.value ? 'rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-sm' : 'rounded-xl px-3 py-2 text-xs font-bold text-slate-600 hover:bg-white/70'">
+                  {{ option.label }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <div>
+            @if (timeFilter === 'dateRange') {
+              <p class="text-sm font-bold text-slate-700">Custom range</p>
+              <div class="mt-2 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label for="fromDate" class="text-xs font-bold text-slate-600">From</label>
+                  <input id="fromDate" type="date" [(ngModel)]="fromDate" (ngModelChange)="onDateRangeChange()" class="mt-1 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+                </div>
+                <div>
+                  <label for="toDate" class="text-xs font-bold text-slate-600">To</label>
+                  <input id="toDate" type="date" [(ngModel)]="toDate" (ngModelChange)="onDateRangeChange()" class="mt-1 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <button type="button" (click)="clearFilters()" class="rounded-full bg-slate-100 px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200">Clear</button>
+      </div>
+    }
+  </section>
+
+  <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-lg font-black text-slate-950">Appointment list</p>
+      <p class="text-sm font-semibold text-slate-500">Showing {{ pagedAppointments.length }} of {{ filteredAppointments.length }} appointment(s)</p>
+    </div>
+
+    <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">Time</th><th class="px-4 py-3">Patient</th><th class="px-4 py-3">Status</th><th class="px-4 py-3"></th></tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @for (appointment of pagedAppointments; track appointment.id) {
+            <tr [class]="isUrgentPendingAppointment(appointment) ? 'font-black text-slate-950' : ''">
+              <td class="px-4 py-4">{{ formatDate(appointment.appointmentDate) }}</td>
+              <td class="px-4 py-4">{{ formatTime(appointment.appointmentTime) }}</td>
+              <td class="px-4 py-4">{{ appointment.patientName }}</td>
+              <td class="px-4 py-4"><span [class]="getStatusClasses(appointment.status)">{{ appointment.status }}</span></td>
+              <td class="px-4 py-4 text-right">
+                <div class="flex flex-wrap justify-end gap-2">
+                  @if (isUrgentPendingAppointment(appointment)) {<span class="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">&lt;24h</span>}
+                  @if (appointment.status === 'Pending') {
+                    <button type="button" (click)="confirmPendingAppointment(appointment)" class="rounded-full bg-green-600 px-3 py-2 text-xs font-bold text-white hover:bg-green-700">Confirm</button>
+                    <button type="button" (click)="openCancelAppointment(appointment)" class="rounded-full bg-red-600 px-3 py-2 text-xs font-bold text-white hover:bg-red-700">Cancel</button>
+                  }
+                  @if (canViewPatientHistory(appointment)) {
+                    <a routerLink="/doctor/patient-history" [queryParams]="{ patientId: appointment.patientId, appointmentId: appointment.id }" class="rounded-full bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">View history</a>
+                  }
+                  @if (canCompleteConsultation(appointment)) {
+                    <button type="button" (click)="openCompleteConsultation(appointment)" class="rounded-full bg-green-600 px-3 py-2 text-xs font-bold text-white hover:bg-green-700">Complete</button>
+                  }
+                  @if (canCancelConfirmedAppointment(appointment)) {
+                    <button type="button" (click)="openCancelAppointment(appointment)" class="rounded-full bg-red-600 px-3 py-2 text-xs font-bold text-white hover:bg-red-700">Cancel</button>
+                  }
+                  @if (appointment.status === 'Completed' && appointment.healthRecordId) {
+                    <button type="button" (click)="openHealthRecordDetails(appointment)" class="rounded-full bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">View record</button>
+                  }
+                  @if (appointment.status === 'Cancelled') {
+                    <button type="button" (click)="openCancellationReason(appointment)" class="rounded-full bg-red-50 px-3 py-2 text-xs font-bold text-red-700 ring-1 ring-red-100 hover:bg-red-100">View reason</button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+          @if (pagedAppointments.length === 0) {<tr><td colspan="5" class="px-4 py-8 text-center text-sm font-semibold text-slate-500">No appointments to show.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-sm font-semibold text-slate-500">Page {{ currentPage }} of {{ totalPages }}</p>
+      <div class="flex gap-2">
+        <button type="button" (click)="goToPreviousPage()" [disabled]="!hasPreviousPage" class="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+        <button type="button" (click)="goToNextPage()" [disabled]="!hasNextPage" class="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+@if (selectedCancelAppointment) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
+    <section class="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl">
+      <h2 class="text-2xl font-black text-slate-950">Cancel appointment</h2>
+      <p class="mt-3 text-sm font-semibold text-slate-600">{{ formatDate(selectedCancelAppointment.appointmentDate) }} · {{ formatTime(selectedCancelAppointment.appointmentTime) }} with {{ selectedCancelAppointment.patientName }}</p>
+      @if (cancellationErrorMessage()) {<p class="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100">{{ cancellationErrorMessage() }}</p>}
+      <label for="cancellationReason" class="mt-5 block text-sm font-bold text-slate-700">Cancellation reason</label>
+      <textarea id="cancellationReason" [(ngModel)]="cancellationReason" rows="4" class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"></textarea>
+      <div class="mt-6 flex gap-3">
+        <button type="button" (click)="submitCancellation()" [disabled]="!cancellationReason.trim()" class="rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">Cancel appointment</button>
+        <button type="button" (click)="closeCancelAppointment()" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700">Close</button>
+      </div>
+    </section>
+  </div>
+}
+
+@if (selectedCompleteAppointment) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
+    <section class="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl">
+      <h2 class="text-2xl font-black text-slate-950">Complete consultation</h2>
+      <p class="mt-3 text-sm font-semibold text-slate-600">Create health record for {{ selectedCompleteAppointment.patientName }}</p>
+      @if (completionErrorMessage()) {<p class="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100">{{ completionErrorMessage() }}</p>}
+      <div class="mt-5 space-y-4">
+        <div><label class="text-sm font-bold text-slate-700">Diagnosis</label><input [(ngModel)]="diagnosis" class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" /></div>
+        <div><label class="text-sm font-bold text-slate-700">Prescription</label><textarea [(ngModel)]="prescription" rows="3" class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"></textarea></div>
+        <div><label class="text-sm font-bold text-slate-700">Notes</label><textarea [(ngModel)]="notes" rows="3" class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"></textarea></div>
+      </div>
+      <div class="mt-6 flex gap-3">
+        <button type="button" (click)="submitHealthRecord()" [disabled]="!diagnosis.trim() || !prescription.trim() || isCreatingHealthRecord()" class="rounded-full bg-green-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{{ isCreatingHealthRecord() ? 'Submitting...' : 'Submit record' }}</button>
+        <button type="button" (click)="closeCompleteConsultation()" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700">Close</button>
+      </div>
+    </section>
+  </div>
+}
+
+@if (selectedHealthRecord) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm"><section class="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl"><div class="flex items-start justify-between gap-4"><h2 class="text-2xl font-black text-slate-950">Health record</h2><button type="button" (click)="closeHealthRecordDetails()" class="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600">Close</button></div><div class="mt-5 space-y-4 text-sm"><div><p class="font-bold text-slate-500">Date</p><p class="mt-1 font-semibold text-slate-900">{{ formatDate(selectedHealthRecord.visitDate) }}</p></div><div><p class="font-bold text-slate-500">Patient</p><p class="mt-1 font-semibold text-slate-900">{{ selectedHealthRecord.patientName }}</p></div><div><p class="font-bold text-slate-500">Diagnosis</p><p class="mt-1 text-slate-800">{{ selectedHealthRecord.diagnosis }}</p></div><div><p class="font-bold text-slate-500">Prescription</p><p class="mt-1 text-slate-800">{{ selectedHealthRecord.prescription }}</p></div>@if (selectedHealthRecord.notes) {<div><p class="font-bold text-slate-500">Notes</p><p class="mt-1 text-slate-800">{{ selectedHealthRecord.notes }}</p></div>}</div></section></div>
+}
+
+@if (selectedCancellationReason) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm"><section class="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl"><div class="flex items-start justify-between gap-4"><h2 class="text-2xl font-black text-slate-950">Cancellation reason</h2><button type="button" (click)="closeCancellationReason()" class="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600">Close</button></div><p class="mt-5 text-sm text-slate-800">{{ selectedCancellationReason.cancellationReason }}</p></section></div>
+}

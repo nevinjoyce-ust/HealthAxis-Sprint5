@@ -15,4 +15,8 @@ public interface IHealthRecordRepository : IRepository<HealthRecord>
     Task<HealthRecord?> GetHealthRecordByIdWithDetailsAsync(int id);
 
     Task<HealthRecord?> GetHealthRecordByAppointmentIdAsync(int appointmentId);
+    Task<PagedResult<HealthRecord>> GetHealthRecordsByDoctorIdAsync(
+        int doctorId,
+        int pageNumber,
+        int pageSize);
 }

@@ -1,0 +1,261 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <p class="text-sm font-bold uppercase tracking-wider text-blue-600">
+        Doctor Portal
+      </p>
+
+      <h1 class="mt-2 text-4xl font-black tracking-tight text-slate-950">
+        Profile Details
+      </h1>
+    </div>
+
+    <button
+      type="button"
+      (click)="openActivationModal(!isDoctorActive)"
+      [disabled]="!currentDoctor()"
+      [class]="isDoctorActive
+        ? 'inline-flex items-center gap-3 rounded-full bg-green-100 px-5 py-3 text-sm font-bold text-green-700 ring-1 ring-green-200 hover:bg-green-200 disabled:cursor-not-allowed disabled:opacity-50'
+        : 'inline-flex items-center gap-3 rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50'">
+      <span [class]="isDoctorActive ? 'h-3 w-3 rounded-full bg-green-600' : 'h-3 w-3 rounded-full bg-slate-400'"></span>
+      {{ isDoctorActive ? 'Active' : 'Inactive' }}
+    </button>
+  </header>
+
+  @if (isDoctorLoading()) {
+    <section class="rounded-3xl border border-blue-100 bg-blue-50 px-5 py-4 shadow-sm">
+      <p class="text-sm font-bold text-blue-800">
+        Loading profile...
+      </p>
+    </section>
+  }
+
+  @if (doctorErrorMessage()) {
+    <section class="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 shadow-sm">
+      <p class="text-sm font-bold text-red-800">
+        {{ doctorErrorMessage() }}
+      </p>
+    </section>
+  }
+
+  @if (passwordSuccessMessage()) {
+    <section class="rounded-3xl border border-green-200 bg-green-50 px-5 py-4 shadow-sm">
+      <p class="text-sm font-bold text-green-800">
+        {{ passwordSuccessMessage() }}
+      </p>
+    </section>
+  }
+
+  @if (passwordErrorMessage()) {
+    <section class="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 shadow-sm">
+      <p class="text-sm font-bold text-red-800">
+        {{ passwordErrorMessage() }}
+      </p>
+    </section>
+  }
+
+  @if (currentDoctor()) {
+    <section class="grid gap-6 xl:grid-cols-[1fr_380px]">
+      <article class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+        <p class="text-lg font-black text-blue-700">
+          Doctor Information
+        </p>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl bg-slate-50 p-4">
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Full name</p>
+            <p class="mt-2 font-bold text-slate-950">Dr. {{ currentDoctor()!.fullName }}</p>
+          </div>
+
+          <div class="rounded-2xl bg-slate-50 p-4">
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Email</p>
+            <p class="mt-2 font-bold text-slate-950">{{ currentDoctor()!.email }}</p>
+          </div>
+
+          <div class="rounded-2xl bg-slate-50 p-4">
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Phone number</p>
+            <p class="mt-2 font-bold text-slate-950">{{ currentDoctor()!.phoneNumber }}</p>
+          </div>
+
+          <div class="rounded-2xl bg-slate-50 p-4">
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Specialisation</p>
+            <p class="mt-2 font-bold text-slate-950">{{ formatSpecialisation(currentDoctor()!.specialisation) }}</p>
+          </div>
+
+          <div class="rounded-2xl bg-slate-50 p-4">
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Experience</p>
+            <p class="mt-2 font-bold text-slate-950">{{ currentDoctor()!.yearsOfExperience }} years</p>
+          </div>
+
+          <div class="rounded-2xl bg-slate-50 p-4">
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Consultation fee</p>
+            <p class="mt-2 font-bold text-slate-950">₹{{ currentDoctor()!.consultationFee }}</p>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p class="text-sm font-bold text-amber-900">
+            Email editing is planned for a future end-to-end implementation once the API and validation flow are connected.
+          </p>
+        </div>
+      </article>
+
+      <aside class="space-y-6">
+        <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+          <p class="text-lg font-black text-slate-950">
+            Activation Status
+          </p>
+
+          <div class="mt-5 rounded-2xl bg-slate-50 p-4">
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Current status</p>
+
+            @if (isDoctorActive) {
+              <p class="mt-2 font-bold text-green-700">
+                Active and accepting appointment requests
+              </p>
+            } @else {
+              <p class="mt-2 font-bold text-slate-600">
+                Inactive and not accepting new appointment requests
+              </p>
+            }
+          </div>
+
+          <button
+            type="button"
+            (click)="openActivationModal(!isDoctorActive)"
+            [class]="isDoctorActive
+              ? 'mt-5 rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700'
+              : 'mt-5 rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700'">
+            {{ isDoctorActive ? 'Deactivate profile' : 'Activate profile' }}
+          </button>
+        </section>
+
+        <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-lg font-black text-slate-950">
+              Password
+            </p>
+
+            <button
+              type="button"
+              (click)="togglePasswordChange()"
+              class="rounded-full bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200">
+              {{ showPasswordChange ? 'Cancel' : 'Change' }}
+            </button>
+          </div>
+
+          @if (showPasswordChange) {
+            <div class="mt-5 space-y-4">
+              <div>
+                <label for="currentPassword" class="text-sm font-bold text-slate-700">Current password</label>
+                <input
+                  id="currentPassword"
+                  type="password"
+                  [(ngModel)]="changePasswordForm.currentPassword"
+                  class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+              </div>
+
+              <div>
+                <label for="newPassword" class="text-sm font-bold text-slate-700">New password</label>
+                <input
+                  id="newPassword"
+                  type="password"
+                  [(ngModel)]="changePasswordForm.newPassword"
+                  maxlength="100"
+                  class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+                <p class="mt-2 text-xs font-semibold text-slate-500">
+                  Minimum 8 characters.
+                </p>
+              </div>
+
+              <div>
+                <label for="confirmNewPassword" class="text-sm font-bold text-slate-700">Confirm new password</label>
+                <input
+                  id="confirmNewPassword"
+                  type="password"
+                  [(ngModel)]="changePasswordForm.confirmNewPassword"
+                  class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+
+                @if (passwordMismatch) {
+                  <p class="mt-2 text-xs font-bold text-red-600">
+                    New password and confirm password do not match.
+                  </p>
+                }
+              </div>
+
+              <button
+                type="button"
+                (click)="changePassword()"
+                [disabled]="!canChangePassword"
+                class="rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
+                {{ isPasswordChanging() ? 'Saving...' : 'Save password' }}
+              </button>
+            </div>
+          }
+
+          @if (!showPasswordChange) {
+            <p class="mt-4 text-sm font-semibold text-slate-500">
+              Use this section to update your password.
+            </p>
+          }
+        </section>
+      </aside>
+    </section>
+  }
+</div>
+
+@if (selectedActivationState !== null) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
+    <section class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="text-sm font-bold uppercase tracking-wider text-blue-600">
+            Confirm Status Change
+          </p>
+
+          <h2 class="mt-2 text-2xl font-black text-slate-950">
+            {{ selectedActivationState ? 'Activate profile?' : 'Deactivate profile?' }}
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          (click)="closeActivationModal()"
+          class="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200">
+          Close
+        </button>
+      </div>
+
+      <p class="mt-5 text-sm font-semibold leading-6 text-slate-600">
+        {{ selectedActivationState
+          ? 'You will start accepting new appointment requests again.'
+          : 'You will stop accepting new appointment requests. Existing appointments remain visible and manageable.' }}
+      </p>
+
+      @if (activationErrorMessage()) {
+        <p class="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100">
+          {{ activationErrorMessage() }}
+        </p>
+      }
+
+      <div class="mt-6 flex flex-wrap gap-3">
+        <button
+          type="button"
+          (click)="confirmActivationChange()"
+          [disabled]="isActivationUpdating()"
+          [class]="selectedActivationState
+            ? 'rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50'
+            : 'rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50'">
+          {{ isActivationUpdating() ? 'Saving...' : (selectedActivationState ? 'Activate' : 'Deactivate') }}
+        </button>
+
+        <button
+          type="button"
+          (click)="closeActivationModal()"
+          class="rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200">
+          Cancel
+        </button>
+      </div>
+    </section>
+  </div>
+}

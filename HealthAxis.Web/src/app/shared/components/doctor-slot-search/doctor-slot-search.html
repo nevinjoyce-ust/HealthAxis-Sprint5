@@ -2,28 +2,28 @@
   <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
     <div>
       <p class="text-sm font-bold uppercase tracking-wider text-blue-600">
-        Find appointments
+        Find doctors
       </p>
 
       <h2 class="mt-2 text-3xl font-black tracking-tight text-slate-950">
-        Search available doctor slots
+        Search doctors by name or specialisation
       </h2>
 
       <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-        Choose a date and specialisation to view available appointment times.
+        Browse available doctors and choose the right specialisation for your care.
       </p>
     </div>
 
-    <div class="grid gap-3 sm:grid-cols-[180px_220px_auto]">
+    <div class="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_220px_auto]">
       <div>
-        <label for="slotDate" class="text-sm font-bold text-slate-700">
-          Date
+        <label for="doctorSearchText" class="text-sm font-bold text-slate-700">
+          Search
         </label>
 
         <input
-          id="slotDate"
-          type="date"
-          [(ngModel)]="selectedDate"
+          id="doctorSearchText"
+          [(ngModel)]="searchText"
+          placeholder="Enter doctor name"
           class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
       </div>
 
@@ -48,79 +48,110 @@
 
       <button
         type="button"
-        (click)="searchSlots()"
-        class="rounded-full bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 sm:self-end">
-        Search
+        (click)="clearFilters()"
+        class="rounded-full bg-slate-100 px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200 sm:self-end">
+        Clear
       </button>
     </div>
   </div>
 
-  @if (hasSearched && doctors.length === 0) {
-    <div class="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-      <h3 class="font-bold text-slate-900">
-        No available appointments for this day.
-      </h3>
+  <div class="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <label class="inline-flex cursor-pointer items-center gap-3 rounded-full bg-slate-100 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200">
+      <input
+        type="checkbox"
+        [(ngModel)]="onlyShowAvailableDoctors"
+        class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+      Only show available doctors
+    </label>
 
-      <p class="mt-2 text-sm text-slate-500">
-        Try another date or specialisation.
-      </p>
+    <div>
+      <p class="text-sm font-bold text-slate-700">Sort by</p>
+
+      <div class="mt-2 grid grid-cols-2 overflow-hidden rounded-2xl bg-slate-100 p-1">
+        <button
+          type="button"
+          (click)="setSortBy('experience')"
+          [class]="sortBy === 'experience'
+            ? 'rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm'
+            : 'rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:bg-white/70'">
+          Experience
+        </button>
+
+        <button
+          type="button"
+          (click)="setSortBy('fee')"
+          [class]="sortBy === 'fee'
+            ? 'rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm'
+            : 'rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:bg-white/70'">
+          Fee
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-bold text-blue-800">
+      Loading doctors...
     </div>
   }
 
-  @if (doctors.length > 0) {
-    <div class="mt-6 grid gap-4 lg:grid-cols-3">
-      @for (doctor of doctors; track doctor.doctorId) {
-        <article class="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <h3 class="text-lg font-black text-slate-950">
-                {{ doctor.doctorName }}
-              </h3>
+  @if (errorMessage()) {
+    <div class="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
+      {{ errorMessage() }}
+    </div>
+  }
 
-              <p class="mt-1 text-sm font-bold text-blue-600">
-                {{ formatSpecialisation(doctor.specialisation) }}
-              </p>
-            </div>
+  <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <p class="text-lg font-black text-slate-950">
+      Doctors
+    </p>
 
-            <div class="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-              Available
-            </div>
-          </div>
+    <p class="text-sm font-semibold text-slate-500">
+      Showing {{ filteredDoctors.length }} doctor(s)
+    </p>
+  </div>
 
-          <div class="mt-4 grid gap-2 text-sm text-slate-600">
-            <div class="flex justify-between">
-              <span>Experience</span>
-              <span class="font-bold text-slate-900">
-                {{ doctor.yearsOfExperience }} years
-              </span>
-            </div>
+  <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+        <tr>
+          <th class="px-4 py-3">Doctor</th>
+          <th class="px-4 py-3">Specialisation</th>
+          <th class="px-4 py-3">Experience</th>
+          <th class="px-4 py-3">Fee</th>
+          <th class="px-4 py-3">Availability</th>
+        </tr>
+      </thead>
 
-            <div class="flex justify-between">
-              <span>Fee</span>
-              <span class="font-bold text-slate-900">
-                ₹{{ doctor.consultationFee }}
-              </span>
-            </div>
-          </div>
-
-          <div class="mt-5">
-            <p class="text-sm font-bold text-slate-700">
-              Available slots
-            </p>
-
-            <div class="mt-3 flex flex-wrap gap-2">
-              @for (slot of doctor.availableSlots; track slot) {
-                <a
-                  [routerLink]="getSlotRouterLink(doctor.doctorId, slot)"
-                  [queryParams]="getSlotQueryParams(doctor.doctorId, slot)"
-                  class="rounded-full bg-white px-3 py-2 text-xs font-bold text-blue-700 ring-1 ring-blue-100 hover:bg-blue-600 hover:text-white">
-                  {{ formatTime(slot) }}
-                </a>
+      <tbody class="divide-y divide-slate-100">
+        @for (doctor of filteredDoctors; track doctor.id) {
+          <tr>
+            <td class="px-4 py-4 font-bold text-slate-900">{{ doctor.fullName }}</td>
+            <td class="px-4 py-4 text-slate-600">{{ formatSpecialisation(doctor.specialisation) }}</td>
+            <td class="px-4 py-4 font-semibold text-slate-700">{{ doctor.yearsOfExperience }} years</td>
+            <td class="px-4 py-4 font-semibold text-slate-700">₹{{ doctor.consultationFee }}</td>
+            <td class="px-4 py-4">
+              @if (doctor.isAvailable) {
+                <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
+                  Available
+                </span>
+              } @else {
+                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                  Unavailable
+                </span>
               }
-            </div>
-          </div>
-        </article>
-      }
-    </div>
-  }
+            </td>
+          </tr>
+        }
+
+        @if (filteredDoctors.length === 0) {
+          <tr>
+            <td colspan="5" class="px-4 py-8 text-center text-sm font-semibold text-slate-500">
+              No doctors to show.
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
 </section>

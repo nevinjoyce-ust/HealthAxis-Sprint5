@@ -1,42 +1,23 @@
 @page "/logout"
-@attribute [Authorize(Roles = AppRoles.Admin)]
-@using HealthAxis.Shared.Constants
-@inject IAuthService AuthService
+
+@using HealthAxis.Admin.Auth
+@using HealthAxis.Admin.Constants
+@using HealthAxis.Admin.Services
+
+@inject ITokenService TokenService
+@inject CustomAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavigationManager
 
-<PageTitle>Logout - HealthAxis Admin</PageTitle>
-
-<AdminPageHeader Kicker="Session"
-                 Title="Logout" />
-
-<section class="admin-card logout-card logout-card-clean">
-    <div>
-        <h3>Sign out?</h3>
-        <p class="text-muted mb-0">
-            Your current admin session will be removed from this browser.
-        </p>
-    </div>
-
-    <div class="form-actions">
-        <button class="btn btn-soft-danger" type="button" @onclick="ConfirmLogoutAsync">
-            Log out
-        </button>
-
-        <button class="btn btn-soft-secondary" type="button" @onclick="CancelLogout">
-            Cancel
-        </button>
-    </div>
-</section>
+<p>Signing you out...</p>
 
 @code {
-    private async Task ConfirmLogoutAsync()
+    protected override async Task OnInitializedAsync()
     {
-        await AuthService.LogoutAsync();
-        NavigationManager.NavigateTo("/login", forceLoad: true);
-    }
+        await TokenService.ClearTokensAsync();
+        AuthStateProvider.NotifyUserLoggedOut();
 
-    private void CancelLogout()
-    {
-        NavigationManager.NavigateTo("/dashboard");
+        NavigationManager.NavigateTo(
+            $"{AppUrls.AngularLoginUrl}?reason=logged-out",
+            forceLoad: true);
     }
 }

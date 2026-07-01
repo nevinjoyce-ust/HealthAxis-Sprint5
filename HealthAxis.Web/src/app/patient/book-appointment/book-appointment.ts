@@ -1,8 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { MockData } from '../../core/services/mock-data';
+import { PatientService } from '../../core/services/patient-service';
 import {
   DoctorAvailableSlots,
   DoctorSpecialisation
@@ -20,10 +20,16 @@ interface SelectedSlot {
   templateUrl: './book-appointment.html',
   styleUrl: './book-appointment.css'
 })
-export class BookAppointment {
-  private readonly mockData = inject(MockData);
+export class BookAppointment implements OnInit {
+  private readonly patientService = inject(PatientService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+
+  readonly doctorSlots = signal<DoctorAvailableSlots[]>([]);
+  readonly isLoadingSlots = signal(false);
+  readonly slotsErrorMessage = signal('');
+  readonly bookingErrorMessage = signal('');
+  readonly isBooking = signal(false);
 
   bookingDate = this.getDefaultBookingDate();
   selectedSpecialisation: DoctorSpecialisation | '' = '';
@@ -31,8 +37,6 @@ export class BookAppointment {
 
   selectedSlot: SelectedSlot | null = null;
   bookingSuccess = false;
-
-  doctorSlots: DoctorAvailableSlots[] = this.mockData.getDoctorAvailableSlots();
 
   specialisationOptions: DoctorSpecialisation[] = [
     'Cardiology',
@@ -58,11 +62,17 @@ export class BookAppointment {
         ? specialisation
         : '';
       this.searchText = search ?? '';
+
+      this.loadAvailableSlots();
     });
   }
 
+  ngOnInit(): void {
+    this.loadAvailableSlots();
+  }
+
   get filteredDoctorSlots(): DoctorAvailableSlots[] {
-    return this.doctorSlots
+    return this.doctorSlots()
       .filter(doctor => doctor.isAvailable)
       .filter(doctor => this.matchesSpecialisation(doctor))
       .filter(doctor => this.matchesSearchText(doctor));
@@ -94,6 +104,28 @@ export class BookAppointment {
     });
   }
 
+  loadAvailableSlots(): void {
+    if (!this.bookingDate) {
+      return;
+    }
+
+    this.isLoadingSlots.set(true);
+    this.slotsErrorMessage.set('');
+
+    this.patientService.getAvailableDoctorSlots(this.bookingDate, this.selectedSpecialisation)
+      .subscribe({
+        next: doctorSlots => {
+          this.doctorSlots.set(doctorSlots);
+          this.isLoadingSlots.set(false);
+        },
+        error: error => {
+          console.error('Failed to load available slots.', error);
+          this.slotsErrorMessage.set(error?.error?.message ?? 'Unable to load available slots.');
+          this.isLoadingSlots.set(false);
+        }
+      });
+  }
+
   openBookingConfirmation(doctor: DoctorAvailableSlots, time: string): void {
     this.selectedSlot = {
       doctor,
@@ -101,18 +133,39 @@ export class BookAppointment {
       time
     };
     this.bookingSuccess = false;
+    this.bookingErrorMessage.set('');
   }
 
   closeBookingConfirmation(): void {
     this.selectedSlot = null;
+    this.bookingErrorMessage.set('');
+    this.isBooking.set(false);
   }
 
   confirmBooking(): void {
-    if (!this.selectedSlot) {
+    if (!this.selectedSlot || this.isBooking()) {
       return;
     }
 
-    this.bookingSuccess = true;
+    this.isBooking.set(true);
+    this.bookingErrorMessage.set('');
+
+    this.patientService.createCurrentPatientAppointment(
+      this.selectedSlot.doctor.doctorId,
+      this.selectedSlot.date,
+      this.selectedSlot.time
+    ).subscribe({
+      next: () => {
+        this.bookingSuccess = true;
+        this.isBooking.set(false);
+        this.loadAvailableSlots();
+      },
+      error: error => {
+        console.error('Failed to book appointment.', error);
+        this.bookingErrorMessage.set(error?.error?.message ?? 'Unable to book appointment.');
+        this.isBooking.set(false);
+      }
+    });
   }
 
   goToPendingAppointments(): void {
@@ -147,15 +200,15 @@ export class BookAppointment {
       doctor.specialisation === this.selectedSpecialisation;
   }
 
- private matchesSearchText(doctor: DoctorAvailableSlots): boolean {
-  const normalizedSearchText = this.searchText.trim().toLowerCase();
+  private matchesSearchText(doctor: DoctorAvailableSlots): boolean {
+    const normalizedSearchText = this.searchText.trim().toLowerCase();
 
-  if (!normalizedSearchText) {
-    return true;
+    if (!normalizedSearchText) {
+      return true;
+    }
+
+    return doctor.doctorName.toLowerCase().includes(normalizedSearchText);
   }
-
-  return doctor.doctorName.toLowerCase().includes(normalizedSearchText);
-}
 
   private isValidSpecialisation(value: string | null): value is DoctorSpecialisation {
     return this.specialisationOptions.includes(value as DoctorSpecialisation);

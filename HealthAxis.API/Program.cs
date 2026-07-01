@@ -14,6 +14,7 @@ using Microsoft.OpenApi;
 using Serilog;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -42,7 +43,9 @@ try
             policy
                 .WithOrigins(
                     "https://localhost:7041",
-                    "http://localhost:5291")
+                    "http://localhost:5291",
+                    "http://localhost:4200",
+                    "https://localhost:4200")
                 .AllowAnyHeader()
                 .AllowAnyMethod();
         });
@@ -138,6 +141,8 @@ try
     builder.Services.AddScoped<IAppointmentService, AppointmentService>();
     builder.Services.AddScoped<IHealthRecordService, HealthRecordService>();
     builder.Services.AddScoped<IAdminService, AdminService>();
+    builder.Services.AddMemoryCache();
+    builder.Services.AddScoped<IAdminHandoffService, AdminHandoffService>();
 
     builder.Services.AddAutoMapper(cfg =>
     {
@@ -175,7 +180,12 @@ try
         app.UseSwaggerUI();
     }
 
-    app.UseHttpsRedirection();
+
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHttpsRedirection();
+    }
+
 
     app.UseCors(HealthAxisAdminCorsPolicy);
 
@@ -183,8 +193,6 @@ try
     app.UseAuthorization();
 
     app.MapControllers();
-
-    app.MapGet("/", () => $"{appName} is running successfully.");
 
     Log.Information("Starting {ApplicationName}", appName);
 

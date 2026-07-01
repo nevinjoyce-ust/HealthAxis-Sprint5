@@ -20,4 +20,8 @@ public interface IHealthRecordService
     Task<HealthRecordDto> GetHealthRecordByIdAsync(int id);
 
     Task<HealthRecordDto> CreateHealthRecordAsync(CreateHealthRecordDto dto, int doctorId);
+
+    Task<PagedResultDto<HealthRecordDto>> GetHealthRecordsByDoctorIdAsync(
+        int doctorId,
+        PaginationQueryDto pagination);
 }
