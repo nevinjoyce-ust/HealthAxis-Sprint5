@@ -4,12 +4,12 @@
       <p class="text-sm font-bold uppercase tracking-wider text-blue-600">Patient Portal</p>
       <h1 class="mt-2 text-4xl font-black tracking-tight text-slate-950">Profile Details</h1>
     </div>
+
     @if (!isEditMode && patient()) {
       <button
         type="button"
         (click)="startEditing()"
-        class="rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700"
-      >
+        class="rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700">
         Edit profile
       </button>
     }
@@ -20,16 +20,19 @@
       <p class="text-sm font-bold text-blue-800">Loading profile details...</p>
     </section>
   }
+
   @if (profileErrorMessage()) {
     <section class="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 shadow-sm">
       <p class="text-sm font-bold text-red-800">{{ profileErrorMessage() }}</p>
     </section>
   }
+
   @if (saveSuccess) {
     <section class="rounded-3xl border border-green-200 bg-green-50 px-5 py-4 shadow-sm">
       <p class="text-sm font-bold text-green-800">Profile details updated successfully.</p>
     </section>
   }
+
   @if (passwordSuccess) {
     <section class="rounded-3xl border border-green-200 bg-green-50 px-5 py-4 shadow-sm">
       <p class="text-sm font-bold text-green-800">Password changed successfully.</p>
@@ -41,194 +44,262 @@
       <article class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p class="text-lg font-black text-blue-700">Patient Information</p>
+
           @if (isEditMode) {
             <div class="flex flex-wrap gap-3">
               <button
                 type="button"
                 (click)="saveProfile()"
                 [disabled]="!canSaveProfile || isSaving()"
-                class="rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {{ isSaving() ? 'Saving...' : 'Save changes' }}</button
-              ><button
+                class="rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
+                {{ isSaving() ? 'Saving...' : 'Save changes' }}
+              </button>
+
+              <button
                 type="button"
                 (click)="cancelEditing()"
-                class="rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200"
-              >
+                class="rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200">
                 Cancel
               </button>
             </div>
           }
         </div>
+
         @if (saveErrorMessage()) {
-          <p
-            class="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100"
-          >
+          <p class="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100">
             {{ saveErrorMessage() }}
           </p>
         }
+
         @if (!isEditMode) {
           <div class="mt-6 grid gap-4 md:grid-cols-2">
             <div class="rounded-2xl bg-slate-50 p-4">
               <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Full name</p>
               <p class="mt-2 font-bold text-slate-950">{{ patient.fullName }}</p>
             </div>
+
             <div class="rounded-2xl bg-slate-50 p-4">
               <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Email</p>
               <p class="mt-2 font-bold text-slate-950">{{ patient.email }}</p>
             </div>
+
             <div class="rounded-2xl bg-slate-50 p-4">
               <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Date of birth</p>
               <p class="mt-2 font-bold text-slate-950">{{ formatDate(patient.dateOfBirth) }}</p>
             </div>
+
             <div class="rounded-2xl bg-slate-50 p-4">
               <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Gender</p>
               <p class="mt-2 font-bold text-slate-950">{{ patient.gender }}</p>
             </div>
+
             <div class="rounded-2xl bg-slate-50 p-4">
               <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Phone number</p>
               <p class="mt-2 font-bold text-slate-950">{{ patient.phoneNumber }}</p>
             </div>
+
             <div class="rounded-2xl bg-slate-50 p-4">
               <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Address</p>
               <p class="mt-2 font-bold text-slate-950">{{ patient.address }}</p>
             </div>
           </div>
         }
+
         @if (isEditMode) {
-          <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <form [formGroup]="profileForm" class="mt-6 grid gap-4 md:grid-cols-2">
             <div>
-              <label for="fullName" class="text-sm font-bold text-slate-700">Full name</label
-              ><input
+              <label for="fullName" class="text-sm font-bold text-slate-700">Full name</label>
+              <input
                 id="fullName"
-                [(ngModel)]="updatePatient.fullName"
+                formControlName="fullName"
                 maxlength="100"
-                class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-              />
+                class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+
+              @if (profileForm.controls.fullName.touched && profileForm.controls.fullName.invalid) {
+                <p class="mt-2 text-xs font-bold text-red-600">
+                  Enter a valid full name.
+                </p>
+              }
             </div>
+
             <div>
-              <label for="email" class="text-sm font-bold text-slate-700">Email</label
-              ><input
+              <label for="email" class="text-sm font-bold text-slate-700">Email</label>
+              <input
                 id="email"
                 type="email"
-                [value]="patient.email"
-                disabled
-                class="mt-2 w-full cursor-not-allowed rounded-2xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-500"
-              />
-              <p class="mt-2 text-xs font-semibold text-slate-500">
-                Email editing will be handled separately.
-              </p>
+                formControlName="email"
+                maxlength="256"
+                class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+
+              @if (profileForm.controls.email.touched && profileForm.controls.email.invalid) {
+                <p class="mt-2 text-xs font-bold text-red-600">
+                  Enter a valid email address.
+                </p>
+              }
             </div>
+
             <div>
-              <label for="dateOfBirth" class="text-sm font-bold text-slate-700">Date of birth</label
-              ><input
+              <label for="dateOfBirth" class="text-sm font-bold text-slate-700">Date of birth</label>
+              <input
                 id="dateOfBirth"
                 type="date"
-                [(ngModel)]="updatePatient.dateOfBirth"
-                class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-              />
+                formControlName="dateOfBirth"
+                class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+
+              @if (profileForm.controls.dateOfBirth.touched && profileForm.controls.dateOfBirth.invalid) {
+                <p class="mt-2 text-xs font-bold text-red-600">
+                  Date of birth is required.
+                </p>
+              }
             </div>
+
             <div>
-              <label for="gender" class="text-sm font-bold text-slate-700">Gender</label
-              ><input
+              <label for="gender" class="text-sm font-bold text-slate-700">Gender</label>
+              <select
                 id="gender"
-                [(ngModel)]="updatePatient.gender"
-                maxlength="20"
-                class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-              />
+                formControlName="gender"
+                class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100">
+                <option value="">Select gender</option>
+                @for (gender of genderOptions; track gender) {
+                  <option [value]="gender">{{ gender }}</option>
+                }
+              </select>
+
+              @if (profileForm.controls.gender.touched && profileForm.controls.gender.invalid) {
+                <p class="mt-2 text-xs font-bold text-red-600">
+                  Please select a gender.
+                </p>
+              }
             </div>
+
             <div>
-              <label for="phoneNumber" class="text-sm font-bold text-slate-700">Phone number</label
-              ><input
+              <label for="phoneNumber" class="text-sm font-bold text-slate-700">Phone number</label>
+              <input
                 id="phoneNumber"
-                [(ngModel)]="updatePatient.phoneNumber"
-                maxlength="20"
-                class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-              />
+                formControlName="phoneNumber"
+                maxlength="10"
+                class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+
+              @if (profileForm.controls.phoneNumber.touched && profileForm.controls.phoneNumber.invalid) {
+                <p class="mt-2 text-xs font-bold text-red-600">
+                  Enter a valid 10-digit phone number starting with 6, 7, 8, or 9.
+                </p>
+              }
             </div>
+
             <div>
-              <label for="address" class="text-sm font-bold text-slate-700">Address</label
-              ><input
+              <label for="address" class="text-sm font-bold text-slate-700">Address</label>
+              <input
                 id="address"
-                [(ngModel)]="updatePatient.address"
+                formControlName="address"
                 maxlength="250"
-                class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-              />
+                class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+
+              @if (profileForm.controls.address.touched && profileForm.controls.address.invalid) {
+                <p class="mt-2 text-xs font-bold text-red-600">
+                  Address must be between 5 and 250 characters.
+                </p>
+              }
             </div>
-          </div>
+          </form>
         }
       </article>
+
       <aside class="space-y-6">
         <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
           <div class="flex items-center justify-between gap-4">
             <p class="text-lg font-black text-slate-950">Password</p>
+
             <button
               type="button"
               (click)="togglePasswordChange()"
-              class="rounded-full bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200"
-            >
+              class="rounded-full bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200">
               {{ showPasswordChange ? 'Cancel' : 'Change' }}
             </button>
           </div>
+
           @if (passwordErrorMessage()) {
-            <p
-              class="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100"
-            >
+            <p class="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100">
               {{ passwordErrorMessage() }}
             </p>
           }
+
           @if (showPasswordChange) {
             <div class="mt-5 space-y-4">
               <div>
-                <label for="currentPassword" class="text-sm font-bold text-slate-700"
-                  >Current password</label
-                ><input
+                <label for="currentPassword" class="text-sm font-bold text-slate-700">
+                  Current password
+                </label>
+                <input
                   id="currentPassword"
                   type="password"
                   [(ngModel)]="changePasswordRequest.currentPassword"
-                  class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                />
+                  class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+
+                @if (passwordSubmitted && !isCurrentPasswordValid) {
+                  <p class="mt-2 text-xs font-bold text-red-600">
+                    Current password is required.
+                  </p>
+                }
               </div>
+
               <div>
-                <label for="newPassword" class="text-sm font-bold text-slate-700"
-                  >New password</label
-                ><input
+                <label for="newPassword" class="text-sm font-bold text-slate-700">
+                  New password
+                </label>
+                <input
                   id="newPassword"
                   type="password"
                   [(ngModel)]="changePasswordRequest.newPassword"
                   maxlength="100"
-                  class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                />
-                <p class="mt-2 text-xs font-semibold text-slate-500">Minimum 8 characters.</p>
+                  class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+                <p class="mt-2 text-xs font-semibold text-slate-500">
+                  Must be 8-100 characters and include uppercase, lowercase, number, and special character.
+                </p>
+
+                @if (passwordSubmitted && !isNewPasswordValid) {
+                  <p class="mt-2 text-xs font-bold text-red-600">
+                    Enter a stronger password with uppercase, lowercase, number, and special character.
+                  </p>
+                }
+
+                @if (passwordSubmitted && isNewPasswordSameAsCurrent) {
+                  <p class="mt-2 text-xs font-bold text-red-600">
+                    New password must be different from the current password.
+                  </p>
+                }
               </div>
+
               <div>
-                <label for="confirmNewPassword" class="text-sm font-bold text-slate-700"
-                  >Confirm new password</label
-                ><input
+                <label for="confirmNewPassword" class="text-sm font-bold text-slate-700">
+                  Confirm new password
+                </label>
+                <input
                   id="confirmNewPassword"
                   type="password"
                   [(ngModel)]="changePasswordRequest.confirmNewPassword"
-                  class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                />
-                @if (passwordMismatch) {
+                  class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+
+                @if (passwordMismatch || (passwordSubmitted && !isConfirmPasswordValid)) {
                   <p class="mt-2 text-xs font-bold text-red-600">
                     New password and confirm password do not match.
                   </p>
                 }
               </div>
+
               <button
                 type="button"
                 (click)="changePassword()"
-                [disabled]="!canChangePassword || isChangingPassword()"
-                class="rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
+                [disabled]="isChangingPassword()"
+                class="rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
                 {{ isChangingPassword() ? 'Saving...' : 'Save password' }}
               </button>
             </div>
           }
+
           @if (!showPasswordChange) {
             <p class="mt-4 text-sm font-semibold text-slate-500">
-              Use this section to update the current patient's password.
+              Use this section to update your password.
             </p>
           }
         </section>

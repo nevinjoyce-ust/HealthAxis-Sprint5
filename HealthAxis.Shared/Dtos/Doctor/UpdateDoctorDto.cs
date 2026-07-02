@@ -18,7 +18,7 @@ public class UpdateDoctorDto
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Phone number is required.")]
-    [Phone(ErrorMessage = "Please enter a valid phone number.")]
+    [RegularExpression(@"^[6-9]\d{9}$", ErrorMessage = "Phone number must be a valid 10-digit number.")]
     public string PhoneNumber { get; set; } = string.Empty;
 
     [JsonRequired]

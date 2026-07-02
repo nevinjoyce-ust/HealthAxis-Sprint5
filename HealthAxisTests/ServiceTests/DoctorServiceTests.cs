@@ -72,14 +72,26 @@ public class DoctorServiceTests
         }
     };
 
-        var pagination = new PaginationQueryDto
+        var query = new DoctorSearchQueryDto
         {
             PageNumber = 1,
-            PageSize = 10
+            PageSize = 10,
+            Search = null,
+            Specialisation = null,
+            IsAvailable = null,
+            SortBy = DoctorSortBy.Name,
+            SortDirection = SortDirection.Asc
         };
 
         _doctorRepositoryMock
-            .Setup(repo => repo.GetAllDoctorsAsync(1, 10, null))
+            .Setup(repo => repo.GetAllDoctorsAsync(
+                query.PageNumber,
+                query.PageSize,
+                query.Search,
+                query.Specialisation,
+                query.IsAvailable,
+                query.SortBy,
+                query.SortDirection))
             .ReturnsAsync(pagedDoctors);
 
         _mapperMock
@@ -87,7 +99,7 @@ public class DoctorServiceTests
             .Returns(mappedDoctorDtos);
 
         // Act
-        var result = await _doctorService.GetAllDoctorsAsync(pagination, null);
+        var result = await _doctorService.GetAllDoctorsAsync(query);
 
         // Assert
         Assert.NotNull(result);
@@ -123,14 +135,26 @@ public class DoctorServiceTests
 
         var mappedDoctorDtos = new List<PublicDoctorDto>();
 
-        var pagination = new PaginationQueryDto
+        var query = new DoctorSearchQueryDto
         {
             PageNumber = 1,
-            PageSize = 10
+            PageSize = 10,
+            Search = null,
+            Specialisation = null,
+            IsAvailable = null,
+            SortBy = DoctorSortBy.Name,
+            SortDirection = SortDirection.Asc
         };
 
         _doctorRepositoryMock
-            .Setup(repo => repo.GetAllDoctorsAsync(1, 10, null))
+            .Setup(repo => repo.GetAllDoctorsAsync(
+                query.PageNumber,
+                query.PageSize,
+                query.Search,
+                query.Specialisation,
+                query.IsAvailable,
+                query.SortBy,
+                query.SortDirection))
             .ReturnsAsync(pagedDoctors);
 
         _mapperMock
@@ -138,7 +162,7 @@ public class DoctorServiceTests
             .Returns(mappedDoctorDtos);
 
         // Act
-        var result = await _doctorService.GetAllDoctorsAsync(pagination, null);
+        var result = await _doctorService.GetAllDoctorsAsync(query);
 
         // Assert
         Assert.NotNull(result);
@@ -151,7 +175,6 @@ public class DoctorServiceTests
         Assert.False(result.HasPreviousPage);
         Assert.False(result.HasNextPage);
     }
-
     [Fact]
     public async Task GetDoctorByIdAsync_WhenDoctorExists_ShouldReturnPublicDoctorDto()
     {

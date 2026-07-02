@@ -12,6 +12,9 @@ public class HealthRecord
     public int AppointmentId { get; set; }
 
     [Required]
+    public int PatientAge { get; set; }
+
+    [Required]
     public DateOnly VisitDate { get; set; }
 
     [Required]

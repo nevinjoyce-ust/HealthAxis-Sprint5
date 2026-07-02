@@ -56,16 +56,18 @@ public class PatientService(
         {
             throw new NotFoundException(ErrorMessages.PatientAccountNotFound);
         }
+        var email = dto.Email.Trim();
+        
+        await EnsureEmailIsAvailableForUserAsync(email, patient.UserId);
 
-        await EnsureEmailIsAvailableForUserAsync(dto.Email, patient.UserId);
-
-        patient.FullName = dto.FullName;
+        patient.FullName = dto.FullName.Trim();
         patient.DateOfBirth = dto.DateOfBirth;
-        patient.Gender = dto.Gender;
-        patient.Address = dto.Address;
-        patient.User.Email = dto.Email.Trim();
-        patient.User.UserName = dto.Email.Trim();
-        patient.User.PhoneNumber = dto.PhoneNumber;
+        patient.Gender = dto.Gender.Trim();
+        patient.Address = dto.Address.Trim();
+
+        patient.User.Email = email;
+        patient.User.UserName = email;
+        patient.User.PhoneNumber = dto.PhoneNumber.Trim();
         patient.User.EmailConfirmed = true;
 
         var updateUserResult = await userManager.UpdateAsync(patient.User);

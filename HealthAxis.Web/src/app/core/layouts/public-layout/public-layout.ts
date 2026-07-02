@@ -13,8 +13,12 @@ export class PublicLayout {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
-  get isLoggedIn(): boolean {
-    return this.auth.isLoggedIn();
+  get showLoggedInPublicActions(): boolean {
+    return !!this.auth.getDashboardUrl();
+  }
+
+  logout(): void {
+    this.auth.logout();
   }
 
   scrollToDoctors(): void {

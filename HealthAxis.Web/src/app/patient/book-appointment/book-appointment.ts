@@ -82,6 +82,19 @@ export class BookAppointment implements OnInit {
     return new Date().toISOString().split('T')[0];
   }
 
+  get maximumDate(): string {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 6);
+
+    return date.toISOString().split('T')[0];
+  }
+
+  get isBookingDateValid(): boolean {
+    return !!this.bookingDate &&
+      this.bookingDate >= this.minimumDate &&
+      this.bookingDate <= this.maximumDate;
+  }
+
   updateQueryParams(): void {
     this.router.navigate([], {
       relativeTo: this.route,
@@ -109,6 +122,12 @@ export class BookAppointment implements OnInit {
       return;
     }
 
+    if (!this.isBookingDateValid) {
+      this.doctorSlots.set([]);
+      this.slotsErrorMessage.set('Appointments cannot be booked more than 6 months in advance.');
+      return;
+    }
+
     this.isLoadingSlots.set(true);
     this.slotsErrorMessage.set('');
 
@@ -127,6 +146,11 @@ export class BookAppointment implements OnInit {
   }
 
   openBookingConfirmation(doctor: DoctorAvailableSlots, time: string): void {
+    if (!this.isBookingDateValid) {
+      this.bookingErrorMessage.set('Appointments cannot be booked more than 6 months in advance.');
+      return;
+    }
+
     this.selectedSlot = {
       doctor,
       date: this.bookingDate,
@@ -144,6 +168,11 @@ export class BookAppointment implements OnInit {
 
   confirmBooking(): void {
     if (!this.selectedSlot || this.isBooking()) {
+      return;
+    }
+
+    if (!this.isBookingDateValid) {
+      this.bookingErrorMessage.set('Appointments cannot be booked more than 6 months in advance.');
       return;
     }
 

@@ -18,14 +18,13 @@ public class DoctorsController(IDoctorService doctorService) : ControllerBase
 {
     [HttpGet]
     [AllowAnonymous]
-    public async Task<IActionResult> GetDoctors(
-        [FromQuery] DoctorSpecialisation? specialisation,
-        [FromQuery] PaginationQueryDto pagination)
+    public async Task<IActionResult> GetDoctors([FromQuery] DoctorSearchQueryDto query)
     {
-        var doctors = await doctorService.GetAllDoctorsAsync(pagination, specialisation);
+        var doctors = await doctorService.GetAllDoctorsAsync(query);
 
         return Ok(doctors);
     }
+    
 
     [HttpGet("available-slots")]
     [AllowAnonymous]
@@ -49,7 +48,7 @@ public class DoctorsController(IDoctorService doctorService) : ControllerBase
             return Forbid();
         }
 
-        var doctor = await doctorService.GetDoctorByIdAsync(doctorId.Value);
+        var doctor = await doctorService.GetDoctorProfileByIdAsync(doctorId.Value);
 
         if (doctor == null)
         {

@@ -8,8 +8,11 @@ public interface IDoctorRepository : IRepository<Doctor>
     Task<PagedResult<Doctor>> GetAllDoctorsAsync(
         int pageNumber,
         int pageSize,
-        DoctorSpecialisation? specialisation,
-        bool? isAvailable = null);
+        string? search = null,
+        DoctorSpecialisation? specialisation = null,
+        bool? isAvailable = null,
+        DoctorSortBy sortBy = DoctorSortBy.Name,
+        SortDirection sortDirection = SortDirection.Asc);
 
     Task<List<Doctor>> GetAvailableDoctorsAsync(DoctorSpecialisation? specialisation);
 

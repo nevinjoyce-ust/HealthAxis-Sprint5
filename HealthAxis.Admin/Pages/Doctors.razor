@@ -45,8 +45,16 @@
             OnClose="CancelForm">
     @if (_editingDoctorId is null)
     {
-        <EditForm EditContext="_createDoctorEditContext" OnValidSubmit="CreateDoctorAsync">
+        <EditForm EditContext="_createDoctorEditContext"
+                  OnValidSubmit="CreateDoctorAsync"
+                  OnInvalidSubmit="HandleDoctorFormInvalidSubmit">
             <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            @if (!string.IsNullOrWhiteSpace(_formErrorMessage))
+            {
+                <div class="alert alert-danger mt-3">@_formErrorMessage</div>
+            }
 
             <div class="form-grid">
                 <div>
@@ -57,13 +65,13 @@
 
                 <div>
                     <label class="form-label">Email</label>
-                    <input class="form-control" value="@_createDoctorForm.Email" @oninput="HandleCreateEmailInput" />
+                    <input class="form-control" type="email" value="@_createDoctorForm.Email" @oninput="HandleCreateEmailInput" />
                     <ValidationMessage For="@(() => _createDoctorForm.Email)" />
                 </div>
 
                 <div>
                     <label class="form-label">Phone number</label>
-                    <input class="form-control" maxlength="20" inputmode="tel" value="@_createDoctorForm.PhoneNumber" @oninput="HandleCreatePhoneNumberInput" />
+                    <input class="form-control" maxlength="10" inputmode="tel" value="@_createDoctorForm.PhoneNumber" @oninput="HandleCreatePhoneNumberInput" />
                     <ValidationMessage For="@(() => _createDoctorForm.PhoneNumber)" />
                 </div>
 
@@ -109,9 +117,20 @@
     }
     else
     {
-        <EditForm EditContext="_updateDoctorEditContext" OnValidSubmit="UpdateDoctorAsync">
+        <EditForm EditContext="_updateDoctorEditContext"
+                  OnValidSubmit="UpdateDoctorAsync"
+                  OnInvalidSubmit="HandleDoctorFormInvalidSubmit">
             <DataAnnotationsValidator />
+            <ValidationSummary />
 
+            @if (!string.IsNullOrWhiteSpace(_formErrorMessage))
+            {
+                <div class="alert alert-danger mt-3">@_formErrorMessage</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(_formSuccessMessage))
+            {
+                <div class="alert alert-success mt-3">@_formSuccessMessage</div>
+            }
             <div class="form-grid">
                 <div>
                     <label class="form-label">Full name</label>
@@ -121,13 +140,13 @@
 
                 <div>
                     <label class="form-label">Email</label>
-                    <input class="form-control" value="@_updateDoctorForm.Email" @oninput="HandleUpdateEmailInput" />
+                    <input class="form-control" type="email" value="@_updateDoctorForm.Email" @oninput="HandleUpdateEmailInput" />
                     <ValidationMessage For="@(() => _updateDoctorForm.Email)" />
                 </div>
 
                 <div>
                     <label class="form-label">Phone number</label>
-                    <input class="form-control" maxlength="20" inputmode="tel" value="@_updateDoctorForm.PhoneNumber" @oninput="HandleUpdatePhoneNumberInput" />
+                    <input class="form-control" maxlength="10" inputmode="tel" value="@_updateDoctorForm.PhoneNumber" @oninput="HandleUpdatePhoneNumberInput" />
                     <ValidationMessage For="@(() => _updateDoctorForm.PhoneNumber)" />
                 </div>
 
@@ -159,7 +178,7 @@
                 <button class="btn btn-primary" type="submit" disabled="@_isSaving">
                     @(_isSaving ? "Saving..." : "Save")
                 </button>
-                <button class="btn btn-outline-warning" type="button" disabled="@_isSaving" @onclick="() => OpenDoctorResetPasswordModal()">
+                <button class="btn btn-outline-warning" type="button" disabled="@_isSaving" @onclick="OpenDoctorResetPasswordModal">
                     Reset Password
                 </button>
                 <button class="btn btn-outline-secondary" type="button" @onclick="CancelForm" disabled="@_isSaving">
@@ -301,6 +320,7 @@
 <AdminResetPasswordModal IsOpen="@(_showResetPasswordModal && _editingDoctorId is not null)"
                          ResetPasswordForm="_resetPasswordForm"
                          IsSaving="_isResettingPassword"
+                         ErrorMessage="@_resetPasswordErrorMessage"
                          Title="Reset doctor password"
                          Description="Set a new password for this doctor account. The current password is not required."
                          OnConfirm="ResetDoctorPasswordAsync"
@@ -321,8 +341,11 @@
     private int? _editingDoctorId;
     private string? _errorMessage;
     private string? _successMessage;
+    private string? _formErrorMessage;
+    private string? _resetPasswordErrorMessage;
     private string _searchText = string.Empty;
     private string _cancellationReason = string.Empty;
+    private string? _formSuccessMessage;
 
     private DoctorSpecialisation? _selectedSpecialisation;
     private string _selectedSpecialisationValue = "All";
@@ -347,8 +370,8 @@
     private readonly PaginationQueryDto _appointmentPagination = new() { PageNumber = 1, PageSize = 5 };
 
     private string DeactivateDoctorMessage => _doctorPendingDeactivation is null
-    ? string.Empty
-    : $"Are you sure you want to deactivate <strong>Dr. {_doctorPendingDeactivation.FullName}</strong>?";
+        ? string.Empty
+        : $"Are you sure you want to deactivate <strong>Dr. {_doctorPendingDeactivation.FullName}</strong>?";
 
     private static string TodayInputValue => DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
 
@@ -413,6 +436,9 @@
         _editingDoctorId = null;
         _createDoctorForm = CreateEmptyDoctor();
         _createDoctorEditContext = new EditContext(_createDoctorForm);
+        _formErrorMessage = null;
+        _formSuccessMessage = null;
+        _resetPasswordErrorMessage = null;
         _errorMessage = null;
         _successMessage = null;
         CloseResetPasswordModal();
@@ -432,31 +458,43 @@
             ConsultationFee = doctor.ConsultationFee
         };
         _updateDoctorEditContext = new EditContext(_updateDoctorForm);
+        _formErrorMessage = null;
+        _resetPasswordErrorMessage = null;
         _errorMessage = null;
         _successMessage = null;
+        _formSuccessMessage = null;
         CloseResetPasswordModal();
         _showForm = true;
+    }
+
+    private void HandleDoctorFormInvalidSubmit()
+    {
+        _formErrorMessage = "Please correct the highlighted fields before saving.";
+        _successMessage = null;
+        _formSuccessMessage = null;
     }
 
     private async Task CreateDoctorAsync()
     {
         _isSaving = true;
+        _formErrorMessage = null;
         _errorMessage = null;
         _successMessage = null;
 
         try
         {
+            NormalizeCreateDoctorForm();
             var result = await DoctorAdminService.CreateDoctorAsync(_createDoctorForm);
 
             if (!result.IsSuccess)
             {
-                _errorMessage = result.ErrorMessage ?? "Unable to create doctor.";
+                _formErrorMessage = result.ErrorMessage ?? "Unable to create doctor.";
                 return;
             }
 
             if (result.Data is null)
             {
-                _errorMessage = "Unable to create doctor.";
+                _formErrorMessage = "Unable to create doctor.";
                 return;
             }
 
@@ -466,7 +504,7 @@
         }
         catch
         {
-            _errorMessage = "Unable to create doctor.";
+            _formErrorMessage = "Unable to create doctor.";
         }
         finally
         {
@@ -480,26 +518,28 @@
         {
             return;
         }
-
+        _formSuccessMessage = null;
         _isSaving = true;
+        _formErrorMessage = null;
         _errorMessage = null;
         _successMessage = null;
 
         try
         {
+            NormalizeUpdateDoctorForm();
             var result = await DoctorAdminService.UpdateDoctorAsync(
                 _editingDoctorId.Value,
                 _updateDoctorForm);
 
             if (!result.IsSuccess)
             {
-                _errorMessage = result.ErrorMessage ?? "Unable to update doctor.";
+                _formErrorMessage = result.ErrorMessage ?? "Unable to update doctor.";
                 return;
             }
 
             if (result.Data is null)
             {
-                _errorMessage = "Unable to update doctor.";
+                _formErrorMessage = "Unable to update doctor.";
                 return;
             }
 
@@ -509,7 +549,7 @@
         }
         catch
         {
-            _errorMessage = "Unable to update doctor.";
+            _formErrorMessage = "Unable to update doctor.";
         }
         finally
         {
@@ -523,7 +563,10 @@
         {
             return;
         }
+
         _resetPasswordForm = new AdminResetPasswordDto();
+        _resetPasswordErrorMessage = null;
+        _formSuccessMessage = null;
         _errorMessage = null;
         _successMessage = null;
         _showResetPasswordModal = true;
@@ -533,6 +576,7 @@
     {
         _showResetPasswordModal = false;
         _resetPasswordForm = new AdminResetPasswordDto();
+        _resetPasswordErrorMessage = null;
     }
 
     private async Task ResetDoctorPasswordAsync()
@@ -543,6 +587,8 @@
         }
 
         _isResettingPassword = true;
+        _resetPasswordErrorMessage = null;
+        _formSuccessMessage = null;
         _errorMessage = null;
         _successMessage = null;
 
@@ -554,16 +600,16 @@
 
             if (!result.IsSuccess)
             {
-                _errorMessage = result.ErrorMessage ?? "Unable to reset doctor password.";
+                _resetPasswordErrorMessage = result.ErrorMessage ?? "Unable to reset doctor password.";
                 return;
             }
 
-            _successMessage = result.Data ?? "Doctor password reset successfully.";
+            _formSuccessMessage = result.Data ?? "Doctor password reset successfully.";
             CloseResetPasswordModal();
         }
         catch
         {
-            _errorMessage = "Unable to reset doctor password.";
+            _resetPasswordErrorMessage = "Unable to reset doctor password.";
         }
         finally
         {
@@ -586,8 +632,10 @@
         {
             return;
         }
+
         _isLoadingAppointments = true;
         _errorMessage = null;
+
         try
         {
             _appointmentsPagedResult = await DoctorAdminService.GetDoctorAppointmentsAsync(
@@ -618,6 +666,7 @@
         _isSavingStatus = true;
         _errorMessage = null;
         _successMessage = null;
+
         try
         {
             var result = await AdminReportService.UpdateAppointmentStatusAsync(
@@ -665,14 +714,17 @@
         {
             return;
         }
+
         if (string.IsNullOrWhiteSpace(_cancellationReason))
         {
             _errorMessage = "Cancellation reason is required.";
             return;
         }
+
         _isSavingStatus = true;
         _errorMessage = null;
         _successMessage = null;
+
         try
         {
             var result = await AdminReportService.UpdateAppointmentStatusAsync(
@@ -729,24 +781,28 @@
     private void HandleCreateFullNameInput(ChangeEventArgs args)
     {
         _createDoctorForm.FullName = args.Value?.ToString() ?? string.Empty;
+        _formErrorMessage = null;
         NotifyCreateFieldChanged(nameof(CreateDoctorDto.FullName));
     }
 
     private void HandleCreateEmailInput(ChangeEventArgs args)
     {
         _createDoctorForm.Email = args.Value?.ToString() ?? string.Empty;
+        _formErrorMessage = null;
         NotifyCreateFieldChanged(nameof(CreateDoctorDto.Email));
     }
 
     private void HandleCreatePhoneNumberInput(ChangeEventArgs args)
     {
         _createDoctorForm.PhoneNumber = args.Value?.ToString() ?? string.Empty;
+        _formErrorMessage = null;
         NotifyCreateFieldChanged(nameof(CreateDoctorDto.PhoneNumber));
     }
 
     private void HandleCreatePasswordInput(ChangeEventArgs args)
     {
         _createDoctorForm.Password = args.Value?.ToString() ?? string.Empty;
+        _formErrorMessage = null;
         NotifyCreateFieldChanged(nameof(CreateDoctorDto.Password));
     }
 
@@ -755,6 +811,7 @@
         if (DateOnly.TryParse(args.Value?.ToString(), out var parsedDate))
         {
             _createDoctorForm.PracticeStartDate = parsedDate;
+            _formErrorMessage = null;
             NotifyCreateFieldChanged(nameof(CreateDoctorDto.PracticeStartDate));
         }
     }
@@ -762,18 +819,21 @@
     private void HandleUpdateFullNameInput(ChangeEventArgs args)
     {
         _updateDoctorForm.FullName = args.Value?.ToString() ?? string.Empty;
+        _formErrorMessage = null;
         NotifyUpdateFieldChanged(nameof(UpdateDoctorDto.FullName));
     }
 
     private void HandleUpdateEmailInput(ChangeEventArgs args)
     {
         _updateDoctorForm.Email = args.Value?.ToString() ?? string.Empty;
+        _formErrorMessage = null;
         NotifyUpdateFieldChanged(nameof(UpdateDoctorDto.Email));
     }
 
     private void HandleUpdatePhoneNumberInput(ChangeEventArgs args)
     {
         _updateDoctorForm.PhoneNumber = args.Value?.ToString() ?? string.Empty;
+        _formErrorMessage = null;
         NotifyUpdateFieldChanged(nameof(UpdateDoctorDto.PhoneNumber));
     }
 
@@ -782,6 +842,7 @@
         if (DateOnly.TryParse(args.Value?.ToString(), out var parsedDate))
         {
             _updateDoctorForm.PracticeStartDate = parsedDate;
+            _formErrorMessage = null;
             NotifyUpdateFieldChanged(nameof(UpdateDoctorDto.PracticeStartDate));
         }
     }
@@ -804,6 +865,7 @@
             _showDeactivateModal = true;
             return;
         }
+
         await UpdateAvailabilityAsync(doctor, true);
     }
 
@@ -813,6 +875,7 @@
         {
             return;
         }
+
         await UpdateAvailabilityAsync(_doctorPendingDeactivation, false);
         CancelDeactivateDoctor();
     }
@@ -871,6 +934,8 @@
     {
         _showForm = false;
         _editingDoctorId = null;
+        _formErrorMessage = null;
+        _resetPasswordErrorMessage = null;
         _createDoctorForm = CreateEmptyDoctor();
         _updateDoctorForm = CreateEmptyUpdateDoctor();
         _createDoctorEditContext = new EditContext(_createDoctorForm);
@@ -884,6 +949,7 @@
         {
             return;
         }
+
         _pagination.PageNumber--;
         await LoadDoctorsAsync();
     }
@@ -894,6 +960,7 @@
         {
             return;
         }
+
         _pagination.PageNumber++;
         await LoadDoctorsAsync();
     }
@@ -904,6 +971,7 @@
         {
             return;
         }
+
         _appointmentPagination.PageNumber--;
         await LoadDoctorAppointmentsAsync();
     }
@@ -914,8 +982,23 @@
         {
             return;
         }
+
         _appointmentPagination.PageNumber++;
         await LoadDoctorAppointmentsAsync();
+    }
+
+    private void NormalizeCreateDoctorForm()
+    {
+        _createDoctorForm.FullName = _createDoctorForm.FullName.Trim();
+        _createDoctorForm.Email = _createDoctorForm.Email.Trim();
+        _createDoctorForm.PhoneNumber = _createDoctorForm.PhoneNumber.Trim();
+    }
+
+    private void NormalizeUpdateDoctorForm()
+    {
+        _updateDoctorForm.FullName = _updateDoctorForm.FullName.Trim();
+        _updateDoctorForm.Email = _updateDoctorForm.Email.Trim();
+        _updateDoctorForm.PhoneNumber = _updateDoctorForm.PhoneNumber.Trim();
     }
 
     private static CreateDoctorDto CreateEmptyDoctor()

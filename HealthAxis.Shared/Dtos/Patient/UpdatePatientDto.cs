@@ -1,6 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using HealthAxis.Shared.Validation;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using HealthAxis.Shared.Validation;
 
 namespace HealthAxis.Shared.Dtos.Patient;
 
@@ -17,7 +17,7 @@ public class UpdatePatientDto
     public string Email { get; set; } = string.Empty;
 
     [JsonRequired]
-    [Required]
+    [Required(ErrorMessage = "Date of birth is required.")]
     [DateOfBirth]
     public DateOnly DateOfBirth { get; set; }
 
@@ -26,7 +26,7 @@ public class UpdatePatientDto
     public string Gender { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Phone number is required.")]
-    [Phone(ErrorMessage = "Please enter a valid phone number.")]
+    [RegularExpression(@"^[6-9]\d{9}$", ErrorMessage = "Phone number must be a valid 10-digit number.")]
     public string PhoneNumber { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Address is required.")]

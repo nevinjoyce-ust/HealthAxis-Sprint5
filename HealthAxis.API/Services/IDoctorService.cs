@@ -6,9 +6,11 @@ namespace HealthAxis.API.Services;
 
 public interface IDoctorService
 {
-    Task<PagedResultDto<PublicDoctorDto>> GetAllDoctorsAsync(PaginationQueryDto pagination, DoctorSpecialisation? specialisation);
+    Task<PagedResultDto<PublicDoctorDto>> GetAllDoctorsAsync(DoctorSearchQueryDto query);
 
     Task<PublicDoctorDto?> GetDoctorByIdAsync(int id);
+
+    Task<DoctorDto?> GetDoctorProfileByIdAsync(int id);
 
     Task<PublicDoctorDto?> GetDoctorByUserIdAsync(string userId);
 

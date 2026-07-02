@@ -67,6 +67,11 @@ public class AuthController(
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IActionResult> ChangePassword(ChangePasswordDto request)
     {
+        if (request.CurrentPassword == request.NewPassword)
+        {
+            return BadRequest(new { message = "New password must be different from the current password." });
+        }
+
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         if (string.IsNullOrWhiteSpace(userId))

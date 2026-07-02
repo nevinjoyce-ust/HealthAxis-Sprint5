@@ -19,8 +19,11 @@
         </div>
     </div>
 
-    <EditForm Model="_changePasswordForm" OnValidSubmit="ChangePasswordAsync">
+    <EditForm EditContext="_changePasswordEditContext"
+              OnValidSubmit="ChangePasswordAsync"
+              OnInvalidSubmit="HandleInvalidSubmit">
         <DataAnnotationsValidator />
+        <ValidationSummary />
 
         <div class="profile-form-stack">
             <div>
@@ -33,6 +36,9 @@
                 <label class="form-label">New password</label>
                 <InputText class="form-control" type="password" @bind-Value="_changePasswordForm.NewPassword" />
                 <ValidationMessage For="@(() => _changePasswordForm.NewPassword)" />
+                <div class="form-text">
+                    Must be 8-100 characters and include uppercase, lowercase, number, and special character.
+                </div>
             </div>
 
             <div>
@@ -65,15 +71,34 @@
 
 @code {
     private ChangePasswordDto _changePasswordForm = new();
+    private EditContext _changePasswordEditContext = default!;
     private bool _isSaving;
     private string? _errorMessage;
     private string? _successMessage;
 
+    protected override void OnInitialized()
+    {
+        ResetPasswordFields();
+    }
+
     private async Task ChangePasswordAsync()
     {
-        _isSaving = true;
         _errorMessage = null;
         _successMessage = null;
+
+        if (_changePasswordForm.CurrentPassword == _changePasswordForm.NewPassword)
+        {
+            _errorMessage = "New password must be different from the current password.";
+            return;
+        }
+
+        if (!IsStrongPassword(_changePasswordForm.NewPassword))
+        {
+            _errorMessage = "New password must include uppercase, lowercase, number, and special character.";
+            return;
+        }
+
+        _isSaving = true;
 
         try
         {
@@ -99,6 +124,12 @@
         }
     }
 
+    private void HandleInvalidSubmit()
+    {
+        _errorMessage = "Please correct the highlighted fields before changing the password.";
+        _successMessage = null;
+    }
+
     private void ResetForm()
     {
         ResetPasswordFields();
@@ -109,5 +140,15 @@
     private void ResetPasswordFields()
     {
         _changePasswordForm = new ChangePasswordDto();
+        _changePasswordEditContext = new EditContext(_changePasswordForm);
+    }
+
+    private static bool IsStrongPassword(string password)
+    {
+        return password.Length is >= 8 and <= 100 &&
+            password.Any(char.IsUpper) &&
+            password.Any(char.IsLower) &&
+            password.Any(char.IsDigit) &&
+            password.Any(character => !char.IsLetterOrDigit(character));
     }
 }

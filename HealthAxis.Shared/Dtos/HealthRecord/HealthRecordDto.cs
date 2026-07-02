@@ -12,6 +12,8 @@ public class HealthRecordDto
 
     public string PatientName { get; set; } = string.Empty;
 
+    public int PatientAge { get; set; }
+
     public string DoctorName { get; set; } = string.Empty;
 
     public DateOnly VisitDate { get; set; }

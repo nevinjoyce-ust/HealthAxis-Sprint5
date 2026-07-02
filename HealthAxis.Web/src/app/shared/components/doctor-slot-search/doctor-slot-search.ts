@@ -1,26 +1,20 @@
 import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { map } from 'rxjs';
 
-import { API_BASE_URL } from '../../../core/constants/api-constants';
+import {
+  DoctorSearchRequest,
+  DoctorSortBy,
+  PatientService,
+  PagedResult,
+  SortDirection
+} from '../../../core/services/patient-service';
 import {
   DoctorSpecialisation,
   PublicDoctor
 } from '../../models/health-axis.models';
 
 type SlotSearchMode = 'public' | 'patient';
-type DoctorSortOption = 'experience' | 'fee';
-
-interface PagedResult<T> {
-  items: T[];
-  pageNumber: number;
-  pageSize: number;
-  totalCount: number;
-  totalPages: number;
-  hasPreviousPage: boolean;
-  hasNextPage: boolean;
-}
+type DoctorSortOption = 'name' | 'experience' | 'fee';
 
 @Component({
   selector: 'app-doctor-slot-search',
@@ -29,7 +23,7 @@ interface PagedResult<T> {
   styleUrl: './doctor-slot-search.css'
 })
 export class DoctorSlotSearch implements OnInit {
-  private readonly http = inject(HttpClient);
+  private readonly patientService = inject(PatientService);
 
   @Input() mode: SlotSearchMode = 'public';
 
@@ -41,6 +35,13 @@ export class DoctorSlotSearch implements OnInit {
   selectedSpecialisation: DoctorSpecialisation | '' = '';
   onlyShowAvailableDoctors = true;
   sortBy: DoctorSortOption = 'experience';
+
+  pageNumber = 1;
+  pageSize = 5;
+  totalCount = 0;
+  totalPages = 0;
+  hasPreviousPage = false;
+  hasNextPage = false;
 
   specialisations: DoctorSpecialisation[] = [
     'Cardiology',
@@ -59,30 +60,14 @@ export class DoctorSlotSearch implements OnInit {
     this.loadDoctors();
   }
 
-  get filteredDoctors(): PublicDoctor[] {
-    return this.doctors()
-      .filter(doctor => this.matchesAvailability(doctor))
-      .filter(doctor => this.matchesSpecialisation(doctor))
-      .filter(doctor => this.matchesSearchText(doctor))
-      .sort((first, second) => this.compareDoctors(first, second));
-  }
-
   loadDoctors(): void {
     this.isLoading.set(true);
     this.errorMessage.set('');
 
-    const params = new HttpParams()
-      .set('pageNumber', '1')
-      .set('pageSize', '100');
-
-    this.http.get<PagedResult<PublicDoctor> | PublicDoctor[] | null>(`${API_BASE_URL}/doctors`, { params })
-      .pipe(
-        map(response => this.getItemsFromPagedResult(response)
-          .map(doctor => this.normalizeDoctor(doctor)))
-      )
+    this.patientService.getPublicDoctorsPage(this.createSearchRequest())
       .subscribe({
-        next: doctors => {
-          this.doctors.set(doctors);
+        next: response => {
+          this.setPagedResult(response);
           this.isLoading.set(false);
         },
         error: error => {
@@ -93,8 +78,15 @@ export class DoctorSlotSearch implements OnInit {
       });
   }
 
+  applyFilters(): void {
+    this.pageNumber = 1;
+    this.loadDoctors();
+  }
+
   setSortBy(sortBy: DoctorSortOption): void {
     this.sortBy = sortBy;
+    this.pageNumber = 1;
+    this.loadDoctors();
   }
 
   clearFilters(): void {
@@ -102,6 +94,26 @@ export class DoctorSlotSearch implements OnInit {
     this.selectedSpecialisation = '';
     this.onlyShowAvailableDoctors = true;
     this.sortBy = 'experience';
+    this.pageNumber = 1;
+    this.loadDoctors();
+  }
+
+  goToPreviousPage(): void {
+    if (!this.hasPreviousPage || this.isLoading()) {
+      return;
+    }
+
+    this.pageNumber--;
+    this.loadDoctors();
+  }
+
+  goToNextPage(): void {
+    if (!this.hasNextPage || this.isLoading()) {
+      return;
+    }
+
+    this.pageNumber++;
+    this.loadDoctors();
   }
 
   formatSpecialisation(specialisation: DoctorSpecialisation): string {
@@ -110,71 +122,42 @@ export class DoctorSlotSearch implements OnInit {
       : specialisation;
   }
 
-  private matchesAvailability(doctor: PublicDoctor): boolean {
-    return !this.onlyShowAvailableDoctors || doctor.isAvailable;
-  }
-
-  private matchesSpecialisation(doctor: PublicDoctor): boolean {
-    return !this.selectedSpecialisation || doctor.specialisation === this.selectedSpecialisation;
-  }
-
-  private matchesSearchText(doctor: PublicDoctor): boolean {
-    const normalizedSearchText = this.searchText.trim().toLowerCase();
-
-    if (!normalizedSearchText) {
-      return true;
-    }
-
-    return doctor.fullName.toLowerCase().includes(normalizedSearchText);
-  }
-
-  private compareDoctors(first: PublicDoctor, second: PublicDoctor): number {
-    if (this.sortBy === 'fee') {
-      return first.consultationFee - second.consultationFee ||
-        first.fullName.localeCompare(second.fullName);
-    }
-
-    return second.yearsOfExperience - first.yearsOfExperience ||
-      first.fullName.localeCompare(second.fullName);
-  }
-
-  private getItemsFromPagedResult<T>(response: PagedResult<T> | T[] | null): T[] {
-    if (!response) {
-      return [];
-    }
-
-    if (Array.isArray(response)) {
-      return response;
-    }
-
-    return response.items ?? [];
-  }
-
-  private normalizeDoctor(doctor: PublicDoctor): PublicDoctor {
+  private createSearchRequest(): DoctorSearchRequest {
     return {
-      ...doctor,
-      specialisation: this.normalizeSpecialisation(doctor.specialisation)
+      pageNumber: this.pageNumber,
+      pageSize: this.pageSize,
+      search: this.searchText,
+      specialisation: this.selectedSpecialisation,
+      isAvailable: this.onlyShowAvailableDoctors ? true : null,
+      sortBy: this.toApiSortBy(this.sortBy),
+      sortDirection: this.toApiSortDirection(this.sortBy)
     };
   }
 
-  private normalizeSpecialisation(value: DoctorSpecialisation | number): DoctorSpecialisation {
-    if (typeof value === 'string') {
-      return value;
+  private toApiSortBy(sortBy: DoctorSortOption): DoctorSortBy {
+    switch (sortBy) {
+      case 'fee':
+        return 'Fee';
+      case 'experience':
+        return 'Experience';
+      default:
+        return 'Name';
     }
+  }
 
-    const specialisations: DoctorSpecialisation[] = [
-      'Cardiology',
-      'Dermatology',
-      'Neurology',
-      'Orthopaedics',
-      'Pediatrics',
-      'GeneralMedicine',
-      'Psychiatry',
-      'Radiology',
-      'Gynecology',
-      'ENT'
-    ];
+  private toApiSortDirection(sortBy: DoctorSortOption): SortDirection {
+    return sortBy === 'experience'
+      ? 'Desc'
+      : 'Asc';
+  }
 
-    return specialisations[value] ?? 'GeneralMedicine';
+  private setPagedResult(response: PagedResult<PublicDoctor>): void {
+    this.doctors.set(response.items);
+    this.pageNumber = response.pageNumber;
+    this.pageSize = response.pageSize;
+    this.totalCount = response.totalCount;
+    this.totalPages = response.totalPages;
+    this.hasPreviousPage = response.hasPreviousPage;
+    this.hasNextPage = response.hasNextPage;
   }
 }

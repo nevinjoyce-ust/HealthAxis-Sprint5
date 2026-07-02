@@ -132,7 +132,6 @@
               <th class="px-4 py-3">Date</th>
               <th class="px-4 py-3">Doctor</th>
               <th class="px-4 py-3">Specialisation</th>
-              <th class="px-4 py-3">Diagnosis</th>
               <th class="px-4 py-3">Details</th>
             </tr>
           </thead>
@@ -143,7 +142,6 @@
                 <td class="px-4 py-4 font-semibold text-slate-700">{{ formatDate(record.visitDate) }}</td>
                 <td class="px-4 py-4 text-slate-600">{{ record.doctorName }}</td>
                 <td class="px-4 py-4 text-slate-600">{{ getDoctorSpecialisation(record.doctorId) }}</td>
-                <td class="px-4 py-4 text-slate-600">{{ record.diagnosis }}</td>
                 <td class="px-4 py-4">
                   <button
                     type="button"
@@ -202,6 +200,11 @@
           <p class="mt-1 font-semibold text-slate-900">{{ getDoctorSpecialisation(selectedHealthRecord.doctorId) }}</p>
         </div>
 
+        <div>
+          <p class="font-bold text-slate-500">Patient age</p>
+          <p class="mt-1 font-semibold text-slate-900">{{ selectedHealthRecord.patientAge }} years</p>
+        </div>
+        
         <div>
           <p class="font-bold text-slate-500">Diagnosis</p>
           <p class="mt-1 text-slate-800">{{ selectedHealthRecord.diagnosis }}</p>

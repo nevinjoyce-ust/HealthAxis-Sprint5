@@ -8,14 +8,25 @@ namespace HealthAxis.API.Repositories.Impl;
 public class DoctorRepository(HealthAxisDbContext context) : Repository<Doctor>(context), IDoctorRepository
 {
     public async Task<PagedResult<Doctor>> GetAllDoctorsAsync(
-        int pageNumber,
-        int pageSize,
-        DoctorSpecialisation? specialisation,
-        bool? isAvailable = null)
+    int pageNumber,
+    int pageSize,
+    string? search = null,
+    DoctorSpecialisation? specialisation = null,
+    bool? isAvailable = null,
+    DoctorSortBy sortBy = DoctorSortBy.Name,
+    SortDirection sortDirection = SortDirection.Asc)
     {
         var query = _context.Doctors
             .AsNoTracking()
             .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchText = search.Trim();
+
+            query = query.Where(doctor =>
+                doctor.FullName.Contains(searchText));
+        }
 
         if (specialisation.HasValue)
         {
@@ -27,7 +38,7 @@ public class DoctorRepository(HealthAxisDbContext context) : Repository<Doctor>(
             query = query.Where(doctor => doctor.IsAvailable == isAvailable.Value);
         }
 
-        query = query.OrderBy(doctor => doctor.Id);
+        query = ApplySorting(query, sortBy, sortDirection);
 
         return await ToPagedResultAsync(query, pageNumber, pageSize);
     }
@@ -111,5 +122,28 @@ public class DoctorRepository(HealthAxisDbContext context) : Repository<Doctor>(
             .Where(doctor => doctor.Id == id)
             .Select(doctor => (bool?)doctor.IsAvailable)
             .FirstOrDefaultAsync();
+    }
+
+    private static IQueryable<Doctor> ApplySorting(
+    IQueryable<Doctor> query,
+    DoctorSortBy sortBy,
+    SortDirection sortDirection)
+    {
+        var descending = sortDirection == SortDirection.Desc;
+
+        return sortBy switch
+        {
+            DoctorSortBy.Fee => descending
+                ? query.OrderByDescending(doctor => doctor.ConsultationFee).ThenBy(doctor => doctor.FullName)
+                : query.OrderBy(doctor => doctor.ConsultationFee).ThenBy(doctor => doctor.FullName),
+
+            DoctorSortBy.Experience => descending
+                ? query.OrderBy(doctor => doctor.PracticeStartDate).ThenBy(doctor => doctor.FullName)
+                : query.OrderByDescending(doctor => doctor.PracticeStartDate).ThenBy(doctor => doctor.FullName),
+
+            _ => descending
+                ? query.OrderByDescending(doctor => doctor.FullName).ThenBy(doctor => doctor.Id)
+                : query.OrderBy(doctor => doctor.FullName).ThenBy(doctor => doctor.Id)
+        };
     }
 }

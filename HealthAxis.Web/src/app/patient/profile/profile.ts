@@ -1,6 +1,11 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import {
+  FormBuilder,
+  ReactiveFormsModule,
+  Validators
+} from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 
 import {
   PatientDto,
@@ -14,9 +19,11 @@ interface ChangePasswordForm {
   confirmNewPassword: string;
 }
 
+const strongPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,100}$/;
+
 @Component({
   selector: 'app-profile',
-  imports: [FormsModule],
+  imports: [ReactiveFormsModule, FormsModule],
   templateUrl: './profile.html',
   styleUrl: './profile.css'
 })
@@ -24,6 +31,7 @@ export class Profile implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly patientService = inject(PatientService);
+  private readonly fb = inject(FormBuilder);
 
   readonly isLoading = signal(false);
   readonly isSaving = signal(false);
@@ -35,12 +43,41 @@ export class Profile implements OnInit {
 
   readonly patient = signal<PatientDto | null>(null);
 
+  readonly genderOptions = ['Male', 'Female', 'Other'];
+
+  readonly profileForm = this.fb.nonNullable.group({
+    fullName: ['', [
+      Validators.required,
+      Validators.maxLength(100),
+      Validators.pattern(/^[A-Za-z][A-Za-z\s.'-]*$/)
+    ]],
+    email: ['', [
+      Validators.required,
+      Validators.email,
+      Validators.maxLength(256)
+    ]],
+    dateOfBirth: ['', [
+      Validators.required
+    ]],
+    gender: ['', [
+      Validators.required
+    ]],
+    phoneNumber: ['', [
+      Validators.required,
+      Validators.pattern(/^[6-9]\d{9}$/)
+    ]],
+    address: ['', [
+      Validators.required,
+      Validators.minLength(5),
+      Validators.maxLength(250)
+    ]]
+  });
+
   isEditMode = false;
   showPasswordChange = false;
   saveSuccess = false;
   passwordSuccess = false;
-
-  updatePatient: UpdatePatientRequest = this.createEmptyUpdatePatientRequest();
+  passwordSubmitted = false;
 
   changePasswordRequest: ChangePasswordForm = {
     currentPassword: '',
@@ -56,7 +93,7 @@ export class Profile implements OnInit {
       const patient = this.patient();
 
       if (patient) {
-        this.updatePatient = this.createUpdatePatientRequest(patient);
+        this.populateProfileForm(patient);
       }
     });
   }
@@ -73,12 +110,14 @@ export class Profile implements OnInit {
       .subscribe({
         next: patient => {
           this.patient.set(patient);
-          this.updatePatient = this.createUpdatePatientRequest(patient);
+          this.populateProfileForm(patient);
           this.isLoading.set(false);
         },
         error: error => {
           console.error('Failed to load patient profile.', error);
-          this.profileErrorMessage.set(error?.error?.message ?? 'Unable to load profile details.');
+          this.profileErrorMessage.set(
+            error?.error?.message ?? 'Unable to load profile details.'
+          );
           this.isLoading.set(false);
         }
       });
@@ -94,7 +133,7 @@ export class Profile implements OnInit {
     this.isEditMode = true;
     this.saveSuccess = false;
     this.saveErrorMessage.set('');
-    this.updatePatient = this.createUpdatePatientRequest(patient);
+    this.populateProfileForm(patient);
 
     this.router.navigate([], {
       relativeTo: this.route,
@@ -111,7 +150,7 @@ export class Profile implements OnInit {
     const patient = this.patient();
 
     if (patient) {
-      this.updatePatient = this.createUpdatePatientRequest(patient);
+      this.populateProfileForm(patient);
     }
 
     this.router.navigate([], {
@@ -122,7 +161,9 @@ export class Profile implements OnInit {
   }
 
   saveProfile(): void {
-    if (!this.canSaveProfile || this.isSaving()) {
+    if (this.profileForm.invalid || this.isSaving()) {
+      this.profileForm.markAllAsTouched();
+      this.saveErrorMessage.set('Please correct the highlighted fields before saving.');
       return;
     }
 
@@ -130,11 +171,22 @@ export class Profile implements OnInit {
     this.saveSuccess = false;
     this.saveErrorMessage.set('');
 
-    this.patientService.updateCurrentPatient(this.updatePatient)
+    const formValue = this.profileForm.getRawValue();
+
+    const request: UpdatePatientRequest = {
+      fullName: formValue.fullName.trim(),
+      email: formValue.email.trim(),
+      dateOfBirth: formValue.dateOfBirth,
+      gender: formValue.gender,
+      phoneNumber: formValue.phoneNumber.trim(),
+      address: formValue.address.trim()
+    };
+
+    this.patientService.updateCurrentPatient(request)
       .subscribe({
         next: patient => {
           this.patient.set(patient);
-          this.updatePatient = this.createUpdatePatientRequest(patient);
+          this.populateProfileForm(patient);
           this.isEditMode = false;
           this.saveSuccess = true;
           this.isSaving.set(false);
@@ -147,7 +199,7 @@ export class Profile implements OnInit {
         },
         error: error => {
           console.error('Failed to update patient profile.', error);
-          this.saveErrorMessage.set(error?.error?.message ?? 'Unable to update profile details.');
+          this.saveErrorMessage.set(this.getApiErrorMessage(error, 'Unable to update profile details.'));
           this.isSaving.set(false);
         }
       });
@@ -161,13 +213,16 @@ export class Profile implements OnInit {
   }
 
   changePassword(): void {
+    this.passwordSubmitted = true;
+    this.passwordSuccess = false;
+    this.passwordErrorMessage.set('');
+
     if (!this.canChangePassword || this.isChangingPassword()) {
+      this.passwordErrorMessage.set('Please correct the highlighted password fields before saving.');
       return;
     }
 
     this.isChangingPassword.set(true);
-    this.passwordSuccess = false;
-    this.passwordErrorMessage.set('');
 
     this.patientService.changePassword({
       currentPassword: this.changePasswordRequest.currentPassword,
@@ -181,24 +236,43 @@ export class Profile implements OnInit {
       },
       error: error => {
         console.error('Failed to change password.', error);
-        this.passwordErrorMessage.set(error?.error?.message ?? 'Unable to change password.');
+        this.passwordErrorMessage.set(
+          this.getApiErrorMessage(error, 'Unable to change password. Please check your current password and try again.')
+        );
         this.isChangingPassword.set(false);
       }
     });
   }
 
   get canSaveProfile(): boolean {
-    return this.updatePatient.fullName.trim().length > 0 &&
-      this.updatePatient.dateOfBirth.trim().length > 0 &&
-      this.updatePatient.gender.trim().length > 0 &&
-      this.updatePatient.phoneNumber.trim().length > 0 &&
-      this.updatePatient.address.trim().length > 0;
+    return this.profileForm.valid;
+  }
+
+  get isCurrentPasswordValid(): boolean {
+    return this.changePasswordRequest.currentPassword.trim().length > 0;
+  }
+
+  get isNewPasswordValid(): boolean {
+    return strongPasswordPattern.test(this.changePasswordRequest.newPassword);
+  }
+
+  get isConfirmPasswordValid(): boolean {
+    return this.changePasswordRequest.confirmNewPassword.trim().length > 0 &&
+      this.changePasswordRequest.newPassword === this.changePasswordRequest.confirmNewPassword;
+  }
+
+  get isNewPasswordSameAsCurrent(): boolean {
+    return this.changePasswordRequest.currentPassword.trim().length > 0 &&
+      this.changePasswordRequest.newPassword.trim().length > 0 &&
+      this.changePasswordRequest.currentPassword === this.changePasswordRequest.newPassword;
   }
 
   get canChangePassword(): boolean {
-    return this.changePasswordRequest.currentPassword.trim().length > 0 &&
-      this.changePasswordRequest.newPassword.trim().length >= 8 &&
-      this.changePasswordRequest.newPassword === this.changePasswordRequest.confirmNewPassword;
+    return this.isCurrentPasswordValid &&
+      this.isNewPasswordValid &&
+      this.isConfirmPasswordValid &&
+      !this.isNewPasswordSameAsCurrent &&
+      !this.isChangingPassword();
   }
 
   get passwordMismatch(): boolean {
@@ -214,31 +288,48 @@ export class Profile implements OnInit {
     });
   }
 
-  private createUpdatePatientRequest(patient: PatientDto): UpdatePatientRequest {
-    return {
+  private populateProfileForm(patient: PatientDto): void {
+    this.profileForm.setValue({
       fullName: patient.fullName,
+      email: patient.email,
       dateOfBirth: patient.dateOfBirth,
       gender: patient.gender,
       phoneNumber: patient.phoneNumber,
       address: patient.address
-    };
-  }
-
-  private createEmptyUpdatePatientRequest(): UpdatePatientRequest {
-    return {
-      fullName: '',
-      dateOfBirth: '',
-      gender: '',
-      phoneNumber: '',
-      address: ''
-    };
+    });
   }
 
   private resetPasswordForm(): void {
+    this.passwordSubmitted = false;
+
     this.changePasswordRequest = {
       currentPassword: '',
       newPassword: '',
       confirmNewPassword: ''
     };
+  }
+
+  private getApiErrorMessage(error: any, fallbackMessage: string): string {
+    if (error?.error?.message) {
+      return error.error.message;
+    }
+
+    const errors = error?.error?.errors;
+
+    if (errors && typeof errors === 'object') {
+      const messages = Object.values(errors)
+        .flat()
+        .filter(Boolean);
+
+      if (messages.length > 0) {
+        return messages.join(' ');
+      }
+    }
+
+    if (error?.error?.title) {
+      return error.error.title;
+    }
+
+    return fallbackMessage;
   }
 }

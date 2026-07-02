@@ -61,8 +61,8 @@ public static class ApiResponseHandler
             return null;
         }
 
-        return TryReadJsonMessage(content)
-            ?? TryReadValidationProblemDetailsMessage(content)
+        return TryReadValidationProblemDetailsMessage(content)
+            ?? TryReadJsonMessage(content)
             ?? CleanMessage(content);
     }
 

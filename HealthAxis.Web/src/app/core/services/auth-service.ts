@@ -3,7 +3,13 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
-import { API_BASE_URL } from '../constants/api-constants';
+import { ADMIN_CALLBACK_URL, API_BASE_URL } from '../constants/api-constants';
+import { AppRoutes, RoleDashboardRoutes } from '../constants/route-paths';
+import {
+  AppRole,
+  AppRoles,
+  normalizeAppRole
+} from '../../shared/models/role.model';
 import {
   AuthResponse,
   JwtPayload,
@@ -25,7 +31,7 @@ export class AuthService {
   private readonly router = inject(Router);
 
   private readonly apiBaseUrl = API_BASE_URL;
-  private readonly adminCallbackUrl = 'https://localhost:7041/auth/callback';
+  private readonly adminCallbackUrl = ADMIN_CALLBACK_URL;
 
   private readonly accessTokenKey = 'accessToken';
   private readonly authResponseKey = 'authResponse';
@@ -59,7 +65,7 @@ export class AuthService {
   logout(): void {
     this.clearSession();
 
-    this.router.navigate(['/login'], {
+    this.router.navigate([AppRoutes.Login], {
       queryParams: { reason: 'logged-out' },
       replaceUrl: true
     });
@@ -129,8 +135,8 @@ export class AuthService {
     return payload.exp * 1000 > Date.now();
   }
 
-  getUserRole(): string | null {
-    const responseRole = this.getStoredAuthResponse()?.role;
+  getUserRole(): AppRole | null {
+    const responseRole = normalizeAppRole(this.getStoredAuthResponse()?.role);
 
     if (responseRole) {
       return responseRole;
@@ -148,10 +154,32 @@ export class AuthService {
       payload['http://healthaxis/claims/role'];
 
     if (Array.isArray(roleClaim)) {
-      return roleClaim[0] ?? null;
+      return normalizeAppRole(roleClaim[0]);
     }
 
-    return typeof roleClaim === 'string' ? roleClaim : null;
+    return normalizeAppRole(roleClaim);
+  }
+
+  hasRole(role: AppRole): boolean {
+    return this.getUserRole() === role;
+  }
+
+  isPatient(): boolean {
+    return this.hasRole(AppRoles.Patient);
+  }
+
+  isDoctor(): boolean {
+    return this.hasRole(AppRoles.Doctor);
+  }
+
+  isAdmin(): boolean {
+    return this.hasRole(AppRoles.Admin);
+  }
+
+  getDashboardUrl(): string | null {
+    const role = this.getUserRole();
+
+    return role ? RoleDashboardRoutes[role] : null;
   }
 
   getPatientId(): number | null {
@@ -181,33 +209,38 @@ export class AuthService {
   }
 
   redirectToDashboard(): void {
-    const role = this.getUserRole()?.toLowerCase();
+    const role = this.getUserRole();
 
-    if (role === 'patient') {
-      this.router.navigate(['/patient/dashboard']);
+    if (!role) {
+      this.router.navigate([AppRoutes.Login]);
       return;
     }
 
-    if (role === 'doctor') {
-      this.router.navigate(['/doctor/dashboard']);
-      return;
-    }
-
-    if (role === 'admin') {
+    if (role === AppRoles.Admin) {
       this.redirectAdminToBlazorDashboard();
       return;
     }
 
-    this.router.navigate(['/login']);
+    const dashboardUrl = RoleDashboardRoutes[role];
+
+    if (dashboardUrl) {
+      this.router.navigate([dashboardUrl]);
+      return;
+    }
+
+    this.router.navigate([AppRoutes.Login]);
   }
 
   private redirectAdminToBlazorDashboard(): void {
     this.createAdminHandoffCode().subscribe({
       next: response => {
-        window.location.href = `${this.adminCallbackUrl}?code=${encodeURIComponent(response.code)}`;
+        this.clearSession();
+
+        window.location.href =
+          `${this.adminCallbackUrl}?code=${encodeURIComponent(response.code)}`;
       },
       error: () => {
-        this.router.navigate(['/login']);
+        this.router.navigate([AppRoutes.Login]);
       }
     });
   }

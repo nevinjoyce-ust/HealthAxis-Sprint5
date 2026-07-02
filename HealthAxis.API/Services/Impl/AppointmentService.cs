@@ -19,6 +19,7 @@ public class AppointmentService(
     private const int MinimumBookingHoursBeforeAppointment = 48;
     private const int MinimumCancellationHoursBeforeAppointment = 24;
     private const int PendingAutoCancelHoursBeforeAppointment = 24;
+    private const int MaximumBookingMonthsAhead = 6;
 
     public async Task<PagedResultDto<AppointmentDto>> GetAllAppointmentsAsync(PaginationQueryDto pagination)
     {
@@ -205,7 +206,10 @@ public class AppointmentService(
         {
             throw new BusinessRuleException(ErrorMessages.AppointmentMustBeBookedAtLeast48HoursAhead);
         }
-
+        if (IsMoreThanMonthsAhead(dto.AppointmentDate, MaximumBookingMonthsAhead))
+        {
+            throw new BusinessRuleException(ErrorMessages.AppointmentCannotBeBookedMoreThanSixMonthsAhead);
+        }
         if (await appointmentRepository.DoctorHasNonCancelledAppointmentAtAsync(
                 dto.DoctorId,
                 dto.AppointmentDate,
@@ -345,7 +349,12 @@ public class AppointmentService(
 
         return scheduledAt >= DateTime.Now.AddHours(minimumHours);
     }
+    private static bool IsMoreThanMonthsAhead(DateOnly date, int maximumMonths)
+    {
+        var latestAllowedDate = DateOnly.FromDateTime(DateTime.Today).AddMonths(maximumMonths);
 
+        return date > latestAllowedDate;
+    }
     private PagedResultDto<TDestination> MapPagedResult<TSource, TDestination>(PagedResult<TSource> pagedResult)
     {
         return new PagedResultDto<TDestination>

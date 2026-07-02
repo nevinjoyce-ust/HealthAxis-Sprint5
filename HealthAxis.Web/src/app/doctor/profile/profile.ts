@@ -10,6 +10,8 @@ interface ChangePasswordForm {
   confirmNewPassword: string;
 }
 
+const strongPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,100}$/;
+
 @Component({
   selector: 'app-doctor-profile',
   imports: [FormsModule],
@@ -30,6 +32,7 @@ export class Profile implements OnInit {
   readonly passwordSuccessMessage = signal('');
 
   showPasswordChange = false;
+  passwordSubmitted = false;
   selectedActivationState: boolean | null = null;
 
   changePasswordForm: ChangePasswordForm = {
@@ -46,10 +49,30 @@ export class Profile implements OnInit {
     return this.currentDoctor()?.isAvailable ?? false;
   }
 
-  get canChangePassword(): boolean {
+  get isCurrentPasswordValid(): boolean {
+    return this.changePasswordForm.currentPassword.trim().length > 0;
+  }
+
+  get isNewPasswordValid(): boolean {
+    return strongPasswordPattern.test(this.changePasswordForm.newPassword);
+  }
+
+  get isConfirmPasswordValid(): boolean {
+    return this.changePasswordForm.confirmNewPassword.trim().length > 0 &&
+      this.changePasswordForm.newPassword === this.changePasswordForm.confirmNewPassword;
+  }
+
+  get isNewPasswordSameAsCurrent(): boolean {
     return this.changePasswordForm.currentPassword.trim().length > 0 &&
-      this.changePasswordForm.newPassword.trim().length >= 8 &&
-      this.changePasswordForm.newPassword === this.changePasswordForm.confirmNewPassword &&
+      this.changePasswordForm.newPassword.trim().length > 0 &&
+      this.changePasswordForm.currentPassword === this.changePasswordForm.newPassword;
+  }
+
+  get canChangePassword(): boolean {
+    return this.isCurrentPasswordValid &&
+      this.isNewPasswordValid &&
+      this.isConfirmPasswordValid &&
+      !this.isNewPasswordSameAsCurrent &&
       !this.isPasswordChanging();
   }
 
@@ -119,13 +142,16 @@ export class Profile implements OnInit {
   }
 
   changePassword(): void {
+    this.passwordSubmitted = true;
+    this.passwordErrorMessage.set('');
+    this.passwordSuccessMessage.set('');
+
     if (!this.canChangePassword) {
+      this.passwordErrorMessage.set('Please correct the highlighted password fields before saving.');
       return;
     }
 
     this.isPasswordChanging.set(true);
-    this.passwordErrorMessage.set('');
-    this.passwordSuccessMessage.set('');
 
     this.doctorService.changePassword({
       currentPassword: this.changePasswordForm.currentPassword,
@@ -139,7 +165,7 @@ export class Profile implements OnInit {
       },
       error: error => {
         console.error('Failed to change password.', error);
-        this.passwordErrorMessage.set(error?.error?.message ?? 'Unable to change password.');
+        this.passwordErrorMessage.set(this.getApiErrorMessage(error));
         this.isPasswordChanging.set(false);
       }
     });
@@ -152,10 +178,36 @@ export class Profile implements OnInit {
   }
 
   private resetPasswordForm(): void {
+    this.passwordSubmitted = false;
+
     this.changePasswordForm = {
       currentPassword: '',
       newPassword: '',
       confirmNewPassword: ''
     };
+  }
+
+  private getApiErrorMessage(error: any): string {
+    if (error?.error?.message) {
+      return error.error.message;
+    }
+
+    const errors = error?.error?.errors;
+
+    if (errors && typeof errors === 'object') {
+      const messages = Object.values(errors)
+        .flat()
+        .filter(Boolean);
+
+      if (messages.length > 0) {
+        return messages.join(' ');
+      }
+    }
+
+    if (error?.error?.title) {
+      return error.error.title;
+    }
+
+    return 'Unable to change password. Please check your current password and try again.';
   }
 }

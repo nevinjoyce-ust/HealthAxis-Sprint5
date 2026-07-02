@@ -1,3 +1,5 @@
+import { AppRole } from './role.model';
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -22,7 +24,7 @@ export interface AuthResponse {
   patientId: number | null;
   doctorId: number | null;
   email: string;
-  role: string;
+  role: AppRole;
 }
 
 export interface RegisterResponse {

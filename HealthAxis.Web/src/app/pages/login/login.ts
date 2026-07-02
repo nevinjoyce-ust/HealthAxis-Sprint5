@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { TimeoutError, finalize, timeout } from 'rxjs';
 
 import { AuthService } from '../../core/services/auth-service';
@@ -17,12 +17,12 @@ export class Login {
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
 
-  isSubmitted = signal(false);
-  isLoading = signal(false);
-  infoMessage = signal('');
-  errorMessage = signal('');
+  readonly isSubmitted = signal(false);
+  readonly isLoading = signal(false);
+  readonly infoMessage = signal('');
+  readonly errorMessage = signal('');
 
-  loginForm = this.formBuilder.group({
+  readonly loginForm = this.formBuilder.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]]
   });
@@ -32,6 +32,7 @@ export class Login {
       const reason = params.get('reason');
 
       this.infoMessage.set(this.getReasonMessage(reason));
+      this.errorMessage.set('');
     });
   }
 
@@ -54,8 +55,8 @@ export class Login {
     }
 
     const request = {
-      email: this.email.value ?? '',
-      password: this.password.value ?? ''
+      email: this.email.value.trim(),
+      password: this.password.value
     };
 
     this.isLoading.set(true);
@@ -94,6 +95,10 @@ export class Login {
         return this.getErrorMessageFromBody(error) ?? 'Invalid email or password.';
       }
 
+      if (error.status === 403) {
+        return this.getErrorMessageFromBody(error) ?? 'You do not have permission to access this application.';
+      }
+
       return this.getErrorMessageFromBody(error) ??
         error.message ??
         'Login failed. Please try again.';
@@ -117,10 +122,14 @@ export class Login {
       return responseBody.message;
     }
 
+    if (typeof responseBody.title === 'string') {
+      return responseBody.title;
+    }
+
     return null;
   }
 
- private getReasonMessage(reason: string | null): string {
+  private getReasonMessage(reason: string | null): string {
     switch (reason) {
       case 'unauthorized':
         return 'Please log in to continue.';
@@ -128,8 +137,6 @@ export class Login {
         return 'You do not have permission to access that page.';
       case 'logged-out':
         return 'You have been logged out.';
-      case 'registered':
-        return 'Registration successful. Please log in.';
       default:
         return '';
     }

@@ -45,6 +45,8 @@ public static class ErrorMessages
     public const string AppointmentDateCannotBeInPast = "Appointment date cannot be in the past.";
 
     public const string AppointmentMustBeBookedAtLeast48HoursAhead = "Appointments must be booked at least 48 hours before the scheduled time.";
+    
+    public const string AppointmentCannotBeBookedMoreThanSixMonthsAhead = "Appointments cannot be booked more than 6 months in advance.";
 
     public const string DoctorSlotAlreadyBooked = "Doctor already has an appointment at the selected date and time.";
 

@@ -54,8 +54,9 @@ export interface HealthRecord {
   patientId: number;
   doctorId: number;
   patientName: string;
+  patientAge: number;
   doctorName: string;
-  visitDate: string; 
+  visitDate: string;
   diagnosis: string;
   prescription: string;
   notes?: string | null;

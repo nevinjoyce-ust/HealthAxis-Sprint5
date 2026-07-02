@@ -2,13 +2,19 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { PatientService } from '../../core/services/patient-service';
+import {
+  DoctorSearchRequest,
+  DoctorSortBy,
+  PatientService,
+  PagedResult,
+  SortDirection
+} from '../../core/services/patient-service';
 import {
   DoctorSpecialisation,
   PublicDoctor
 } from '../../shared/models/health-axis.models';
 
-type DoctorSortOption = 'experience' | 'fee';
+type DoctorSortOption = 'name' | 'experience' | 'fee';
 
 @Component({
   selector: 'app-doctors',
@@ -24,6 +30,13 @@ export class Doctors implements OnInit {
   readonly doctors = signal<PublicDoctor[]>([]);
   readonly isDoctorsLoading = signal(false);
   readonly doctorsErrorMessage = signal('');
+
+  pageNumber = 1;
+  pageSize = 5;
+  totalCount = 0;
+  totalPages = 0;
+  hasPreviousPage = false;
+  hasNextPage = false;
 
   searchText = '';
   selectedSpecialisation: DoctorSpecialisation | '' = '';
@@ -46,46 +59,51 @@ export class Doctors implements OnInit {
     'ENT'
   ];
 
-  constructor() {
+  ngOnInit(): void {
     this.route.queryParamMap.subscribe(params => {
       const search = params.get('search');
       const specialisation = params.get('specialisation');
       const availability = params.get('availability');
       const sort = params.get('sort');
+      const page = Number(params.get('page') ?? 1);
 
       this.searchText = search ?? '';
       this.selectedSpecialisation = this.isValidSpecialisation(specialisation)
         ? specialisation
         : '';
       this.onlyShowAvailableDoctors = availability !== 'all';
-      this.sortBy = sort === 'fee' ? 'fee' : 'experience';
+      this.sortBy = this.isValidSort(sort) ? sort : 'experience';
+      this.pageNumber = Number.isNaN(page) || page < 1 ? 1 : page;
+
+      this.loadDoctors();
     });
-  }
-
-  ngOnInit(): void {
-    this.loadDoctors();
-  }
-
-  get filteredDoctors(): PublicDoctor[] {
-    return this.doctors()
-      .filter(doctor => this.matchesAvailability(doctor))
-      .filter(doctor => this.matchesSpecialisation(doctor))
-      .filter(doctor => this.matchesSearchText(doctor))
-      .sort((first, second) => this.compareDoctors(first, second));
   }
 
   get minimumDate(): string {
     return new Date().toISOString().split('T')[0];
   }
 
+  get maximumDate(): string {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 6);
+
+    return date.toISOString().split('T')[0];
+  }
+
+  get isBookingDateValid(): boolean {
+    return !!this.bookingDate &&
+      this.bookingDate >= this.minimumDate &&
+      this.bookingDate <= this.maximumDate;
+  }
+
   loadDoctors(): void {
     this.isDoctorsLoading.set(true);
     this.doctorsErrorMessage.set('');
 
-    this.patientService.getPublicDoctors()
+    this.patientService.getPublicDoctorsPage(this.createSearchRequest())
       .subscribe({
-        next: doctors => {
-          this.doctors.set(doctors);
+        next: response => {
+          this.setPagedResult(response);
           this.isDoctorsLoading.set(false);
         },
         error: error => {
@@ -96,20 +114,27 @@ export class Doctors implements OnInit {
       });
   }
 
-  updateQueryParams(): void {
+  updateQueryParams(resetPage = true): void {
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: {
         search: this.searchText.trim() || null,
         specialisation: this.selectedSpecialisation || null,
         availability: this.onlyShowAvailableDoctors ? null : 'all',
-        sort: this.sortBy !== 'experience' ? this.sortBy : null
+        sort: this.sortBy !== 'experience' ? this.sortBy : null,
+        page: resetPage ? null : this.pageNumber
       }
     });
   }
 
+  applyFilters(): void {
+    this.pageNumber = 1;
+    this.updateQueryParams();
+  }
+
   setSortBy(sortBy: DoctorSortOption): void {
     this.sortBy = sortBy;
+    this.pageNumber = 1;
     this.updateQueryParams();
   }
 
@@ -118,11 +143,30 @@ export class Doctors implements OnInit {
     this.selectedSpecialisation = '';
     this.onlyShowAvailableDoctors = true;
     this.sortBy = 'experience';
+    this.pageNumber = 1;
 
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: {}
     });
+  }
+
+  goToPreviousPage(): void {
+    if (!this.hasPreviousPage || this.isDoctorsLoading()) {
+      return;
+    }
+
+    this.pageNumber--;
+    this.updateQueryParams(false);
+  }
+
+  goToNextPage(): void {
+    if (!this.hasNextPage || this.isDoctorsLoading()) {
+      return;
+    }
+
+    this.pageNumber++;
+    this.updateQueryParams(false);
   }
 
   openBookingDatePrompt(doctor: PublicDoctor): void {
@@ -136,6 +180,10 @@ export class Doctors implements OnInit {
 
   continueToBooking(): void {
     if (!this.selectedDoctorForBooking || !this.bookingDate) {
+      return;
+    }
+
+    if (!this.isBookingDateValid) {
       return;
     }
 
@@ -154,36 +202,51 @@ export class Doctors implements OnInit {
       : specialisation;
   }
 
-  private matchesAvailability(doctor: PublicDoctor): boolean {
-    return !this.onlyShowAvailableDoctors || doctor.isAvailable;
+  private createSearchRequest(): DoctorSearchRequest {
+    return {
+      pageNumber: this.pageNumber,
+      pageSize: this.pageSize,
+      search: this.searchText,
+      specialisation: this.selectedSpecialisation,
+      isAvailable: this.onlyShowAvailableDoctors ? true : null,
+      sortBy: this.toApiSortBy(this.sortBy),
+      sortDirection: this.toApiSortDirection(this.sortBy)
+    };
   }
 
-  private matchesSpecialisation(doctor: PublicDoctor): boolean {
-    return !this.selectedSpecialisation || doctor.specialisation === this.selectedSpecialisation;
-  }
-
-  private matchesSearchText(doctor: PublicDoctor): boolean {
-    const normalizedSearchText = this.searchText.trim().toLowerCase();
-
-    if (!normalizedSearchText) {
-      return true;
+  private toApiSortBy(sortBy: DoctorSortOption): DoctorSortBy {
+    switch (sortBy) {
+      case 'fee':
+        return 'Fee';
+      case 'experience':
+        return 'Experience';
+      default:
+        return 'Name';
     }
-
-    return doctor.fullName.toLowerCase().includes(normalizedSearchText);
   }
 
-  private compareDoctors(first: PublicDoctor, second: PublicDoctor): number {
-    if (this.sortBy === 'fee') {
-      return first.consultationFee - second.consultationFee ||
-        first.fullName.localeCompare(second.fullName);
-    }
+  private toApiSortDirection(sortBy: DoctorSortOption): SortDirection {
+    return sortBy === 'experience'
+      ? 'Desc'
+      : 'Asc';
+  }
 
-    return second.yearsOfExperience - first.yearsOfExperience ||
-      first.fullName.localeCompare(second.fullName);
+  private setPagedResult(response: PagedResult<PublicDoctor>): void {
+    this.doctors.set(response.items);
+    this.pageNumber = response.pageNumber;
+    this.pageSize = response.pageSize;
+    this.totalCount = response.totalCount;
+    this.totalPages = response.totalPages;
+    this.hasPreviousPage = response.hasPreviousPage;
+    this.hasNextPage = response.hasNextPage;
   }
 
   private isValidSpecialisation(value: string | null): value is DoctorSpecialisation {
     return this.specialisationOptions.includes(value as DoctorSpecialisation);
+  }
+
+  private isValidSort(value: string | null): value is DoctorSortOption {
+    return value === 'name' || value === 'experience' || value === 'fee';
   }
 
   private getDefaultBookingDate(): string {

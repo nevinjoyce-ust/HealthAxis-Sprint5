@@ -32,7 +32,7 @@
         <input
           id="searchText"
           [(ngModel)]="searchText"
-          (ngModelChange)="updateQueryParams()"
+          (keyup.enter)="applyFilters()"
           placeholder="Enter doctor name"
           class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
       </div>
@@ -42,7 +42,7 @@
         <select
           id="specialisation"
           [(ngModel)]="selectedSpecialisation"
-          (ngModelChange)="updateQueryParams()"
+          (ngModelChange)="applyFilters()"
           class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100">
           <option value="">All specialisations</option>
           @for (specialisation of specialisationOptions; track specialisation) {
@@ -50,6 +50,13 @@
           }
         </select>
       </div>
+
+      <button
+        type="button"
+        (click)="applyFilters()"
+        class="rounded-full bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700">
+        Search
+      </button>
 
       <button
         type="button"
@@ -64,7 +71,7 @@
         <input
           type="checkbox"
           [(ngModel)]="onlyShowAvailableDoctors"
-          (ngModelChange)="updateQueryParams()"
+          (ngModelChange)="applyFilters()"
           class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
         Only show available doctors
       </label>
@@ -72,7 +79,16 @@
       <div>
         <p class="text-sm font-bold text-slate-700">Sort by</p>
 
-        <div class="mt-2 grid grid-cols-2 overflow-hidden rounded-2xl bg-slate-100 p-1">
+        <div class="mt-2 grid grid-cols-3 overflow-hidden rounded-2xl bg-slate-100 p-1">
+          <button
+            type="button"
+            (click)="setSortBy('name')"
+            [class]="sortBy === 'name'
+              ? 'rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm'
+              : 'rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:bg-white/70'">
+            Name
+          </button>
+
           <button
             type="button"
             (click)="setSortBy('experience')"
@@ -102,7 +118,7 @@
       </p>
 
       <p class="text-sm font-semibold text-slate-500">
-        Showing {{ filteredDoctors.length }} doctor(s)
+        Showing {{ doctors().length }} of {{ totalCount }} doctor(s)
       </p>
     </div>
 
@@ -120,7 +136,7 @@
         </thead>
 
         <tbody class="divide-y divide-slate-100">
-          @for (doctor of filteredDoctors; track doctor.id) {
+          @for (doctor of doctors(); track doctor.id) {
             <tr>
               <td class="px-4 py-4 font-bold text-slate-900">{{ doctor.fullName }}</td>
               <td class="px-4 py-4 text-slate-600">{{ formatSpecialisation(doctor.specialisation) }}</td>
@@ -150,7 +166,7 @@
             </tr>
           }
 
-          @if (filteredDoctors.length === 0) {
+          @if (doctors().length === 0 && !isDoctorsLoading()) {
             <tr>
               <td colspan="6" class="px-4 py-8 text-center text-sm font-semibold text-slate-500">
                 No doctors to show.
@@ -159,6 +175,30 @@
           }
         </tbody>
       </table>
+    </div>
+
+    <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-sm font-semibold text-slate-500">
+        Page {{ pageNumber }} of {{ totalPages || 1 }}
+      </p>
+
+      <div class="flex gap-3">
+        <button
+          type="button"
+          (click)="goToPreviousPage()"
+          [disabled]="!hasPreviousPage || isDoctorsLoading()"
+          class="rounded-full bg-slate-100 px-5 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50">
+          Previous
+        </button>
+
+        <button
+          type="button"
+          (click)="goToNextPage()"
+          [disabled]="!hasNextPage || isDoctorsLoading()"
+          class="rounded-full bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
+          Next
+        </button>
+      </div>
     </div>
   </section>
 </div>
@@ -197,8 +237,19 @@
             id="bookingDate"
             type="date"
             [min]="minimumDate"
+            [max]="maximumDate"
             [(ngModel)]="bookingDate"
             class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+
+          <p class="mt-2 text-xs font-semibold text-slate-500">
+            Appointments can only be booked up to 6 months in advance.
+          </p>
+
+          @if (!isBookingDateValid) {
+            <p class="mt-2 text-xs font-bold text-red-600">
+              Please choose a date between today and 6 months from today.
+            </p>
+          }
         </div>
       </div>
 
@@ -206,7 +257,8 @@
         <button
           type="button"
           (click)="continueToBooking()"
-          class="rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700">
+          [disabled]="!isBookingDateValid"
+          class="rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
           Continue
         </button>
 

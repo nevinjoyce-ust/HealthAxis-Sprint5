@@ -13,7 +13,7 @@ import {
   PublicDoctor
 } from '../../shared/models/health-axis.models';
 
-interface PagedResult<T> {
+export interface PagedResult<T> {
   items: T[];
   pageNumber: number;
   pageSize: number;
@@ -21,6 +21,19 @@ interface PagedResult<T> {
   totalPages: number;
   hasPreviousPage: boolean;
   hasNextPage: boolean;
+}
+
+export type DoctorSortBy = 'Name' | 'Experience' | 'Fee';
+export type SortDirection = 'Asc' | 'Desc';
+
+export interface DoctorSearchRequest {
+  pageNumber: number;
+  pageSize: number;
+  search?: string;
+  specialisation?: DoctorSpecialisation | '';
+  isAvailable?: boolean | null;
+  sortBy?: DoctorSortBy;
+  sortDirection?: SortDirection;
 }
 
 export interface PatientDto {
@@ -36,6 +49,7 @@ export interface PatientDto {
 
 export interface UpdatePatientRequest {
   fullName: string;
+  email: string;
   dateOfBirth: string;
   gender: string;
   phoneNumber: string;
@@ -105,14 +119,49 @@ export class PatientService {
   }
 
   getPublicDoctors(pageSize = 100): Observable<PublicDoctor[]> {
-    const params = this.createPaginationParams(pageSize);
+    return this.getPublicDoctorsPage({
+      pageNumber: 1,
+      pageSize,
+      sortBy: 'Name',
+      sortDirection: 'Asc'
+    }).pipe(
+      map(response => response.items)
+    );
+  }
 
-    return this.http.get<PagedResult<PublicDoctor> | PublicDoctor[] | null>(
+  getPublicDoctorsPage(request: DoctorSearchRequest): Observable<PagedResult<PublicDoctor>> {
+    let params = new HttpParams()
+      .set('pageNumber', String(request.pageNumber))
+      .set('pageSize', String(request.pageSize));
+
+    if (request.search?.trim()) {
+      params = params.set('search', request.search.trim());
+    }
+
+    if (request.specialisation) {
+      params = params.set('specialisation', request.specialisation);
+    }
+
+    if (request.isAvailable !== null && request.isAvailable !== undefined) {
+      params = params.set('isAvailable', String(request.isAvailable));
+    }
+
+    if (request.sortBy) {
+      params = params.set('sortBy', request.sortBy);
+    }
+
+    if (request.sortDirection) {
+      params = params.set('sortDirection', request.sortDirection);
+    }
+
+    return this.http.get<PagedResult<PublicDoctor>>(
       `${this.apiBaseUrl}/doctors`,
       { params }
     ).pipe(
-      map(response => this.getItemsFromPagedResult(response)
-        .map(doctor => this.normalizeDoctor(doctor)))
+      map(response => ({
+        ...response,
+        items: response.items.map(doctor => this.normalizeDoctor(doctor))
+      }))
     );
   }
 

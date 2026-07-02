@@ -16,4 +16,12 @@ export class Home {
   get isLoggedIn(): boolean {
     return this.auth.isLoggedIn();
   }
+
+  get showDashboardButton(): boolean {
+    return !!this.auth.getDashboardUrl();
+  }
+
+  get dashboardUrl(): string | null {
+    return this.auth.getDashboardUrl();
+  }
 }

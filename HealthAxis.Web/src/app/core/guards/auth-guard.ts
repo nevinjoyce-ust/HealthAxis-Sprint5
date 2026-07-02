@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
+import { AppRoutes } from '../constants/route-paths';
 import { AuthService } from '../services/auth-service';
 
 export const authGuard: CanActivateFn = (_route, state) => {
@@ -11,7 +12,7 @@ export const authGuard: CanActivateFn = (_route, state) => {
     return true;
   }
 
-  return router.createUrlTree(['/login'], {
+  return router.createUrlTree([AppRoutes.Login], {
     queryParams: {
       reason: 'unauthorized',
       returnUrl: state.url

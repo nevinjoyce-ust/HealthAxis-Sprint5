@@ -170,8 +170,14 @@ try
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
         var context = scope.ServiceProvider.GetRequiredService<HealthAxisDbContext>();
+        
+        var seedDemoData = builder.Configuration.GetValue<bool>("SeedData:SeedDemoData");
 
-        await IdentityDataSeeder.SeedAsync(roleManager, userManager, context);
+        await IdentityDataSeeder.SeedAsync(
+            roleManager,
+            userManager,
+            context,
+            seedDemoData);
     }
 
     if (app.Environment.IsDevelopment())

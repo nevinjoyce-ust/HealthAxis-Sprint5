@@ -76,6 +76,8 @@ public class MappingProfile : Profile
                     src.Appointment != null && src.Appointment.Patient != null
                         ? src.Appointment.Patient.FullName
                         : string.Empty))
+            .ForMember(dest => dest.PatientAge,
+                opt => opt.MapFrom(src => src.PatientAge))
             .ForMember(dest => dest.DoctorName,
                 opt => opt.MapFrom(src =>
                     src.Appointment != null && src.Appointment.Doctor != null

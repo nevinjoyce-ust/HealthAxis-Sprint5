@@ -1,6 +1,7 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AppRoutes } from '../../core/constants/route-paths';
 import { AuthService } from '../../core/services/auth-service';
 
 @Component({
@@ -8,14 +9,14 @@ import { AuthService } from '../../core/services/auth-service';
   templateUrl: './logout.html',
   styleUrl: './logout.css'
 })
-export class Logout implements OnInit {
+export class Logout {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
-  ngOnInit(): void {
+  constructor() {
     this.auth.clearSession();
 
-    this.router.navigate(['/login'], {
+    this.router.navigate([AppRoutes.Login], {
       queryParams: { reason: 'logged-out' },
       replaceUrl: true
     });

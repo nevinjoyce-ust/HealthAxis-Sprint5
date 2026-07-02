@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { authGuard } from './core/guards/auth-guard';
 import { roleGuard } from './core/guards/role-guard';
+import { AppRoles } from './shared/models/role.model';
 
 export const routes: Routes = [
   {
@@ -32,7 +33,7 @@ export const routes: Routes = [
   {
     path: 'patient',
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['Patient'] },
+    data: { roles: [AppRoles.Patient] },
     loadComponent: () =>
       import('./core/layouts/patient-layout/patient-layout').then(m => m.PatientLayout),
     children: [
@@ -82,7 +83,7 @@ export const routes: Routes = [
   {
     path: 'doctor',
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['Doctor'] },
+    data: { roles: [AppRoles.Doctor] },
     loadComponent: () =>
       import('./core/layouts/doctor-layout/doctor-layout').then(m => m.DoctorLayout),
     children: [

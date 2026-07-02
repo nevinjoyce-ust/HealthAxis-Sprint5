@@ -63,15 +63,14 @@ public class AuthService : IAuthService
     {
         var response = await _httpClient.PutAsJsonAsync("api/auth/change-password", request);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadFromJsonAsync<AuthMessageResponse>();
-            return error?.Message ?? "Unable to change password.";
-        }
+        var result = await ApiResponseHandler.ReadMessageResponseAsync(
+            response,
+            "Unable to change password.",
+            "Password changed successfully.");
 
-        var result = await response.Content.ReadFromJsonAsync<AuthMessageResponse>();
-
-        return result?.Message ?? "Password changed successfully.";
+        return result.IsSuccess
+            ? result.Data
+            : result.ErrorMessage;
     }
 
     public async Task LogoutAsync()

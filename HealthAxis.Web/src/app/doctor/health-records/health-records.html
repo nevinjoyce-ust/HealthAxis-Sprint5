@@ -117,7 +117,6 @@
             <tr>
               <th class="px-4 py-3">Date</th>
               <th class="px-4 py-3">Patient</th>
-              <th class="px-4 py-3">Diagnosis</th>
               <th class="px-4 py-3">Details</th>
             </tr>
           </thead>
@@ -127,7 +126,6 @@
               <tr>
                 <td class="px-4 py-4 font-semibold text-slate-700">{{ formatDate(record.visitDate) }}</td>
                 <td class="px-4 py-4 text-slate-600">{{ record.patientName }}</td>
-                <td class="px-4 py-4 text-slate-600">{{ record.diagnosis }}</td>
                 <td class="px-4 py-4">
                   <button
                     type="button"
@@ -141,7 +139,7 @@
 
             @if (doctorCreatedHealthRecords.length === 0) {
               <tr>
-                <td colspan="4" class="px-4 py-8 text-center text-sm font-semibold text-slate-500">
+                <td colspan="3" class="px-4 py-8 text-center text-sm font-semibold text-slate-500">
                   No records to show.
                 </td>
               </tr>
@@ -238,6 +236,11 @@
           <p class="mt-1 font-semibold text-slate-900">{{ selectedHealthRecord.patientName }}</p>
         </div>
 
+        <div>
+          <p class="font-bold text-slate-500">Patient age</p>
+          <p class="mt-1 font-semibold text-slate-900">{{ selectedHealthRecord.patientAge }} years</p>
+        </div>
+        
         <div>
           <p class="font-bold text-slate-500">Diagnosis</p>
           <p class="mt-1 text-slate-800">{{ selectedHealthRecord.diagnosis }}</p>

@@ -29,9 +29,9 @@ public class HealthRecordService(
     }
 
     public async Task<PagedResultDto<HealthRecordDto>> GetHealthRecordsForDoctorPatientViewAsync(
-     int patientId,
-     int doctorId,
-     PaginationQueryDto pagination)
+        int patientId,
+        int doctorId,
+        PaginationQueryDto pagination)
     {
         var hasConfirmedAppointment = await appointmentRepository
             .DoctorHasConfirmedAppointmentWithPatientAsync(doctorId, patientId);
@@ -43,6 +43,7 @@ public class HealthRecordService(
 
         return await GetHealthRecordsByPatientIdAndDoctorIdAsync(patientId, doctorId, pagination);
     }
+
     public async Task<PagedResultDto<HealthRecordDto>> GetHealthRecordsByPatientIdAndDoctorIdAsync(
         int patientId,
         int doctorId,
@@ -76,6 +77,11 @@ public class HealthRecordService(
         if (appointment == null)
         {
             throw new NotFoundException(ErrorMessages.AppointmentNotFound);
+        }
+
+        if (appointment.Patient == null)
+        {
+            throw new NotFoundException(ErrorMessages.PatientNotFound);
         }
 
         if (appointment.DoctorId != doctorId)
@@ -114,6 +120,7 @@ public class HealthRecordService(
             var healthRecord = new HealthRecord
             {
                 AppointmentId = dto.AppointmentId,
+                PatientAge = CalculateAge(appointment.Patient.DateOfBirth, appointment.AppointmentDate),
                 VisitDate = dto.VisitDate,
                 Diagnosis = dto.Diagnosis,
                 Prescription = dto.Prescription,
@@ -139,9 +146,10 @@ public class HealthRecordService(
             throw;
         }
     }
+
     public async Task<PagedResultDto<HealthRecordDto>> GetHealthRecordsByDoctorIdAsync(
-    int doctorId,
-    PaginationQueryDto pagination)
+        int doctorId,
+        PaginationQueryDto pagination)
     {
         var records = await healthRecordRepository.GetHealthRecordsByDoctorIdAsync(
             doctorId,
@@ -150,6 +158,19 @@ public class HealthRecordService(
 
         return MapPagedResult<HealthRecord, HealthRecordDto>(records);
     }
+
+    private static int CalculateAge(DateOnly dateOfBirth, DateOnly referenceDate)
+    {
+        var age = referenceDate.Year - dateOfBirth.Year;
+
+        if (referenceDate < dateOfBirth.AddYears(age))
+        {
+            age--;
+        }
+
+        return age;
+    }
+
     private PagedResultDto<TDestination> MapPagedResult<TSource, TDestination>(PagedResult<TSource> pagedResult)
     {
         return new PagedResultDto<TDestination>

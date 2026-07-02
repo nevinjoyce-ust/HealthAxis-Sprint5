@@ -14,7 +14,7 @@
 <PageTitle>Patients - HealthAxis Admin</PageTitle>
 
 <AdminPageHeader Kicker="Patient Management"
-                 Title="Patients"  />
+                 Title="Patients" />
 
 <section class="admin-card mb-4 search-panel">
     <h3 class="search-panel-title">Search</h3>
@@ -28,41 +28,63 @@
 
 <AdminModal IsOpen="_showEditForm"
             Title="Edit Patient"
+            Description="Update patient profile details, contact information, and demographics."
             DisableClose="@_isSaving"
             OnClose="CancelEditForm">
-    <EditForm EditContext="_updateEditContext" OnValidSubmit="UpdatePatientAsync">
+    <EditForm EditContext="_updateEditContext"
+              OnValidSubmit="UpdatePatientAsync"
+              OnInvalidSubmit="HandlePatientFormInvalidSubmit">
         <DataAnnotationsValidator />
         <ValidationSummary />
 
+        @if (!string.IsNullOrWhiteSpace(_formErrorMessage))
+        {
+            <div class="alert alert-danger mt-3">@_formErrorMessage</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(_formSuccessMessage))
+        {
+            <div class="alert alert-success mt-3">@_formSuccessMessage</div>
+        }
         <div class="form-grid">
             <div>
                 <label class="form-label">Full name</label>
                 <input class="form-control" value="@_updatePatientForm.FullName" @oninput="HandleUpdateFullNameInput" />
+                <ValidationMessage For="@(() => _updatePatientForm.FullName)" />
             </div>
 
             <div>
                 <label class="form-label">Email</label>
-                <input class="form-control" value="@_updatePatientForm.Email" @oninput="HandleUpdateEmailInput" />
+                <input class="form-control" type="email" value="@_updatePatientForm.Email" @oninput="HandleUpdateEmailInput" />
+                <ValidationMessage For="@(() => _updatePatientForm.Email)" />
             </div>
 
             <div>
                 <label class="form-label">Phone number</label>
-                <input class="form-control" inputmode="tel" value="@_updatePatientForm.PhoneNumber" @oninput="HandleUpdatePhoneInput" />
+                <input class="form-control" maxlength="10" inputmode="tel" value="@_updatePatientForm.PhoneNumber" @oninput="HandleUpdatePhoneInput" />
+                <ValidationMessage For="@(() => _updatePatientForm.PhoneNumber)" />
             </div>
 
             <div>
                 <label class="form-label">Date of birth</label>
                 <input class="form-control" type="date" value="@_updatePatientForm.DateOfBirth.ToString("yyyy-MM-dd")" max="@TodayInputValue" @onchange="HandleUpdateDateOfBirthChanged" />
+                <ValidationMessage For="@(() => _updatePatientForm.DateOfBirth)" />
             </div>
 
             <div>
                 <label class="form-label">Gender</label>
-                <input class="form-control" value="@_updatePatientForm.Gender" @oninput="HandleUpdateGenderInput" />
+                <InputSelect class="form-select" @bind-Value="_updatePatientForm.Gender">
+                    @foreach (var gender in GenderOptions)
+                    {
+                        <option value="@gender">@gender</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => _updatePatientForm.Gender)" />
             </div>
 
             <div>
                 <label class="form-label">Address</label>
                 <input class="form-control" value="@_updatePatientForm.Address" @oninput="HandleUpdateAddressInput" />
+                <ValidationMessage For="@(() => _updatePatientForm.Address)" />
             </div>
         </div>
 
@@ -70,7 +92,7 @@
             <button class="btn btn-primary" type="submit" disabled="@_isSaving">
                 @(_isSaving ? "Saving..." : "Save")
             </button>
-            <button class="btn btn-outline-warning" type="button" disabled="@_isSaving" @onclick="() => OpenPatientResetPasswordModal()">
+            <button class="btn btn-outline-warning" type="button" disabled="@_isSaving" @onclick="OpenPatientResetPasswordModal">
                 Reset Password
             </button>
             <button class="btn btn-outline-secondary" type="button" @onclick="CancelEditForm" disabled="@_isSaving">
@@ -123,7 +145,10 @@
                     @foreach (var patient in _patients)
                     {
                         <tr @key="patient.Id">
-                            <td>@patient.FullName</td>
+                            <td>
+                                <div class="fw-semibold">@patient.FullName</div>
+                                <div class="text-muted small">@patient.Email</div>
+                            </td>
                             <td>@patient.DateOfBirth.ToString("dd MMM yyyy")</td>
                             <td>@patient.Gender</td>
                             <td>@patient.PhoneNumber</td>
@@ -134,7 +159,7 @@
                                 </button>
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-outline-primary compact-edit-button" type="button" @onclick="() => EditPatient(patient)">
+                                <button class="btn btn-sm btn-outline-primary compact-edit-button" type="button" disabled="@_isSaving" @onclick="() => EditPatient(patient)">
                                     Edit
                                 </button>
                             </td>
@@ -192,12 +217,15 @@
 <AdminResetPasswordModal IsOpen="@(_showResetPasswordModal && _editingPatientId is not null)"
                          ResetPasswordForm="_resetPasswordForm"
                          IsSaving="_isResettingPassword"
+                         ErrorMessage="@_resetPasswordErrorMessage"
                          Title="Reset patient password"
                          Description="Set a new password for this patient account. The current password is not required."
                          OnConfirm="ResetPatientPasswordAsync"
                          OnClose="CloseResetPasswordModal" />
 
 @code {
+    private static readonly string[] GenderOptions = ["Male", "Female", "Other"];
+
     private readonly PaginationQueryDto _patientsPagination = new() { PageNumber = 1, PageSize = 10 };
     private readonly PaginationQueryDto _appointmentsPagination = new() { PageNumber = 1, PageSize = 5 };
 
@@ -208,8 +236,11 @@
 
     private string? _errorMessage;
     private string? _successMessage;
+    private string? _formErrorMessage;
+    private string? _resetPasswordErrorMessage;
     private string _searchText = string.Empty;
     private string _cancellationReason = string.Empty;
+    private string? _formSuccessMessage;
 
     private bool _showEditForm;
     private bool _showPatientAppointmentsModal;
@@ -282,10 +313,20 @@
         };
 
         _updateEditContext = new EditContext(_updatePatientForm);
+        _formErrorMessage = null;
+        _resetPasswordErrorMessage = null;
         _errorMessage = null;
         _successMessage = null;
+        _formSuccessMessage = null;
         CloseResetPasswordModal();
         _showEditForm = true;
+    }
+
+    private void HandlePatientFormInvalidSubmit()
+    {
+        _formErrorMessage = "Please correct the highlighted fields before saving.";
+        _successMessage = null;
+        _formSuccessMessage = null;
     }
 
     private async Task UpdatePatientAsync()
@@ -294,26 +335,29 @@
         {
             return;
         }
-
+        _formSuccessMessage = null;
         _isSaving = true;
+        _formErrorMessage = null;
         _errorMessage = null;
         _successMessage = null;
 
         try
         {
+            NormalizeUpdatePatientForm();
+
             var result = await AdminPatientService.UpdatePatientAsync(
                 _editingPatientId.Value,
                 _updatePatientForm);
 
             if (!result.IsSuccess)
             {
-                _errorMessage = result.ErrorMessage ?? "Unable to update patient.";
+                _formErrorMessage = result.ErrorMessage ?? "Unable to update patient.";
                 return;
             }
 
             if (result.Data is null)
             {
-                _errorMessage = "Unable to update patient.";
+                _formErrorMessage = "Unable to update patient.";
                 return;
             }
 
@@ -323,7 +367,7 @@
         }
         catch
         {
-            _errorMessage = "Unable to update patient.";
+            _formErrorMessage = "Unable to update patient.";
         }
         finally
         {
@@ -339,6 +383,8 @@
         }
 
         _resetPasswordForm = new AdminResetPasswordDto();
+        _resetPasswordErrorMessage = null;
+        _formSuccessMessage = null;
         _errorMessage = null;
         _successMessage = null;
         _showResetPasswordModal = true;
@@ -348,6 +394,7 @@
     {
         _showResetPasswordModal = false;
         _resetPasswordForm = new AdminResetPasswordDto();
+        _resetPasswordErrorMessage = null;
     }
 
     private async Task ResetPatientPasswordAsync()
@@ -358,6 +405,7 @@
         }
 
         _isResettingPassword = true;
+        _resetPasswordErrorMessage = null;
         _errorMessage = null;
         _successMessage = null;
 
@@ -369,16 +417,16 @@
 
             if (!result.IsSuccess)
             {
-                _errorMessage = result.ErrorMessage ?? "Unable to reset patient password.";
+                _resetPasswordErrorMessage = result.ErrorMessage ?? "Unable to reset patient password.";
                 return;
             }
 
-            _successMessage = result.Data ?? "Patient password reset successfully.";
+            _formSuccessMessage = result.Data ?? "Patient password reset successfully.";
             CloseResetPasswordModal();
         }
         catch
         {
-            _errorMessage = "Unable to reset patient password.";
+            _resetPasswordErrorMessage = "Unable to reset patient password.";
         }
         finally
         {
@@ -552,6 +600,9 @@
     {
         _showEditForm = false;
         _editingPatientId = null;
+        _formErrorMessage = null;
+        _formSuccessMessage = null;
+        _resetPasswordErrorMessage = null;
         _updatePatientForm = CreateEmptyUpdatePatient();
         _updateEditContext = new EditContext(_updatePatientForm);
         CloseResetPasswordModal();
@@ -604,30 +655,28 @@
     private void HandleUpdateFullNameInput(ChangeEventArgs args)
     {
         _updatePatientForm.FullName = args.Value?.ToString() ?? string.Empty;
+        _formErrorMessage = null;
         _updateEditContext.NotifyFieldChanged(new FieldIdentifier(_updatePatientForm, nameof(UpdatePatientDto.FullName)));
     }
 
     private void HandleUpdateEmailInput(ChangeEventArgs args)
     {
         _updatePatientForm.Email = args.Value?.ToString() ?? string.Empty;
+        _formErrorMessage = null;
         _updateEditContext.NotifyFieldChanged(new FieldIdentifier(_updatePatientForm, nameof(UpdatePatientDto.Email)));
     }
 
     private void HandleUpdatePhoneInput(ChangeEventArgs args)
     {
         _updatePatientForm.PhoneNumber = args.Value?.ToString() ?? string.Empty;
+        _formErrorMessage = null;
         _updateEditContext.NotifyFieldChanged(new FieldIdentifier(_updatePatientForm, nameof(UpdatePatientDto.PhoneNumber)));
-    }
-
-    private void HandleUpdateGenderInput(ChangeEventArgs args)
-    {
-        _updatePatientForm.Gender = args.Value?.ToString() ?? string.Empty;
-        _updateEditContext.NotifyFieldChanged(new FieldIdentifier(_updatePatientForm, nameof(UpdatePatientDto.Gender)));
     }
 
     private void HandleUpdateAddressInput(ChangeEventArgs args)
     {
         _updatePatientForm.Address = args.Value?.ToString() ?? string.Empty;
+        _formErrorMessage = null;
         _updateEditContext.NotifyFieldChanged(new FieldIdentifier(_updatePatientForm, nameof(UpdatePatientDto.Address)));
     }
 
@@ -636,8 +685,18 @@
         if (DateOnly.TryParse(args.Value?.ToString(), out var parsed))
         {
             _updatePatientForm.DateOfBirth = parsed;
+            _formErrorMessage = null;
             _updateEditContext.NotifyFieldChanged(new FieldIdentifier(_updatePatientForm, nameof(UpdatePatientDto.DateOfBirth)));
         }
+    }
+
+    private void NormalizeUpdatePatientForm()
+    {
+        _updatePatientForm.FullName = _updatePatientForm.FullName.Trim();
+        _updatePatientForm.Email = _updatePatientForm.Email.Trim();
+        _updatePatientForm.PhoneNumber = _updatePatientForm.PhoneNumber.Trim();
+        _updatePatientForm.Gender = _updatePatientForm.Gender.Trim();
+        _updatePatientForm.Address = _updatePatientForm.Address.Trim();
     }
 
     private static UpdatePatientDto CreateEmptyUpdatePatient()

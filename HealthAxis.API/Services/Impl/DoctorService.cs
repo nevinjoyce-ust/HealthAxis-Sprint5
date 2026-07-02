@@ -23,14 +23,16 @@ public class DoctorService(
 
     private const int MinimumBookingHoursBeforeAppointment = 48;
 
-    public async Task<PagedResultDto<PublicDoctorDto>> GetAllDoctorsAsync(
-        PaginationQueryDto pagination,
-        DoctorSpecialisation? specialisation)
+    public async Task<PagedResultDto<PublicDoctorDto>> GetAllDoctorsAsync(DoctorSearchQueryDto query)
     {
         var doctors = await doctorRepository.GetAllDoctorsAsync(
-            pagination.PageNumber,
-            pagination.PageSize,
-            specialisation);
+            query.PageNumber,
+            query.PageSize,
+            query.Search,
+            query.Specialisation,
+            query.IsAvailable,
+            query.SortBy,
+            query.SortDirection);
 
         return MapPagedResult<Doctor, PublicDoctorDto>(doctors);
     }
@@ -175,6 +177,17 @@ public class DoctorService(
         }
 
         return CreateAvailabilityDto(updatedDoctor.Id, updatedDoctor.IsAvailable);
+    }
+    public async Task<DoctorDto?> GetDoctorProfileByIdAsync(int id)
+    {
+        var doctor = await doctorRepository.GetDoctorByIdWithUserAsync(id);
+
+        if (doctor == null)
+        {
+            return null;
+        }
+
+        return mapper.Map<DoctorDto>(doctor);
     }
 
     private static DoctorAvailableSlotsDto CreateDoctorAvailableSlotsDto(

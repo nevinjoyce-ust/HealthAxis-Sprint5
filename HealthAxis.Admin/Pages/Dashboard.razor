@@ -30,10 +30,17 @@
 }
 
 <div class="admin-stats-grid">
-    <AdminStatCard Label="Active Doctors" Value="@_summary.ActiveDoctorsCount.ToString()" Icon="bi-person-badge" IconCssClass="stat-blue" />
-    <AdminStatCard Label="Patients" Value="@_summary.RegisteredPatientsCount.ToString()" Icon="bi-people" IconCssClass="stat-green" />
-    <AdminStatCard Label="Pending" Value="@_summary.PendingAppointmentsCount.ToString()" Icon="bi-hourglass-split" IconCssClass="stat-orange" />
-    <AdminStatCard Label="Completed" Value="@_summary.CompletedAppointmentsCount.ToString()" Icon="bi-clipboard2-pulse" IconCssClass="stat-purple" />
+    <AdminStatCard Label="Active Doctors"
+                   Value="@_summary.ActiveDoctorsCount.ToString()" />
+
+    <AdminStatCard Label="Patients"
+                   Value="@_summary.RegisteredPatientsCount.ToString()" />
+
+    <AdminStatCard Label="Pending Appointments"
+                   Value="@_summary.PendingAppointmentsCount.ToString()" />
+
+    <AdminStatCard Label="Completed Appointments"
+                   Value="@_summary.CompletedAppointmentsCount.ToString()" />
 </div>
 
 <section class="dashboard-management-grid mt-4">
