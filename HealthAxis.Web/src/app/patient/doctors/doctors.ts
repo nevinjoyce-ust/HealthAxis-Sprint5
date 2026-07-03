@@ -4,17 +4,27 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import {
   DoctorSearchRequest,
-  DoctorSortBy,
   PatientService,
-  PagedResult,
-  SortDirection
+  PagedResult
 } from '../../core/services/patient-service';
 import {
   DoctorSpecialisation,
   PublicDoctor
 } from '../../shared/models/health-axis.models';
-
-type DoctorSortOption = 'name' | 'experience' | 'fee';
+import {
+  DoctorSortOption,
+  doctorSpecialisations,
+  formatSpecialisation,
+  isValidDoctorSort,
+  isValidSpecialisation,
+  toApiDoctorSortBy,
+  toApiSortDirection
+} from '../../shared/utils/doctor-utils';
+import {
+  addDaysDateOnly,
+  addMonthsDateOnly,
+  todayDateOnly
+} from '../../shared/utils/date-utils';
 
 @Component({
   selector: 'app-doctors',
@@ -44,20 +54,9 @@ export class Doctors implements OnInit {
   sortBy: DoctorSortOption = 'experience';
 
   selectedDoctorForBooking: PublicDoctor | null = null;
-  bookingDate = this.getDefaultBookingDate();
+  bookingDate = addDaysDateOnly(3);
 
-  specialisationOptions: DoctorSpecialisation[] = [
-    'Cardiology',
-    'Dermatology',
-    'Neurology',
-    'Orthopaedics',
-    'Pediatrics',
-    'GeneralMedicine',
-    'Psychiatry',
-    'Radiology',
-    'Gynecology',
-    'ENT'
-  ];
+  specialisationOptions: DoctorSpecialisation[] = doctorSpecialisations;
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe(params => {
@@ -68,11 +67,11 @@ export class Doctors implements OnInit {
       const page = Number(params.get('page') ?? 1);
 
       this.searchText = search ?? '';
-      this.selectedSpecialisation = this.isValidSpecialisation(specialisation)
+      this.selectedSpecialisation = isValidSpecialisation(specialisation)
         ? specialisation
         : '';
       this.onlyShowAvailableDoctors = availability !== 'all';
-      this.sortBy = this.isValidSort(sort) ? sort : 'experience';
+      this.sortBy = isValidDoctorSort(sort) ? sort : 'experience';
       this.pageNumber = Number.isNaN(page) || page < 1 ? 1 : page;
 
       this.loadDoctors();
@@ -80,14 +79,11 @@ export class Doctors implements OnInit {
   }
 
   get minimumDate(): string {
-    return new Date().toISOString().split('T')[0];
+    return todayDateOnly();
   }
 
   get maximumDate(): string {
-    const date = new Date();
-    date.setMonth(date.getMonth() + 6);
-
-    return date.toISOString().split('T')[0];
+    return addMonthsDateOnly(6);
   }
 
   get isBookingDateValid(): boolean {
@@ -121,7 +117,7 @@ export class Doctors implements OnInit {
         search: this.searchText.trim() || null,
         specialisation: this.selectedSpecialisation || null,
         availability: this.onlyShowAvailableDoctors ? null : 'all',
-        sort: this.sortBy !== 'experience' ? this.sortBy : null,
+        sort: this.sortBy === 'experience' ? null : this.sortBy,
         page: resetPage ? null : this.pageNumber
       }
     });
@@ -171,7 +167,7 @@ export class Doctors implements OnInit {
 
   openBookingDatePrompt(doctor: PublicDoctor): void {
     this.selectedDoctorForBooking = doctor;
-    this.bookingDate = this.getDefaultBookingDate();
+    this.bookingDate = addDaysDateOnly(3);
   }
 
   closeBookingDatePrompt(): void {
@@ -197,9 +193,7 @@ export class Doctors implements OnInit {
   }
 
   formatSpecialisation(specialisation: DoctorSpecialisation): string {
-    return specialisation === 'GeneralMedicine'
-      ? 'General Medicine'
-      : specialisation;
+    return formatSpecialisation(specialisation);
   }
 
   private createSearchRequest(): DoctorSearchRequest {
@@ -209,26 +203,9 @@ export class Doctors implements OnInit {
       search: this.searchText,
       specialisation: this.selectedSpecialisation,
       isAvailable: this.onlyShowAvailableDoctors ? true : null,
-      sortBy: this.toApiSortBy(this.sortBy),
-      sortDirection: this.toApiSortDirection(this.sortBy)
+      sortBy: toApiDoctorSortBy(this.sortBy),
+      sortDirection: toApiSortDirection(this.sortBy)
     };
-  }
-
-  private toApiSortBy(sortBy: DoctorSortOption): DoctorSortBy {
-    switch (sortBy) {
-      case 'fee':
-        return 'Fee';
-      case 'experience':
-        return 'Experience';
-      default:
-        return 'Name';
-    }
-  }
-
-  private toApiSortDirection(sortBy: DoctorSortOption): SortDirection {
-    return sortBy === 'experience'
-      ? 'Desc'
-      : 'Asc';
   }
 
   private setPagedResult(response: PagedResult<PublicDoctor>): void {
@@ -239,20 +216,5 @@ export class Doctors implements OnInit {
     this.totalPages = response.totalPages;
     this.hasPreviousPage = response.hasPreviousPage;
     this.hasNextPage = response.hasNextPage;
-  }
-
-  private isValidSpecialisation(value: string | null): value is DoctorSpecialisation {
-    return this.specialisationOptions.includes(value as DoctorSpecialisation);
-  }
-
-  private isValidSort(value: string | null): value is DoctorSortOption {
-    return value === 'name' || value === 'experience' || value === 'fee';
-  }
-
-  private getDefaultBookingDate(): string {
-    const date = new Date();
-    date.setDate(date.getDate() + 3);
-
-    return date.toISOString().split('T')[0];
   }
 }

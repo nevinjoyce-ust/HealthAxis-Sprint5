@@ -8,6 +8,14 @@ import {
   HealthRecord,
   PublicDoctor
 } from '../../shared/models/health-axis.models';
+import {
+  compareAppointmentDateTime,
+  compareAppointmentDateTimeDescending,
+  formatDate,
+  formatDateOnly,
+  formatTime,
+  hoursUntilAppointment
+} from '../../shared/utils/date-utils';
 
 interface AccessiblePatientHistory {
   patientId: number;
@@ -52,7 +60,7 @@ export class DoctorDashboard implements OnInit {
   prescription = '';
   notes = '';
 
-  readonly today = computed(() => this.formatDateOnly(new Date()));
+  readonly today = computed(() => formatDateOnly(new Date()));
 
   readonly isAnyLoading = computed(() => {
     return this.isDoctorLoading() ||
@@ -71,13 +79,13 @@ export class DoctorDashboard implements OnInit {
   readonly todayAppointments = computed(() => {
     return this.appointments()
       .filter(appointment => appointment.appointmentDate === this.today() && appointment.status === 'Confirmed')
-      .sort((first, second) => this.compareAppointmentDateTime(first, second));
+      .sort((first, second) => compareAppointmentDateTime(first, second));
   });
 
   readonly pendingAppointments = computed(() => {
     return this.appointments()
       .filter(appointment => appointment.status === 'Pending')
-      .sort((first, second) => this.compareAppointmentDateTime(first, second));
+      .sort((first, second) => compareAppointmentDateTime(first, second));
   });
 
   readonly pendingPreview = computed(() => {
@@ -87,7 +95,7 @@ export class DoctorDashboard implements OnInit {
   readonly upcomingConfirmedAppointments = computed(() => {
     return this.appointments()
       .filter(appointment => appointment.status === 'Confirmed' && appointment.appointmentDate > this.today())
-      .sort((first, second) => this.compareAppointmentDateTime(first, second));
+      .sort((first, second) => compareAppointmentDateTime(first, second));
   });
 
   readonly upcomingConfirmedPreview = computed(() => {
@@ -106,7 +114,7 @@ export class DoctorDashboard implements OnInit {
   readonly accessiblePatientHistories = computed(() => {
     const confirmedAppointments = this.appointments()
       .filter(appointment => appointment.status === 'Confirmed' && appointment.appointmentDate >= this.today())
-      .sort((first, second) => this.compareAppointmentDateTime(first, second));
+      .sort((first, second) => compareAppointmentDateTime(first, second));
 
     const patientMap = new Map<number, AccessiblePatientHistory>();
 
@@ -128,7 +136,7 @@ export class DoctorDashboard implements OnInit {
   readonly cancelledAppointments = computed(() => {
     return this.appointments()
       .filter(appointment => appointment.status === 'Cancelled')
-      .sort((first, second) => this.compareAppointmentDateTime(second, first));
+      .sort((first, second) => compareAppointmentDateTimeDescending(first, second));
   });
 
   readonly cancelledPreview = computed(() => {
@@ -347,47 +355,23 @@ export class DoctorDashboard implements OnInit {
   }
 
   canCancelConfirmedAppointment(appointment: Appointment): boolean {
-    return appointment.status === 'Confirmed' && this.hoursUntilAppointment(appointment) >= 24;
+    return appointment.status === 'Confirmed' && hoursUntilAppointment(appointment) >= 24;
   }
 
   isUrgentPendingAppointment(appointment: Appointment): boolean {
-    return appointment.status === 'Pending' && this.hoursUntilAppointment(appointment) < 24;
+    return appointment.status === 'Pending' && hoursUntilAppointment(appointment) < 24;
   }
 
   formatDate(date: string): string {
-    return new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
+    return formatDate(date);
   }
 
   formatTime(time: string): string {
-    return time.slice(0, 5);
+    return formatTime(time);
   }
 
   private updateAppointmentInState(updatedAppointment: Appointment): void {
     this.appointments.update(appointments => appointments.map(appointment =>
       appointment.id === updatedAppointment.id ? updatedAppointment : appointment));
-  }
-
-  private hoursUntilAppointment(appointment: Appointment): number {
-    const appointmentDateTime = new Date(`${appointment.appointmentDate}T${appointment.appointmentTime}`);
-    const now = new Date();
-
-    return (appointmentDateTime.getTime() - now.getTime()) / 36e5;
-  }
-
-  private compareAppointmentDateTime(first: Appointment, second: Appointment): number {
-    return `${first.appointmentDate}T${first.appointmentTime}`
-      .localeCompare(`${second.appointmentDate}T${second.appointmentTime}`);
-  }
-
-  private formatDateOnly(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-
-    return `${year}-${month}-${day}`;
   }
 }

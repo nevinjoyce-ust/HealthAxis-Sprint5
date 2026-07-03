@@ -49,7 +49,7 @@ export class AuthService {
 
   createAdminHandoffCode(): Observable<AdminHandoffCodeResponse> {
     return this.http.post<AdminHandoffCodeResponse>(
-      `${this.apiBaseUrl}/auth/admin-handoff-code`,
+      `${this.apiBaseUrl}/admin-handoff/code`,
       {}
     );
   }
@@ -105,7 +105,7 @@ export class AuthService {
     }
 
     try {
-      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const base64 = parts[1].replaceAll('-', '+').replaceAll('_', '/');
       const paddedBase64 = base64.padEnd(
         base64.length + (4 - base64.length % 4) % 4,
         '='
@@ -114,7 +114,12 @@ export class AuthService {
       const jsonPayload = decodeURIComponent(
         atob(paddedBase64)
           .split('')
-          .map(character => `%${(`00${character.charCodeAt(0).toString(16)}`).slice(-2)}`)
+          .map(character => {
+            const codePoint = character.codePointAt(0) ?? 0;
+            const hexValue = codePoint.toString(16).padStart(2, '0');
+
+            return `%${hexValue}`;
+          })
           .join('')
       );
 
@@ -150,8 +155,7 @@ export class AuthService {
 
     const roleClaim = payload.role ??
       payload.roles ??
-      payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ??
-      payload['http://healthaxis/claims/role'];
+      payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
 
     if (Array.isArray(roleClaim)) {
       return normalizeAppRole(roleClaim[0]);
@@ -190,7 +194,7 @@ export class AuthService {
     }
 
     const payload = this.getJwtPayload();
-    const payloadPatientId = payload?.patientId ?? payload?.['http://healthaxis/claims/patientId'];
+    const payloadPatientId = payload?.patientId;
 
     return typeof payloadPatientId === 'string' ? Number(payloadPatientId) : null;
   }
@@ -203,7 +207,7 @@ export class AuthService {
     }
 
     const payload = this.getJwtPayload();
-    const payloadDoctorId = payload?.doctorId ?? payload?.['http://healthaxis/claims/doctorId'];
+    const payloadDoctorId = payload?.doctorId;
 
     return typeof payloadDoctorId === 'string' ? Number(payloadDoctorId) : null;
   }
@@ -236,7 +240,7 @@ export class AuthService {
       next: response => {
         this.clearSession();
 
-        window.location.href =
+        globalThis.location.href =
           `${this.adminCallbackUrl}?code=${encodeURIComponent(response.code)}`;
       },
       error: () => {

@@ -77,9 +77,7 @@ export class Appointments implements OnInit {
       const toDate = params.get('toDate');
 
       this.searchText = params.get('search') ?? '';
-      this.timeFilter = fromDate || toDate
-        ? 'dateRange'
-        : this.isValidTimeFilter(time) ? time : 'all';
+      this.timeFilter = this.resolveTimeFilter(time, fromDate, toDate);
       this.selectedStatuses = this.parseStatuses(status);
       this.fromDate = fromDate ?? '';
       this.toDate = toDate ?? '';
@@ -106,11 +104,9 @@ export class Appointments implements OnInit {
   get filteredAppointments(): Appointment[] {
     return this.appointments()
       .filter(appointment => this.matchesTimeFilter(appointment))
-      .filter(appointment => this.selectedStatuses.length === 0 || this.selectedStatuses.includes(appointment.status))
-      .filter(appointment => !this.searchText.trim() || appointment.patientName.toLowerCase().includes(this.searchText.trim().toLowerCase()))
-      .sort((first, second) => this.timeFilter === 'past'
-        ? this.compareDateTime(second, first)
-        : this.compareDateTime(first, second));
+      .filter(appointment => this.matchesStatusFilter(appointment))
+      .filter(appointment => this.matchesSearchText(appointment))
+      .sort((first, second) => this.compareAppointmentsForCurrentTimeFilter(first, second));
   }
 
   get pagedAppointments(): Appointment[] {
@@ -416,7 +412,7 @@ export class Appointments implements OnInit {
       relativeTo: this.route,
       queryParams: {
         search: this.searchText.trim() || null,
-        time: this.timeFilter !== 'all' ? this.timeFilter : null,
+        time: this.timeFilter === 'all' ? null : this.timeFilter,
         status: this.selectedStatuses.length ? this.selectedStatuses.join(',') : null,
         fromDate: this.timeFilter === 'dateRange' && this.fromDate ? this.fromDate : null,
         toDate: this.timeFilter === 'dateRange' && this.toDate ? this.toDate : null
@@ -481,27 +477,76 @@ export class Appointments implements OnInit {
     return true;
   }
 
-  private parseStatuses(value: string | null): AppointmentStatus[] {
-    return value
-      ? value.split(',').filter(status => this.isValidStatus(status)) as AppointmentStatus[]
-      : [];
+  private matchesStatusFilter(appointment: Appointment): boolean {
+    return this.selectedStatuses.length === 0 || this.selectedStatuses.includes(appointment.status);
   }
 
-  private isValidStatus(value: string | null): value is AppointmentStatus {
+  private matchesSearchText(appointment: Appointment): boolean {
+    const searchText = this.searchText.trim().toLowerCase();
+
+    return searchText === '' || appointment.patientName.toLowerCase().includes(searchText);
+  }
+
+  private parseStatuses(value: string | null): AppointmentStatus[] {
+    if (!value) {
+      return [];
+    }
+
+    return value
+      .split(',')
+      .filter(status => this.isValidStatus(status));
+  }
+
+  private isValidStatus(value: string): value is AppointmentStatus {
     return this.statusOptions.includes(value as AppointmentStatus);
+  }
+
+  private resolveTimeFilter(
+    time: string | null,
+    fromDate: string | null,
+    toDate: string | null
+  ): DoctorAppointmentTimeFilter {
+    if (fromDate || toDate) {
+      return 'dateRange';
+    }
+
+    if (this.isValidTimeFilter(time)) {
+      return time;
+    }
+
+    return 'all';
   }
 
   private isValidTimeFilter(value: string | null): value is DoctorAppointmentTimeFilter {
     return value === 'all' || value === 'future' || value === 'past' || value === 'dateRange';
   }
 
+  private compareAppointmentsForCurrentTimeFilter(first: Appointment, second: Appointment): number {
+    if (this.timeFilter === 'past') {
+      return this.compareDateTimeDescending(first, second);
+    }
+
+    return this.compareDateTime(first, second);
+  }
+
   private compareDateTime(first: Appointment, second: Appointment): number {
-    return `${first.appointmentDate}T${first.appointmentTime}`
-      .localeCompare(`${second.appointmentDate}T${second.appointmentTime}`);
+    const firstDateTime = `${first.appointmentDate}T${first.appointmentTime}`;
+    const secondDateTime = `${second.appointmentDate}T${second.appointmentTime}`;
+
+    return firstDateTime.localeCompare(secondDateTime);
+  }
+
+  private compareDateTimeDescending(first: Appointment, second: Appointment): number {
+    const firstDateTime = `${first.appointmentDate}T${first.appointmentTime}`;
+    const secondDateTime = `${second.appointmentDate}T${second.appointmentTime}`;
+
+    return secondDateTime.localeCompare(firstDateTime);
   }
 
   private hoursUntilAppointment(appointment: Appointment): number {
-    return (new Date(`${appointment.appointmentDate}T${appointment.appointmentTime}`).getTime() - new Date().getTime()) / 36e5;
+    const appointmentTime = new Date(`${appointment.appointmentDate}T${appointment.appointmentTime}`).getTime();
+
+    return (appointmentTime - Date.now()) / 36e5;
   }
 
   private formatDateOnly(date: Date): string {

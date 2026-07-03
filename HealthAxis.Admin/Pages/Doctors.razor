@@ -808,7 +808,11 @@
 
     private void HandleCreatePracticeStartDateChanged(ChangeEventArgs args)
     {
-        if (DateOnly.TryParse(args.Value?.ToString(), out var parsedDate))
+        if (DateOnly.TryParse(
+            args.Value?.ToString(),
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out var parsedDate))
         {
             _createDoctorForm.PracticeStartDate = parsedDate;
             _formErrorMessage = null;
@@ -839,7 +843,11 @@
 
     private void HandleUpdatePracticeStartDateChanged(ChangeEventArgs args)
     {
-        if (DateOnly.TryParse(args.Value?.ToString(), out var parsedDate))
+        if (DateOnly.TryParse(
+            args.Value?.ToString(),
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out var parsedDate))
         {
             _updateDoctorForm.PracticeStartDate = parsedDate;
             _formErrorMessage = null;
@@ -905,8 +913,12 @@
             }
 
             doctor.IsAvailable = result.Data.IsAvailable;
+            var fallbackMessage = result.Data.IsAvailable
+                ? "Doctor activated successfully."
+                : "Doctor deactivated successfully.";
+
             _successMessage = string.IsNullOrWhiteSpace(result.Data.Message)
-                ? (result.Data.IsAvailable ? "Doctor activated successfully." : "Doctor deactivated successfully.")
+                ? fallbackMessage
                 : result.Data.Message;
         }
         catch

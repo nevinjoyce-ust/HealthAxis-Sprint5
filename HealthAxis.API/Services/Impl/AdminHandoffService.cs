@@ -11,9 +11,9 @@ public class AdminHandoffService(IMemoryCache cache) : IAdminHandoffService
     {
         var bytes = RandomNumberGenerator.GetBytes(32);
         var code = Convert.ToBase64String(bytes)
-            .Replace("+", "-")
-            .Replace("/", "_")
-            .Replace("=", "");
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .Replace("=", string.Empty);
 
         cache.Set(
             GetCacheKey(code),

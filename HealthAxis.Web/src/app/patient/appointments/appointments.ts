@@ -81,12 +81,7 @@ export class Appointments implements OnInit {
         this.hasSetInitialFilterVisibility = true;
       }
 
-      if (fromDate || toDate || date) {
-        this.timeFilter = 'dateRange';
-      } else {
-        this.timeFilter = this.isValidTimeFilter(time) ? time : 'all';
-      }
-
+      this.timeFilter = this.resolveTimeFilter(time, fromDate, toDate, date);
       this.selectedStatuses = this.parseStatuses(status);
       this.searchText = search ?? doctor ?? '';
       this.fromDate = fromDate ?? date ?? '';
@@ -340,7 +335,7 @@ export class Appointments implements OnInit {
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: {
-        time: this.timeFilter !== 'all' ? this.timeFilter : null,
+        time: this.timeFilter === 'all' ? null : this.timeFilter,
         status: this.selectedStatuses.length > 0 ? this.selectedStatuses.join(',') : null,
         search: this.searchText.trim() || null,
         fromDate: this.timeFilter === 'dateRange' && this.fromDate ? this.fromDate : null,
@@ -393,7 +388,7 @@ export class Appointments implements OnInit {
 
     return value
       .split(',')
-      .filter(status => this.isValidStatus(status)) as AppointmentStatus[];
+      .filter(status => this.isValidStatus(status));
   }
 
   private matchesTimeFilter(appointment: Appointment): boolean {
@@ -452,11 +447,28 @@ export class Appointments implements OnInit {
     return new Date().toISOString().split('T')[0];
   }
 
+  private resolveTimeFilter(
+    time: string | null,
+    fromDate: string | null,
+    toDate: string | null,
+    date: string | null
+  ): AppointmentTimeFilter {
+    if (fromDate || toDate || date) {
+      return 'dateRange';
+    }
+
+    if (this.isValidTimeFilter(time)) {
+      return time;
+    }
+
+    return 'all';
+  }
+
   private isValidTimeFilter(value: string | null): value is AppointmentTimeFilter {
     return value === 'all' || value === 'future' || value === 'past' || value === 'dateRange';
   }
 
-  private isValidStatus(value: string | null): value is AppointmentStatus {
+  private isValidStatus(value: string): value is AppointmentStatus {
     return this.statusOptions.includes(value as AppointmentStatus);
   }
 }

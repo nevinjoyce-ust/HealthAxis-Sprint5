@@ -682,9 +682,13 @@
 
     private void HandleUpdateDateOfBirthChanged(ChangeEventArgs args)
     {
-        if (DateOnly.TryParse(args.Value?.ToString(), out var parsed))
+        if (DateOnly.TryParse(
+        args.Value?.ToString(),
+        CultureInfo.InvariantCulture,
+        DateTimeStyles.None,
+        out var parsedDate))
         {
-            _updatePatientForm.DateOfBirth = parsed;
+            _updatePatientForm.DateOfBirth = parsedDate;
             _formErrorMessage = null;
             _updateEditContext.NotifyFieldChanged(new FieldIdentifier(_updatePatientForm, nameof(UpdatePatientDto.DateOfBirth)));
         }

@@ -83,30 +83,22 @@ public static class ApiResponseHandler
                 return null;
             }
 
-            if (root.TryGetProperty("message", out var messageElement) &&
-                messageElement.ValueKind == JsonValueKind.String)
-            {
-                return CleanMessage(messageElement.GetString());
-            }
-
-            if (root.TryGetProperty("detail", out var detailElement) &&
-                detailElement.ValueKind == JsonValueKind.String)
-            {
-                return CleanMessage(detailElement.GetString());
-            }
-
-            if (root.TryGetProperty("title", out var titleElement) &&
-                titleElement.ValueKind == JsonValueKind.String)
-            {
-                return CleanMessage(titleElement.GetString());
-            }
-
-            return null;
+            return TryReadStringProperty(root, "message")
+                ?? TryReadStringProperty(root, "detail")
+                ?? TryReadStringProperty(root, "title");
         }
         catch (JsonException)
         {
             return null;
         }
+    }
+
+    private static string? TryReadStringProperty(JsonElement root, string propertyName)
+    {
+        return root.TryGetProperty(propertyName, out var element) &&
+            element.ValueKind == JsonValueKind.String
+                ? CleanMessage(element.GetString())
+                : null;
     }
 
     private static string? TryReadValidationProblemDetailsMessage(string content)
@@ -116,35 +108,20 @@ public static class ApiResponseHandler
             using var document = JsonDocument.Parse(content);
             var root = document.RootElement;
 
-            if (root.ValueKind != JsonValueKind.Object ||
-                !root.TryGetProperty("errors", out var errorsElement) ||
-                errorsElement.ValueKind != JsonValueKind.Object)
+            if (!TryGetErrorsElement(root, out var errorsElement))
             {
                 return null;
             }
 
-            var messages = new List<string>();
-
-            foreach (var errorProperty in errorsElement.EnumerateObject())
-            {
-                if (errorProperty.Value.ValueKind != JsonValueKind.Array)
-                {
-                    continue;
-                }
-
-                foreach (var errorItem in errorProperty.Value.EnumerateArray())
-                {
-                    if (errorItem.ValueKind == JsonValueKind.String)
-                    {
-                        var message = CleanMessage(errorItem.GetString());
-
-                        if (!string.IsNullOrWhiteSpace(message))
-                        {
-                            messages.Add(message);
-                        }
-                    }
-                }
-            }
+            var messages = errorsElement
+                .EnumerateObject()
+                .Select(errorProperty => errorProperty.Value)
+                .Where(errorValue => errorValue.ValueKind == JsonValueKind.Array)
+                .SelectMany(errorValue => errorValue.EnumerateArray())
+                .Where(errorItem => errorItem.ValueKind == JsonValueKind.String)
+                .Select(errorItem => CleanMessage(errorItem.GetString()))
+                .Where(message => !string.IsNullOrWhiteSpace(message))
+                .ToList();
 
             return messages.Count == 0
                 ? null
@@ -154,6 +131,15 @@ public static class ApiResponseHandler
         {
             return null;
         }
+    }
+
+    private static bool TryGetErrorsElement(JsonElement root, out JsonElement errorsElement)
+    {
+        errorsElement = default;
+
+        return root.ValueKind == JsonValueKind.Object &&
+            root.TryGetProperty("errors", out errorsElement) &&
+            errorsElement.ValueKind == JsonValueKind.Object;
     }
 
     private static string CleanMessage(string? message)

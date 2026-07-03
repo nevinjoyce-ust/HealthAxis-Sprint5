@@ -6,25 +6,27 @@ import { API_BASE_URL } from '../constants/api-constants';
 import { AuthService } from './auth-service';
 import {
   Appointment,
-  AppointmentStatus,
   DoctorAvailableSlots,
   DoctorSpecialisation,
   HealthRecord,
   PublicDoctor
 } from '../../shared/models/health-axis.models';
+import {
+  getItemsFromPagedResult,
+  PagedResult
+} from '../../shared/utils/paged-result-utils';
+import {
+  normalizeAppointmentStatus,
+  toAppointmentStatusNumber
+} from '../../shared/utils/appointment-utils';
+import {
+  DoctorSortBy,
+  normalizeDoctorSpecialisation,
+  SortDirection
+} from '../../shared/utils/doctor-utils';
 
-export interface PagedResult<T> {
-  items: T[];
-  pageNumber: number;
-  pageSize: number;
-  totalCount: number;
-  totalPages: number;
-  hasPreviousPage: boolean;
-  hasNextPage: boolean;
-}
-
-export type DoctorSortBy = 'Name' | 'Experience' | 'Fee';
-export type SortDirection = 'Asc' | 'Desc';
+export type { DoctorSortBy, SortDirection } from '../../shared/utils/doctor-utils';
+export type { PagedResult } from '../../shared/utils/paged-result-utils';
 
 export interface DoctorSearchRequest {
   pageNumber: number;
@@ -91,7 +93,7 @@ export class PatientService {
   }
 
   changePassword(request: ChangePasswordRequest): Observable<{ message: string }> {
-    return this.http.put<{ message: string }>(`${this.apiBaseUrl}/auth/change-password`, request);
+    return this.http.put<{ message: string }>(`${this.apiBaseUrl}/account/change-password`, request);
   }
 
   getCurrentPatientAppointments(pageSize = 100): Observable<Appointment[]> {
@@ -101,7 +103,7 @@ export class PatientService {
       `${this.apiBaseUrl}/appointments/me`,
       { params }
     ).pipe(
-      map(response => this.getItemsFromPagedResult(response)
+      map(response => getItemsFromPagedResult(response)
         .map(appointment => this.normalizeAppointment(appointment)))
     );
   }
@@ -113,8 +115,7 @@ export class PatientService {
       `${this.apiBaseUrl}/health-records/me`,
       { params }
     ).pipe(
-      map(response => this.getItemsFromPagedResult(response)
-        .map(record => this.normalizeHealthRecord(record)))
+      map(response => getItemsFromPagedResult(response))
     );
   }
 
@@ -160,7 +161,7 @@ export class PatientService {
     ).pipe(
       map(response => ({
         ...response,
-        items: response.items.map(doctor => this.normalizeDoctor(doctor))
+        items: response.items.map(doctor => normalizeDoctorSpecialisation(doctor))
       }))
     );
   }
@@ -181,8 +182,8 @@ export class PatientService {
       `${this.apiBaseUrl}/doctors/available-slots`,
       { params }
     ).pipe(
-      map(response => this.getItemsFromPagedResult(response)
-        .map(doctor => this.normalizeDoctorAvailableSlots(doctor)))
+      map(response => getItemsFromPagedResult(response)
+        .map(doctor => normalizeDoctorSpecialisation(doctor)))
     );
   }
 
@@ -206,7 +207,7 @@ export class PatientService {
 
   cancelAppointment(appointmentId: number, cancellationReason: string): Observable<Appointment> {
     const request: UpdateAppointmentStatusRequest = {
-      status: this.toAppointmentStatusNumber('Cancelled'),
+      status: toAppointmentStatusNumber('Cancelled'),
       cancellationReason
     };
 
@@ -233,87 +234,10 @@ export class PatientService {
       .set('pageSize', String(pageSize));
   }
 
-  private getItemsFromPagedResult<T>(response: PagedResult<T> | T[] | null): T[] {
-    if (!response) {
-      return [];
-    }
-
-    if (Array.isArray(response)) {
-      return response;
-    }
-
-    return response.items ?? [];
-  }
-
   private normalizeAppointment(appointment: Appointment): Appointment {
     return {
       ...appointment,
-      status: this.normalizeAppointmentStatus(appointment.status)
+      status: normalizeAppointmentStatus(appointment.status)
     };
-  }
-
-  private normalizeHealthRecord(record: HealthRecord): HealthRecord {
-    return record;
-  }
-
-  private normalizeDoctor(doctor: PublicDoctor): PublicDoctor {
-    return {
-      ...doctor,
-      specialisation: this.normalizeSpecialisation(doctor.specialisation)
-    };
-  }
-
-  private normalizeDoctorAvailableSlots(doctor: DoctorAvailableSlots): DoctorAvailableSlots {
-    return {
-      ...doctor,
-      specialisation: this.normalizeSpecialisation(doctor.specialisation)
-    };
-  }
-
-  private normalizeAppointmentStatus(value: AppointmentStatus | number): AppointmentStatus {
-    if (typeof value === 'string') {
-      return value;
-    }
-
-    const statuses: AppointmentStatus[] = [
-      'Pending',
-      'Confirmed',
-      'Cancelled',
-      'Completed'
-    ];
-
-    return statuses[value] ?? 'Pending';
-  }
-
-  private normalizeSpecialisation(value: DoctorSpecialisation | number): DoctorSpecialisation {
-    if (typeof value === 'string') {
-      return value;
-    }
-
-    const specialisations: DoctorSpecialisation[] = [
-      'Cardiology',
-      'Dermatology',
-      'Neurology',
-      'Orthopaedics',
-      'Pediatrics',
-      'GeneralMedicine',
-      'Psychiatry',
-      'Radiology',
-      'Gynecology',
-      'ENT'
-    ];
-
-    return specialisations[value] ?? 'GeneralMedicine';
-  }
-
-  private toAppointmentStatusNumber(status: AppointmentStatus): number {
-    const statuses: AppointmentStatus[] = [
-      'Pending',
-      'Confirmed',
-      'Cancelled',
-      'Completed'
-    ];
-
-    return statuses.indexOf(status);
   }
 }

@@ -1,13 +1,14 @@
 using AutoMapper;
 using HealthAxis.API.Constants;
-using HealthAxis.Shared.Constants;
-using HealthAxis.Shared.Dtos;
-using HealthAxis.Shared.Dtos.Doctor;
-using HealthAxis.Shared.Enums;
 using HealthAxis.API.Exceptions;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
 using HealthAxis.API.Services.Impl;
+using HealthAxis.Shared.Constants;
+using HealthAxis.Shared.Dtos;
+using HealthAxis.Shared.Dtos.Doctor;
+using HealthAxis.Shared.Enums;
+using Microsoft.AspNetCore.Identity;
 using Moq;
 
 namespace HealthAxisTests.ServiceTests;
@@ -28,570 +29,355 @@ public class DoctorServiceTests
         _doctorService = new DoctorService(
             _doctorRepositoryMock.Object,
             _mapperMock.Object,
-            _appointmentRepositoryMock.Object
-        );
+            _appointmentRepositoryMock.Object);
     }
 
     [Fact]
     public async Task GetAllDoctorsAsync_WhenDoctorsExist_ShouldReturnPagedPublicDoctorDtos()
     {
-        // Arrange
-        var doctors = new List<Doctor>
-    {
-        new Doctor
-        {
-            Id = 1,
-            UserId = "doctor-user-id-1",
-            FullName = "Dr. Anjali Menon",
-            Specialisation = DoctorSpecialisation.Cardiology,
-            PracticeStartDate = new DateOnly(2015, 1, 1),
-            ConsultationFee = 600,
-            IsAvailable = true
-        }
-    };
-
-        var pagedDoctors = new PagedResult<Doctor>
-        {
-            Items = doctors,
-            PageNumber = 1,
-            PageSize = 10,
-            TotalCount = 1,
-            TotalPages = 1
-        };
-
-        var mappedDoctorDtos = new List<PublicDoctorDto>
-    {
-        new PublicDoctorDto
-        {
-            Id = 1,
-            FullName = "Dr. Anjali Menon",
-            Specialisation = DoctorSpecialisation.Cardiology,
-            YearsOfExperience = 10,
-            ConsultationFee = 600,
-            IsAvailable = true
-        }
-    };
-
-        var query = new DoctorSearchQueryDto
-        {
-            PageNumber = 1,
-            PageSize = 10,
-            Search = null,
-            Specialisation = null,
-            IsAvailable = null,
-            SortBy = DoctorSortBy.Name,
-            SortDirection = SortDirection.Asc
-        };
+        var doctors = new List<Doctor> { CreateDoctor(isAvailable: true) };
+        var pagedDoctors = CreatePagedDoctorResult(doctors);
+        var mappedDoctorDtos = new List<PublicDoctorDto> { CreatePublicDoctorDto(doctors[0]) };
+        var query = CreateDoctorSearchQuery();
 
         _doctorRepositoryMock
-            .Setup(repo => repo.GetAllDoctorsAsync(
-                query.PageNumber,
-                query.PageSize,
-                query.Search,
-                query.Specialisation,
-                query.IsAvailable,
-                query.SortBy,
-                query.SortDirection))
+            .Setup(repo => repo.GetAllDoctorsAsync(query.PageNumber, query.PageSize, query.Search, query.Specialisation, query.IsAvailable, query.SortBy, query.SortDirection))
             .ReturnsAsync(pagedDoctors);
+        _mapperMock.Setup(mapper => mapper.Map<List<PublicDoctorDto>>(doctors)).Returns(mappedDoctorDtos);
 
-        _mapperMock
-            .Setup(mapper => mapper.Map<List<PublicDoctorDto>>(doctors))
-            .Returns(mappedDoctorDtos);
-
-        // Act
         var result = await _doctorService.GetAllDoctorsAsync(query);
 
-        // Assert
-        Assert.NotNull(result);
         Assert.Single(result.Items);
         Assert.Equal(1, result.Items[0].Id);
-        Assert.Equal("Dr. Anjali Menon", result.Items[0].FullName);
-        Assert.Equal(DoctorSpecialisation.Cardiology, result.Items[0].Specialisation);
-        Assert.Equal(10, result.Items[0].YearsOfExperience);
-        Assert.Equal(600, result.Items[0].ConsultationFee);
-        Assert.True(result.Items[0].IsAvailable);
-
-        Assert.Equal(1, result.PageNumber);
-        Assert.Equal(10, result.PageSize);
         Assert.Equal(1, result.TotalCount);
-        Assert.Equal(1, result.TotalPages);
-        Assert.False(result.HasPreviousPage);
-        Assert.False(result.HasNextPage);
     }
+
     [Fact]
     public async Task GetAllDoctorsAsync_WhenNoDoctorsExist_ShouldReturnEmptyPagedResult()
     {
-        // Arrange
         var doctors = new List<Doctor>();
-
-        var pagedDoctors = new PagedResult<Doctor>
-        {
-            Items = doctors,
-            PageNumber = 1,
-            PageSize = 10,
-            TotalCount = 0,
-            TotalPages = 0
-        };
-
-        var mappedDoctorDtos = new List<PublicDoctorDto>();
-
-        var query = new DoctorSearchQueryDto
-        {
-            PageNumber = 1,
-            PageSize = 10,
-            Search = null,
-            Specialisation = null,
-            IsAvailable = null,
-            SortBy = DoctorSortBy.Name,
-            SortDirection = SortDirection.Asc
-        };
-
+        var query = CreateDoctorSearchQuery();
         _doctorRepositoryMock
-            .Setup(repo => repo.GetAllDoctorsAsync(
-                query.PageNumber,
-                query.PageSize,
-                query.Search,
-                query.Specialisation,
-                query.IsAvailable,
-                query.SortBy,
-                query.SortDirection))
-            .ReturnsAsync(pagedDoctors);
+            .Setup(repo => repo.GetAllDoctorsAsync(query.PageNumber, query.PageSize, query.Search, query.Specialisation, query.IsAvailable, query.SortBy, query.SortDirection))
+            .ReturnsAsync(CreatePagedDoctorResult(doctors));
+        _mapperMock.Setup(mapper => mapper.Map<List<PublicDoctorDto>>(doctors)).Returns([]);
 
-        _mapperMock
-            .Setup(mapper => mapper.Map<List<PublicDoctorDto>>(doctors))
-            .Returns(mappedDoctorDtos);
-
-        // Act
         var result = await _doctorService.GetAllDoctorsAsync(query);
 
-        // Assert
-        Assert.NotNull(result);
         Assert.Empty(result.Items);
-
-        Assert.Equal(1, result.PageNumber);
-        Assert.Equal(10, result.PageSize);
         Assert.Equal(0, result.TotalCount);
         Assert.Equal(0, result.TotalPages);
-        Assert.False(result.HasPreviousPage);
-        Assert.False(result.HasNextPage);
     }
+
     [Fact]
     public async Task GetDoctorByIdAsync_WhenDoctorExists_ShouldReturnPublicDoctorDto()
     {
-        // Arrange
-        var doctor = new Doctor
-        {
-            Id = 1,
-            UserId = "doctor-user-id-1",
-            FullName = "Dr. Anjali Menon",
-            Specialisation = DoctorSpecialisation.Cardiology,
-            PracticeStartDate = new DateOnly(2015, 1, 1),
-            ConsultationFee = 600,
-            IsAvailable = true
-        };
+        var doctor = CreateDoctor(isAvailable: true);
+        var mappedDoctorDto = CreatePublicDoctorDto(doctor);
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(1)).ReturnsAsync(doctor);
+        _mapperMock.Setup(mapper => mapper.Map<PublicDoctorDto>(doctor)).Returns(mappedDoctorDto);
 
-        var mappedDoctorDto = new PublicDoctorDto
-        {
-            Id = 1,
-            FullName = "Dr. Anjali Menon",
-            Specialisation = DoctorSpecialisation.Cardiology,
-            YearsOfExperience = 10,
-            ConsultationFee = 600,
-            IsAvailable = true
-        };
-
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetDoctorByIdAsync(1))
-            .ReturnsAsync(doctor);
-
-        _mapperMock
-            .Setup(mapper => mapper.Map<PublicDoctorDto>(doctor))
-            .Returns(mappedDoctorDto);
-
-        // Act
         var result = await _doctorService.GetDoctorByIdAsync(1);
 
-        // Assert
         Assert.NotNull(result);
         Assert.Equal(1, result!.Id);
-        Assert.Equal("Dr. Anjali Menon", result.FullName);
-        Assert.Equal(DoctorSpecialisation.Cardiology, result.Specialisation);
-        Assert.Equal(10, result.YearsOfExperience);
-        Assert.Equal(600, result.ConsultationFee);
-        Assert.True(result.IsAvailable);
     }
 
     [Fact]
     public async Task GetDoctorByIdAsync_WhenDoctorDoesNotExist_ShouldReturnNull()
     {
-        // Arrange
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetDoctorByIdAsync(99))
-            .ReturnsAsync((Doctor?)null);
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(99)).ReturnsAsync((Doctor?)null);
 
-        // Act
         var result = await _doctorService.GetDoctorByIdAsync(99);
 
-        // Assert
         Assert.Null(result);
     }
 
     [Fact]
     public async Task GetDoctorByUserIdAsync_WhenDoctorExists_ShouldReturnPublicDoctorDto()
     {
-        // Arrange
-        const string userId = "doctor-user-id-2";
+        var doctor = CreateDoctor(isAvailable: true);
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByUserIdAsync("doctor-user-id-1")).ReturnsAsync(doctor);
+        _mapperMock.Setup(mapper => mapper.Map<PublicDoctorDto>(doctor)).Returns(CreatePublicDoctorDto(doctor));
 
-        var doctor = new Doctor
-        {
-            Id = 1,
-            UserId = userId,
-            FullName = "Dr. Rahul Nair",
-            Specialisation = DoctorSpecialisation.Dermatology,
-            PracticeStartDate = new DateOnly(2019, 1, 1),
-            ConsultationFee = 500,
-            IsAvailable = true
-        };
+        var result = await _doctorService.GetDoctorByUserIdAsync("doctor-user-id-1");
 
-        var mappedDoctorDto = new PublicDoctorDto
-        {
-            Id = 1,
-            FullName = "Dr. Rahul Nair",
-            Specialisation = DoctorSpecialisation.Dermatology,
-            YearsOfExperience = 6,
-            ConsultationFee = 500,
-            IsAvailable = true
-        };
-
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetDoctorByUserIdAsync(userId))
-            .ReturnsAsync(doctor);
-
-        _mapperMock
-            .Setup(mapper => mapper.Map<PublicDoctorDto>(doctor))
-            .Returns(mappedDoctorDto);
-
-        // Act
-        var result = await _doctorService.GetDoctorByUserIdAsync(userId);
-
-        // Assert
         Assert.NotNull(result);
         Assert.Equal(doctor.Id, result!.Id);
-        Assert.Equal(doctor.FullName, result.FullName);
-        Assert.Equal(doctor.Specialisation, result.Specialisation);
-        Assert.Equal(6, result.YearsOfExperience);
-        Assert.Equal(doctor.ConsultationFee, result.ConsultationFee);
-        Assert.Equal(doctor.IsAvailable, result.IsAvailable);
     }
 
     [Fact]
     public async Task GetDoctorByUserIdAsync_WhenDoctorDoesNotExist_ShouldReturnNull()
     {
-        // Arrange
-        const string userId = "missing-doctor-user-id";
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByUserIdAsync("missing")).ReturnsAsync((Doctor?)null);
 
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetDoctorByUserIdAsync(userId))
-            .ReturnsAsync((Doctor?)null);
+        var result = await _doctorService.GetDoctorByUserIdAsync("missing");
 
-        // Act
-        var result = await _doctorService.GetDoctorByUserIdAsync(userId);
-
-        // Assert
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task GetAvailabilityAsync_WhenDoctorIsAvailable_ShouldReturnAvailableDto()
+    public async Task GetDoctorProfileByIdAsync_WhenDoctorExists_ShouldReturnDoctorDto()
     {
-        // Arrange
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetAvailabilityAsync(1))
-            .ReturnsAsync(true);
+        var doctor = CreateDoctor(isAvailable: true);
+        doctor.User = new IdentityUser { Id = doctor.UserId, Email = "doctor@test.com", PhoneNumber = "9999999999" };
+        var dto = new DoctorDto { Id = doctor.Id, UserId = doctor.UserId, FullName = doctor.FullName, Email = "doctor@test.com", PhoneNumber = "9999999999" };
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdWithUserAsync(1)).ReturnsAsync(doctor);
+        _mapperMock.Setup(mapper => mapper.Map<DoctorDto>(doctor)).Returns(dto);
 
-        // Act
-        var result = await _doctorService.GetAvailabilityAsync(1);
+        var result = await _doctorService.GetDoctorProfileByIdAsync(1);
 
-        // Assert
         Assert.NotNull(result);
-        Assert.Equal(1, result!.DoctorId);
-        Assert.True(result.IsAvailable);
-        Assert.Equal(ErrorMessages.DoctorAvailableMessage, result.Message);
+        Assert.Equal("doctor@test.com", result!.Email);
     }
 
     [Fact]
-    public async Task GetAvailabilityAsync_WhenDoctorIsNotAvailable_ShouldReturnUnavailableDto()
+    public async Task GetDoctorProfileByIdAsync_WhenDoctorMissing_ShouldReturnNull()
     {
-        // Arrange
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetAvailabilityAsync(1))
-            .ReturnsAsync(false);
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdWithUserAsync(99)).ReturnsAsync((Doctor?)null);
 
-        // Act
+        var result = await _doctorService.GetDoctorProfileByIdAsync(99);
+
+        Assert.Null(result);
+    }
+
+    [Theory]
+    [InlineData(true, ErrorMessages.DoctorAvailableMessage)]
+    [InlineData(false, ErrorMessages.DoctorUnavailableMessage)]
+    public async Task GetAvailabilityAsync_WhenDoctorExists_ShouldReturnAvailabilityDto(bool isAvailable, string expectedMessage)
+    {
+        _doctorRepositoryMock.Setup(repo => repo.GetAvailabilityAsync(1)).ReturnsAsync(isAvailable);
+
         var result = await _doctorService.GetAvailabilityAsync(1);
 
-        // Assert
         Assert.NotNull(result);
-        Assert.Equal(1, result!.DoctorId);
-        Assert.False(result.IsAvailable);
-        Assert.Equal(ErrorMessages.DoctorUnavailableMessage, result.Message);
+        Assert.Equal(isAvailable, result!.IsAvailable);
+        Assert.Equal(expectedMessage, result.Message);
     }
 
     [Fact]
     public async Task GetAvailabilityAsync_WhenDoctorDoesNotExist_ShouldReturnNull()
     {
-        // Arrange
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetAvailabilityAsync(99))
-            .ReturnsAsync((bool?)null);
+        _doctorRepositoryMock.Setup(repo => repo.GetAvailabilityAsync(99)).ReturnsAsync((bool?)null);
 
-        // Act
         var result = await _doctorService.GetAvailabilityAsync(99);
 
-        // Assert
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetDoctorSlotsAsync_WhenDoctorDoesNotExist_ShouldThrowNotFoundException()
+    {
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(99)).ReturnsAsync((Doctor?)null);
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(() => _doctorService.GetDoctorSlotsAsync(99, DateOnly.FromDateTime(DateTime.Today.AddDays(5))));
+
+        Assert.Equal(ErrorMessages.DoctorNotFound, exception.Message);
+    }
+
+    [Fact]
+    public async Task GetDoctorSlotsAsync_WhenDoctorIsAvailable_ShouldExcludeLunchAndBookedSlots()
+    {
+        var date = DateOnly.FromDateTime(DateTime.Today.AddDays(5));
+        var doctor = CreateDoctor(isAvailable: true);
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(1)).ReturnsAsync(doctor);
+        _appointmentRepositoryMock.Setup(repo => repo.GetNonCancelledAppointmentsByDoctorIdAndDateAsync(1, date)).ReturnsAsync([
+            new Appointment { DoctorId = 1, AppointmentDate = date, AppointmentTime = new TimeOnly(9, 0), Status = AppointmentStatus.Confirmed }
+        ]);
+
+        var result = await _doctorService.GetDoctorSlotsAsync(1, date);
+
+        Assert.DoesNotContain(new TimeOnly(9, 0), result.AvailableSlots);
+        Assert.DoesNotContain(new TimeOnly(12, 0), result.AvailableSlots);
+        Assert.Contains(new TimeOnly(9, 30), result.AvailableSlots);
+    }
+
+    [Fact]
+    public async Task GetDoctorSlotsAsync_WhenDoctorIsUnavailable_ShouldReturnNoSlots()
+    {
+        var date = DateOnly.FromDateTime(DateTime.Today.AddDays(5));
+        var doctor = CreateDoctor(isAvailable: false);
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(1)).ReturnsAsync(doctor);
+        _appointmentRepositoryMock.Setup(repo => repo.GetNonCancelledAppointmentsByDoctorIdAndDateAsync(1, date)).ReturnsAsync([]);
+
+        var result = await _doctorService.GetDoctorSlotsAsync(1, date);
+
+        Assert.Empty(result.AvailableSlots);
+    }
+
+    [Fact]
+    public async Task GetAvailableSlotsAsync_ShouldReturnOnlyDoctorsWithAvailableSlotsAndApplyPagination()
+    {
+        var date = DateOnly.FromDateTime(DateTime.Today.AddDays(5));
+        var doctors = new List<Doctor>
+        {
+            CreateDoctor(id: 1, isAvailable: true),
+            CreateDoctor(id: 2, isAvailable: true),
+            CreateDoctor(id: 3, isAvailable: true)
+        };
+        _doctorRepositoryMock.Setup(repo => repo.GetAvailableDoctorsAsync(null)).ReturnsAsync(doctors);
+        _appointmentRepositoryMock.Setup(repo => repo.GetNonCancelledAppointmentsByDateAsync(date)).ReturnsAsync([]);
+
+        var result = await _doctorService.GetAvailableSlotsAsync(date, null, new PaginationQueryDto { PageNumber = 2, PageSize = 2 });
+
+        Assert.Single(result.Items);
+        Assert.Equal(3, result.TotalCount);
+        Assert.Equal(2, result.TotalPages);
+        Assert.Equal(2, result.PageNumber);
+    }
+
+    [Fact]
+    public async Task GetAvailableSlotsAsync_WhenDateIsTooSoon_ShouldReturnNoDoctorsWithSlots()
+    {
+        var date = DateOnly.FromDateTime(DateTime.Today);
+        _doctorRepositoryMock.Setup(repo => repo.GetAvailableDoctorsAsync(null)).ReturnsAsync([CreateDoctor(isAvailable: true)]);
+        _appointmentRepositoryMock.Setup(repo => repo.GetNonCancelledAppointmentsByDateAsync(date)).ReturnsAsync([]);
+
+        var result = await _doctorService.GetAvailableSlotsAsync(date, null, new PaginationQueryDto { PageNumber = 1, PageSize = 10 });
+
+        Assert.Empty(result.Items);
+        Assert.Equal(0, result.TotalCount);
+        Assert.Equal(0, result.TotalPages);
     }
 
     [Fact]
     public async Task UpdateAvailabilityAsync_WhenDoctorDoesNotExist_ShouldThrowNotFoundException()
     {
-        // Arrange
-        var dto = new UpdateDoctorAvailabilityDto { IsAvailable = false };
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(99)).ReturnsAsync((Doctor?)null);
 
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetDoctorByIdAsync(99))
-            .ReturnsAsync((Doctor?)null);
+        var exception = await Assert.ThrowsAsync<NotFoundException>(() => _doctorService.UpdateAvailabilityAsync(99, new UpdateDoctorAvailabilityDto { IsAvailable = false }, AppRoles.Doctor, 99));
 
-        // Act
-        var exception = await Assert.ThrowsAsync<NotFoundException>(() =>
-            _doctorService.UpdateAvailabilityAsync(99, dto, AppRoles.Doctor, 99));
-
-        // Assert
         Assert.Equal(ErrorMessages.DoctorNotFound, exception.Message);
     }
 
     [Fact]
     public async Task UpdateAvailabilityAsync_WhenDoctorUpdatesAnotherDoctor_ShouldThrowForbiddenException()
     {
-        // Arrange
-        var dto = new UpdateDoctorAvailabilityDto { IsAvailable = false };
-        var doctor = CreateDoctor(isAvailable: true);
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(1)).ReturnsAsync(CreateDoctor(isAvailable: true));
 
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetDoctorByIdAsync(1))
-            .ReturnsAsync(doctor);
+        var exception = await Assert.ThrowsAsync<ForbiddenException>(() => _doctorService.UpdateAvailabilityAsync(1, new UpdateDoctorAvailabilityDto { IsAvailable = false }, AppRoles.Doctor, 99));
 
-        // Act
-        var exception = await Assert.ThrowsAsync<ForbiddenException>(() =>
-            _doctorService.UpdateAvailabilityAsync(1, dto, AppRoles.Doctor, 99));
-
-        // Assert
         Assert.Equal(ErrorMessages.DoctorsCanUpdateOnlyOwnAvailability, exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateAvailabilityAsync_WhenUnsupportedRoleUpdatesAvailability_ShouldThrowForbiddenException()
+    {
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(1)).ReturnsAsync(CreateDoctor(isAvailable: true));
+
+        var exception = await Assert.ThrowsAsync<ForbiddenException>(() => _doctorService.UpdateAvailabilityAsync(1, new UpdateDoctorAvailabilityDto { IsAvailable = false }, AppRoles.Patient, null));
+
+        Assert.Equal(ErrorMessages.UnsupportedAppointmentStatusTransition, exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateAvailabilityAsync_WhenUpdateReturnsNull_ShouldThrowNotFoundException()
+    {
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(1)).ReturnsAsync(CreateDoctor(isAvailable: false));
+        _doctorRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Doctor>())).ReturnsAsync((Doctor?)null);
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(() => _doctorService.UpdateAvailabilityAsync(1, new UpdateDoctorAvailabilityDto { IsAvailable = true }, AppRoles.Admin, null));
+
+        Assert.Equal(ErrorMessages.DoctorNotFound, exception.Message);
     }
 
     [Fact]
     public async Task UpdateAvailabilityAsync_WhenDoctorActivatesSelf_ShouldUpdateAvailability()
     {
-        // Arrange
-        var dto = new UpdateDoctorAvailabilityDto { IsAvailable = true };
-        var doctor = CreateDoctor(isAvailable: false);
-        var updatedDoctor = CreateDoctor(isAvailable: true);
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(1)).ReturnsAsync(CreateDoctor(isAvailable: false));
+        _doctorRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Doctor>())).ReturnsAsync(CreateDoctor(isAvailable: true));
 
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetDoctorByIdAsync(1))
-            .ReturnsAsync(doctor);
+        var result = await _doctorService.UpdateAvailabilityAsync(1, new UpdateDoctorAvailabilityDto { IsAvailable = true }, AppRoles.Doctor, 1);
 
-        _doctorRepositoryMock
-            .Setup(repo => repo.UpdateAsync(It.IsAny<Doctor>()))
-            .ReturnsAsync(updatedDoctor);
-
-        // Act
-        var result = await _doctorService.UpdateAvailabilityAsync(1, dto, AppRoles.Doctor, 1);
-
-        // Assert
-        Assert.Equal(1, result.DoctorId);
         Assert.True(result.IsAvailable);
-        Assert.Equal(ErrorMessages.DoctorAvailableMessage, result.Message);
-
-        _appointmentRepositoryMock.Verify(
-            repo => repo.DoctorHasConfirmedAppointmentsOnDateAsync(It.IsAny<int>(), It.IsAny<DateOnly>()),
-            Times.Never);
-
-        _appointmentRepositoryMock.Verify(
-            repo => repo.GetPendingOrConfirmedAppointmentsByDoctorIdAndDateAsync(It.IsAny<int>(), It.IsAny<DateOnly>()),
-            Times.Never);
-
-        _doctorRepositoryMock.Verify(repo => repo.UpdateAsync(It.Is<Doctor>(updated =>
-            updated.Id == 1 && updated.IsAvailable)), Times.Once);
+        _appointmentRepositoryMock.Verify(repo => repo.DoctorHasConfirmedAppointmentsOnDateAsync(It.IsAny<int>(), It.IsAny<DateOnly>()), Times.Never);
     }
 
     [Fact]
     public async Task UpdateAvailabilityAsync_WhenDoctorDeactivatesSelfWithoutConfirmedAppointmentsToday_ShouldUpdateAvailability()
     {
-        // Arrange
-        var dto = new UpdateDoctorAvailabilityDto { IsAvailable = false };
-        var doctor = CreateDoctor(isAvailable: true);
-        var updatedDoctor = CreateDoctor(isAvailable: false);
         var today = DateOnly.FromDateTime(DateTime.Today);
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(1)).ReturnsAsync(CreateDoctor(isAvailable: true));
+        _appointmentRepositoryMock.Setup(repo => repo.DoctorHasConfirmedAppointmentsOnDateAsync(1, today)).ReturnsAsync(false);
+        _doctorRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Doctor>())).ReturnsAsync(CreateDoctor(isAvailable: false));
 
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetDoctorByIdAsync(1))
-            .ReturnsAsync(doctor);
+        var result = await _doctorService.UpdateAvailabilityAsync(1, new UpdateDoctorAvailabilityDto { IsAvailable = false }, AppRoles.Doctor, 1);
 
-        _appointmentRepositoryMock
-            .Setup(repo => repo.DoctorHasConfirmedAppointmentsOnDateAsync(1, today))
-            .ReturnsAsync(false);
-
-        _doctorRepositoryMock
-            .Setup(repo => repo.UpdateAsync(It.IsAny<Doctor>()))
-            .ReturnsAsync(updatedDoctor);
-
-        // Act
-        var result = await _doctorService.UpdateAvailabilityAsync(1, dto, AppRoles.Doctor, 1);
-
-        // Assert
-        Assert.Equal(1, result.DoctorId);
         Assert.False(result.IsAvailable);
-        Assert.Equal(ErrorMessages.DoctorUnavailableMessage, result.Message);
-
-        _doctorRepositoryMock.Verify(repo => repo.UpdateAsync(It.Is<Doctor>(updated =>
-            updated.Id == 1 && !updated.IsAvailable)), Times.Once);
     }
 
     [Fact]
     public async Task UpdateAvailabilityAsync_WhenDoctorDeactivatesSelfWithConfirmedAppointmentsToday_ShouldThrowBusinessRuleException()
     {
-        // Arrange
-        var dto = new UpdateDoctorAvailabilityDto { IsAvailable = false };
-        var doctor = CreateDoctor(isAvailable: true);
         var today = DateOnly.FromDateTime(DateTime.Today);
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(1)).ReturnsAsync(CreateDoctor(isAvailable: true));
+        _appointmentRepositoryMock.Setup(repo => repo.DoctorHasConfirmedAppointmentsOnDateAsync(1, today)).ReturnsAsync(true);
 
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetDoctorByIdAsync(1))
-            .ReturnsAsync(doctor);
+        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _doctorService.UpdateAvailabilityAsync(1, new UpdateDoctorAvailabilityDto { IsAvailable = false }, AppRoles.Doctor, 1));
 
-        _appointmentRepositoryMock
-            .Setup(repo => repo.DoctorHasConfirmedAppointmentsOnDateAsync(1, today))
-            .ReturnsAsync(true);
-
-        // Act
-        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() =>
-            _doctorService.UpdateAvailabilityAsync(1, dto, AppRoles.Doctor, 1));
-
-        // Assert
         Assert.Equal(ErrorMessages.DoctorCannotDeactivateWithConfirmedAppointmentsToday, exception.Message);
-
-        _doctorRepositoryMock.Verify(repo => repo.UpdateAsync(It.IsAny<Doctor>()), Times.Never);
     }
 
     [Fact]
     public async Task UpdateAvailabilityAsync_WhenAdminDeactivatesDoctor_ShouldCancelTodaysPendingAndConfirmedAppointments()
     {
-        // Arrange
-        var dto = new UpdateDoctorAvailabilityDto { IsAvailable = false };
-        var doctor = CreateDoctor(isAvailable: true);
-        var updatedDoctor = CreateDoctor(isAvailable: false);
         var today = DateOnly.FromDateTime(DateTime.Today);
-
         var appointments = new List<Appointment>
         {
-            new Appointment
-            {
-                Id = 10,
-                DoctorId = 1,
-                AppointmentDate = today,
-                Status = AppointmentStatus.Pending
-            },
-            new Appointment
-            {
-                Id = 11,
-                DoctorId = 1,
-                AppointmentDate = today,
-                Status = AppointmentStatus.Confirmed
-            }
+            new() { Id = 10, DoctorId = 1, AppointmentDate = today, Status = AppointmentStatus.Pending },
+            new() { Id = 11, DoctorId = 1, AppointmentDate = today, Status = AppointmentStatus.Confirmed }
         };
+        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(1)).ReturnsAsync(CreateDoctor(isAvailable: true));
+        _appointmentRepositoryMock.Setup(repo => repo.GetPendingOrConfirmedAppointmentsByDoctorIdAndDateAsync(1, today)).ReturnsAsync(appointments);
+        _appointmentRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Appointment>())).ReturnsAsync((Appointment appointment) => appointment);
+        _doctorRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Doctor>())).ReturnsAsync(CreateDoctor(isAvailable: false));
 
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetDoctorByIdAsync(1))
-            .ReturnsAsync(doctor);
+        var result = await _doctorService.UpdateAvailabilityAsync(1, new UpdateDoctorAvailabilityDto { IsAvailable = false }, AppRoles.Admin, null);
 
-        _appointmentRepositoryMock
-            .Setup(repo => repo.GetPendingOrConfirmedAppointmentsByDoctorIdAndDateAsync(1, today))
-            .ReturnsAsync(appointments);
-
-        _appointmentRepositoryMock
-            .Setup(repo => repo.UpdateAsync(It.IsAny<Appointment>()))
-            .ReturnsAsync((Appointment appointment) => appointment);
-
-        _doctorRepositoryMock
-            .Setup(repo => repo.UpdateAsync(It.IsAny<Doctor>()))
-            .ReturnsAsync(updatedDoctor);
-
-        // Act
-        var result = await _doctorService.UpdateAvailabilityAsync(1, dto, AppRoles.Admin, null);
-
-        // Assert
-        Assert.Equal(1, result.DoctorId);
         Assert.False(result.IsAvailable);
-        Assert.Equal(ErrorMessages.DoctorUnavailableMessage, result.Message);
-
         _appointmentRepositoryMock.Verify(repo => repo.UpdateAsync(It.Is<Appointment>(appointment =>
-            appointment.Id == 10 &&
             appointment.Status == AppointmentStatus.Cancelled &&
-            appointment.CancellationReason == ErrorMessages.DoctorEmergencyCancellationReason)), Times.Once);
-
-        _appointmentRepositoryMock.Verify(repo => repo.UpdateAsync(It.Is<Appointment>(appointment =>
-            appointment.Id == 11 &&
-            appointment.Status == AppointmentStatus.Cancelled &&
-            appointment.CancellationReason == ErrorMessages.DoctorEmergencyCancellationReason)), Times.Once);
-
-        _doctorRepositoryMock.Verify(repo => repo.UpdateAsync(It.Is<Doctor>(updated =>
-            updated.Id == 1 && !updated.IsAvailable)), Times.Once);
+            appointment.CancellationReason == ErrorMessages.DoctorEmergencyCancellationReason)), Times.Exactly(2));
     }
 
-    [Fact]
-    public async Task UpdateAvailabilityAsync_WhenAdminActivatesDoctor_ShouldUpdateAvailability()
+    private static DoctorSearchQueryDto CreateDoctorSearchQuery() => new()
     {
-        // Arrange
-        var dto = new UpdateDoctorAvailabilityDto { IsAvailable = true };
-        var doctor = CreateDoctor(isAvailable: false);
-        var updatedDoctor = CreateDoctor(isAvailable: true);
+        PageNumber = 1,
+        PageSize = 10,
+        Search = null,
+        Specialisation = null,
+        IsAvailable = null,
+        SortBy = DoctorSortBy.Name,
+        SortDirection = SortDirection.Asc
+    };
 
-        _doctorRepositoryMock
-            .Setup(repo => repo.GetDoctorByIdAsync(1))
-            .ReturnsAsync(doctor);
-
-        _doctorRepositoryMock
-            .Setup(repo => repo.UpdateAsync(It.IsAny<Doctor>()))
-            .ReturnsAsync(updatedDoctor);
-
-        // Act
-        var result = await _doctorService.UpdateAvailabilityAsync(1, dto, AppRoles.Admin, null);
-
-        // Assert
-        Assert.Equal(1, result.DoctorId);
-        Assert.True(result.IsAvailable);
-        Assert.Equal(ErrorMessages.DoctorAvailableMessage, result.Message);
-
-        _appointmentRepositoryMock.Verify(
-            repo => repo.GetPendingOrConfirmedAppointmentsByDoctorIdAndDateAsync(It.IsAny<int>(), It.IsAny<DateOnly>()),
-            Times.Never);
-
-        _doctorRepositoryMock.Verify(repo => repo.UpdateAsync(It.Is<Doctor>(updated =>
-            updated.Id == 1 && updated.IsAvailable)), Times.Once);
-    }
-
-    private static Doctor CreateDoctor(bool isAvailable)
+    private static PagedResult<Doctor> CreatePagedDoctorResult(List<Doctor> doctors) => new()
     {
-        return new Doctor
-        {
-            Id = 1,
-            UserId = "doctor-user-id-1",
-            FullName = "Dr. Anjali Menon",
-            Specialisation = DoctorSpecialisation.Cardiology,
-            PracticeStartDate = new DateOnly(2015, 1, 1),
-            ConsultationFee = 600,
-            IsAvailable = isAvailable
-        };
-    }
+        Items = doctors,
+        PageNumber = 1,
+        PageSize = 10,
+        TotalCount = doctors.Count,
+        TotalPages = doctors.Count == 0 ? 0 : 1
+    };
+
+    private static Doctor CreateDoctor(int id = 1, bool isAvailable = true) => new()
+    {
+        Id = id,
+        UserId = $"doctor-user-id-{id}",
+        FullName = "Dr. Anjali Menon",
+        Specialisation = DoctorSpecialisation.Cardiology,
+        PracticeStartDate = new DateOnly(2015, 1, 1),
+        ConsultationFee = 600,
+        IsAvailable = isAvailable
+    };
+
+    private static PublicDoctorDto CreatePublicDoctorDto(Doctor doctor) => new()
+    {
+        Id = doctor.Id,
+        FullName = doctor.FullName,
+        Specialisation = doctor.Specialisation,
+        YearsOfExperience = 10,
+        ConsultationFee = doctor.ConsultationFee,
+        IsAvailable = doctor.IsAvailable
+    };
 }

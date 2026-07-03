@@ -257,11 +257,39 @@ public class AppointmentService(
     }
 
     private static void CancelAppointment(
-        Appointment appointment,
-        UpdateAppointmentStatusDto dto,
-        string currentRole,
-        int? currentPatientId,
-        int? currentDoctorId)
+    Appointment appointment,
+    UpdateAppointmentStatusDto dto,
+    string currentRole,
+    int? currentPatientId,
+    int? currentDoctorId)
+    {
+        EnsureAppointmentCanBeCancelled(appointment, dto);
+
+        var reason = dto.CancellationReason!.Trim();
+
+        appointment.CancellationReason = currentRole switch
+        {
+            AppRoles.Patient => BuildPatientCancellationReason(
+                appointment,
+                reason,
+                currentPatientId),
+
+            AppRoles.Doctor => BuildDoctorCancellationReason(
+                appointment,
+                reason,
+                currentDoctorId),
+
+            AppRoles.Admin => reason + ErrorMessages.CancelledByAdminSuffix,
+
+            _ => throw new ForbiddenException(ErrorMessages.UnsupportedAppointmentStatusTransition)
+        };
+
+        appointment.Status = AppointmentStatus.Cancelled;
+    }
+
+    private static void EnsureAppointmentCanBeCancelled(
+    Appointment appointment,
+    UpdateAppointmentStatusDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.CancellationReason))
         {
@@ -277,56 +305,51 @@ public class AppointmentService(
         {
             throw new BusinessRuleException(ErrorMessages.CancelledAppointmentsCannotBeCancelledAgain);
         }
+    }
 
-        var reason = dto.CancellationReason.Trim();
-
-        if (currentRole == AppRoles.Patient)
+    private static string BuildPatientCancellationReason(
+        Appointment appointment,
+        string reason,
+        int? currentPatientId)
+    {
+        if (currentPatientId != appointment.PatientId)
         {
-            if (currentPatientId != appointment.PatientId)
-            {
-                throw new ForbiddenException(ErrorMessages.PatientsCanManageOnlyOwnAppointments);
-            }
-
-            if (appointment.Status != AppointmentStatus.Pending)
-            {
-                throw new BusinessRuleException(ErrorMessages.PatientsCanCancelOnlyPendingAppointments);
-            }
-
-            appointment.CancellationReason = reason + ErrorMessages.CancelledByPatientSuffix;
-        }
-        else if (currentRole == AppRoles.Doctor)
-        {
-            if (currentDoctorId != appointment.DoctorId)
-            {
-                throw new ForbiddenException(ErrorMessages.DoctorsCanManageOnlyOwnAppointments);
-            }
-
-            if (appointment.Status != AppointmentStatus.Pending &&
-                appointment.Status != AppointmentStatus.Confirmed)
-            {
-                throw new BusinessRuleException(ErrorMessages.DoctorsCanCancelOnlyPendingOrConfirmedAppointments);
-            }
-
-            if (!IsAtLeastHoursAhead(
-                    appointment.AppointmentDate,
-                    appointment.AppointmentTime,
-                    MinimumCancellationHoursBeforeAppointment))
-            {
-                throw new BusinessRuleException(ErrorMessages.AppointmentCannotBeCancelledWithin24Hours);
-            }
-
-            appointment.CancellationReason = reason + ErrorMessages.CancelledByDoctorSuffix;
-        }
-        else if (currentRole == AppRoles.Admin)
-        {
-            appointment.CancellationReason = reason + ErrorMessages.CancelledByAdminSuffix;
-        }
-        else
-        {
-            throw new ForbiddenException(ErrorMessages.UnsupportedAppointmentStatusTransition);
+            throw new ForbiddenException(ErrorMessages.PatientsCanManageOnlyOwnAppointments);
         }
 
-        appointment.Status = AppointmentStatus.Cancelled;
+        if (appointment.Status != AppointmentStatus.Pending)
+        {
+            throw new BusinessRuleException(ErrorMessages.PatientsCanCancelOnlyPendingAppointments);
+        }
+
+        return reason + ErrorMessages.CancelledByPatientSuffix;
+    }
+
+    private static string BuildDoctorCancellationReason(
+        Appointment appointment,
+        string reason,
+        int? currentDoctorId)
+    {
+        if (currentDoctorId != appointment.DoctorId)
+        {
+            throw new ForbiddenException(ErrorMessages.DoctorsCanManageOnlyOwnAppointments);
+        }
+
+        if (appointment.Status != AppointmentStatus.Pending &&
+            appointment.Status != AppointmentStatus.Confirmed)
+        {
+            throw new BusinessRuleException(ErrorMessages.DoctorsCanCancelOnlyPendingOrConfirmedAppointments);
+        }
+
+        if (!IsAtLeastHoursAhead(
+                appointment.AppointmentDate,
+                appointment.AppointmentTime,
+                MinimumCancellationHoursBeforeAppointment))
+        {
+            throw new BusinessRuleException(ErrorMessages.AppointmentCannotBeCancelledWithin24Hours);
+        }
+
+        return reason + ErrorMessages.CancelledByDoctorSuffix;
     }
 
     private async Task AutoCancelExpiredPendingAppointmentsAsync()

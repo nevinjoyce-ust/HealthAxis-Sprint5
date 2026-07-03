@@ -149,13 +149,15 @@
     <Property Name="sonar.java.jvmframeworkconfig.activate">true</Property>
     <Property Name="sonar.updatecenter.url">https://downloads.sonarsource.com/sonarqube/update/update-center.properties</Property>
     <Property Name="sonar.core.id">147B411E-AZ6beXIJN5w0HtsvmDpt</Property>
-    <Property Name="sonar.core.startTime">25-06-2026 16:52:07</Property>
+    <Property Name="sonar.core.startTime">03-07-2026 10:02:54</Property>
   </ServerSettings>
   <LocalSettings>
     <Property Name="sonar.host.url">http://localhost:9000</Property>
-    <Property Name="sonar.coverage.inclusions">**/HealthAxis.API/Services/**/*.cs</Property>
+    <Property Name="sonar.coverage.inclusions">HealthAxis.API/Services/**/*.cs</Property>
+    <Property Name="sonar.cpd.exclusions">**/Dtos/**/*.cs,**/*.css,**/*.scss,**/*.sass,**/*.less,**/*.html,**/*.spec.ts,**/Data/IdentityDataSeeder.cs,**/Migrations/**,**/bin/**,**/obj/**</Property>
+    <Property Name="sonar.coverage.exclusions">**/HealthAxis.Web/**,**/HealthAxis.Admin/**,**/HealthAxis.Shared/**,**/*Tests*/**,**/*.Tests/**,**/*Test*.cs,**/Controllers/**,**/Repositories/**,**/Data/**,**/Models/**,**/Dtos/**,**/Constants/**,**/Exceptions/**,**/Middlewares/**,**/Extensions/**,**/Mappings/**,**/Program.cs</Property>
     <Property Name="sonar.cs.opencover.reportsPaths">TestResults/**/coverage.opencover.xml</Property>
-    <Property Name="sonar.exclusions">**/bin/**,**/obj/**,**/Migrations/**,**/wwwroot/**,**/*.Designer.cs,**/*.g.cs,**/*.generated.cs,**/*.razor.g.cs,**/Mappings/MappingProfile.cs,**/HealthAxis.Admin/wwwroot/**,**/HealthAxis.Admin/bin/**,**/HealthAxis.Admin/obj/**,TestResults/**/coverage.opencover.xml</Property>
+    <Property Name="sonar.exclusions">**/bin/**,**/obj/**,**/Migrations/**,**/wwwroot/**,**/*.Designer.cs,**/*.g.cs,**/*.generated.cs,**/*.razor.g.cs,**/Mappings/MappingProfile.cs,**/Data/IdentityDataSeeder.cs,**/HealthAxis.Admin/wwwroot/**,**/HealthAxis.Admin/bin/**,**/HealthAxis.Admin/obj/**,**/HealthAxis.Web/.angular/**,**/HealthAxis.Web/dist/**,**/HealthAxis.Web/node_modules/**,**/HealthAxis.Web/coverage/**,**/HealthAxis.Web/src/**/*.css,**/HealthAxis.Web/src/**/*.scss,**/HealthAxis.Web/src/**/*.sass,**/HealthAxis.Web/src/**/*.less,**/HealthAxis.Web/src/**/*.html,**/HealthAxis.Web/src/**/*.spec.ts,**/*.css,**/*.scss,**/*.sass,**/*.less,TestResults/**/coverage.opencover.xml</Property>
   </LocalSettings>
   <ScannerOptsSettings />
   <AnalyzersSettings>

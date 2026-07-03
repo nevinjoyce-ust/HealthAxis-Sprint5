@@ -78,9 +78,4 @@ public class AuthService : IAuthService
         await _tokenService.ClearTokensAsync();
         _authStateProvider.NotifyUserLoggedOut();
     }
-
-    private sealed class AuthMessageResponse
-    {
-        public string Message { get; set; } = string.Empty;
-    }
 }

@@ -6,10 +6,8 @@ using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
-using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace HealthAxis.API.Services.Impl;
@@ -21,11 +19,11 @@ public class AuthService(
     IDoctorRepository doctorRepository,
     IConfiguration configuration) : IAuthService
 {
-    private const string RefreshTokenProvider = "HealthAxis";
+    //private const string RefreshTokenProvider = "HealthAxis";
 
-    private const string RefreshTokenName = "RefreshToken";
+    //private const string RefreshTokenName = "RefreshToken";
 
-    private const string RefreshTokenExpiryName = "RefreshTokenExpiryUtc";
+    //private const string RefreshTokenExpiryName = "RefreshTokenExpiryUtc";
 
     public async Task<(bool Success, string Message, string UserId)> RegisterAsync(RegisterDto request)
     {

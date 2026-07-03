@@ -3,18 +3,22 @@ import { FormsModule } from '@angular/forms';
 
 import {
   DoctorSearchRequest,
-  DoctorSortBy,
   PatientService,
-  PagedResult,
-  SortDirection
+  PagedResult
 } from '../../../core/services/patient-service';
 import {
   DoctorSpecialisation,
   PublicDoctor
 } from '../../models/health-axis.models';
+import {
+  DoctorSortOption,
+  doctorSpecialisations,
+  formatSpecialisation,
+  toApiDoctorSortBy,
+  toApiSortDirection
+} from '../../utils/doctor-utils';
 
 type SlotSearchMode = 'public' | 'patient';
-type DoctorSortOption = 'name' | 'experience' | 'fee';
 
 @Component({
   selector: 'app-doctor-slot-search',
@@ -43,18 +47,7 @@ export class DoctorSlotSearch implements OnInit {
   hasPreviousPage = false;
   hasNextPage = false;
 
-  specialisations: DoctorSpecialisation[] = [
-    'Cardiology',
-    'Dermatology',
-    'Neurology',
-    'Orthopaedics',
-    'Pediatrics',
-    'GeneralMedicine',
-    'Psychiatry',
-    'Radiology',
-    'Gynecology',
-    'ENT'
-  ];
+  specialisations: DoctorSpecialisation[] = doctorSpecialisations;
 
   ngOnInit(): void {
     this.loadDoctors();
@@ -117,9 +110,7 @@ export class DoctorSlotSearch implements OnInit {
   }
 
   formatSpecialisation(specialisation: DoctorSpecialisation): string {
-    return specialisation === 'GeneralMedicine'
-      ? 'General Medicine'
-      : specialisation;
+    return formatSpecialisation(specialisation);
   }
 
   private createSearchRequest(): DoctorSearchRequest {
@@ -129,26 +120,9 @@ export class DoctorSlotSearch implements OnInit {
       search: this.searchText,
       specialisation: this.selectedSpecialisation,
       isAvailable: this.onlyShowAvailableDoctors ? true : null,
-      sortBy: this.toApiSortBy(this.sortBy),
-      sortDirection: this.toApiSortDirection(this.sortBy)
+      sortBy: toApiDoctorSortBy(this.sortBy),
+      sortDirection: toApiSortDirection(this.sortBy)
     };
-  }
-
-  private toApiSortBy(sortBy: DoctorSortOption): DoctorSortBy {
-    switch (sortBy) {
-      case 'fee':
-        return 'Fee';
-      case 'experience':
-        return 'Experience';
-      default:
-        return 'Name';
-    }
-  }
-
-  private toApiSortDirection(sortBy: DoctorSortOption): SortDirection {
-    return sortBy === 'experience'
-      ? 'Desc'
-      : 'Asc';
   }
 
   private setPagedResult(response: PagedResult<PublicDoctor>): void {

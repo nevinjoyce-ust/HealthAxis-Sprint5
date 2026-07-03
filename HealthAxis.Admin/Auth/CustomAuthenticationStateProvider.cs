@@ -53,7 +53,7 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(_currentUser)));
     }
 
-    private static IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
+    private static List<Claim> ParseClaimsFromJwt(string jwt)
     {
         var claims = new List<Claim>();
         var parts = jwt.Split('.');
@@ -63,7 +63,9 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
             return claims;
         }
 
-        var payload = parts[1];
+        var payload = parts[1]
+            .Replace('-', '+')
+            .Replace('_', '/');
 
         switch (payload.Length % 4)
         {

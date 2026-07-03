@@ -4,12 +4,8 @@ using System.Text.RegularExpressions;
 namespace HealthAxis.Shared.Validation;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
-public sealed class FullNameAttribute : ValidationAttribute
+public sealed partial class FullNameAttribute : ValidationAttribute
 {
-    private static readonly Regex FullNameRegex = new(
-        "^[A-Z][A-Za-z]*(?: [A-Za-z]+)*$",
-        RegexOptions.Compiled);
-
     public FullNameAttribute()
     {
         ErrorMessage = "Full name must start with a capital letter and contain only letters and single spaces.";
@@ -29,6 +25,12 @@ public sealed class FullNameAttribute : ValidationAttribute
             return true;
         }
 
-        return FullNameRegex.IsMatch(fullName);
+        return FullNameRegex().IsMatch(fullName);
     }
+
+    [GeneratedRegex(
+        "^[A-Z][A-Za-z]*(?: [A-Za-z]+)*$",
+        RegexOptions.None,
+        matchTimeoutMilliseconds: 250)]
+    private static partial Regex FullNameRegex();
 }

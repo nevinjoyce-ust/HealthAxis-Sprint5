@@ -9,6 +9,15 @@ import {
   HealthRecord,
   PublicDoctor
 } from '../../shared/models/health-axis.models';
+import {
+  addDaysDateOnly,
+  compareAppointmentDateTime,
+  compareAppointmentDateTimeDescending,
+  formatDate,
+  formatDateOnly,
+  formatTime
+} from '../../shared/utils/date-utils';
+import { formatSpecialisation } from '../../shared/utils/doctor-utils';
 
 @Component({
   selector: 'app-patient-dashboard',
@@ -35,7 +44,7 @@ export class PatientDashboard implements OnInit {
   readonly appointments = signal<Appointment[]>([]);
   readonly healthRecords = signal<HealthRecord[]>([]);
 
-  bookingDate = this.getDefaultBookingDate();
+  bookingDate = addDaysDateOnly(3);
   bookingSpecialisation = '';
 
   doctorSearchText = '';
@@ -46,7 +55,7 @@ export class PatientDashboard implements OnInit {
   selectedCancelAppointment: Appointment | null = null;
   cancellationReason = '';
 
-  readonly today = computed(() => this.formatDateOnly(new Date()));
+  readonly today = computed(() => formatDateOnly(new Date()));
 
   readonly firstName = computed(() => {
     return this.patient()?.fullName?.split(' ')[0] || 'Patient';
@@ -62,13 +71,13 @@ export class PatientDashboard implements OnInit {
   readonly futureAppointments = computed(() => {
     return this.appointments()
       .filter(appointment => appointment.appointmentDate >= this.today())
-      .sort((first, second) => this.compareAppointmentDateTime(first, second));
+      .sort((first, second) => compareAppointmentDateTime(first, second));
   });
 
   readonly pastAppointments = computed(() => {
     return this.appointments()
       .filter(appointment => appointment.appointmentDate < this.today())
-      .sort((first, second) => this.compareAppointmentDateTime(second, first));
+      .sort((first, second) => compareAppointmentDateTimeDescending(first, second));
   });
 
   readonly todayAppointments = computed(() => {
@@ -294,40 +303,14 @@ export class PatientDashboard implements OnInit {
   }
 
   formatSpecialisation(specialisation: DoctorSpecialisation): string {
-    return specialisation === 'GeneralMedicine'
-      ? 'General Medicine'
-      : specialisation;
+    return formatSpecialisation(specialisation);
   }
 
   formatTime(time: string): string {
-    return time.slice(0, 5);
+    return formatTime(time);
   }
 
   formatDate(date: string): string {
-    return new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-  }
-
-  private compareAppointmentDateTime(first: Appointment, second: Appointment): number {
-    return `${first.appointmentDate}T${first.appointmentTime}`
-      .localeCompare(`${second.appointmentDate}T${second.appointmentTime}`);
-  }
-
-  private getDefaultBookingDate(): string {
-    const date = new Date();
-    date.setDate(date.getDate() + 3);
-
-    return this.formatDateOnly(date);
-  }
-
-  private formatDateOnly(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-
-    return `${year}-${month}-${day}`;
+    return formatDate(date);
   }
 }

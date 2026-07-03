@@ -1,0 +1,13 @@
+ë
+ßC:\Users\310511\source\repos\HealthAxis\HealthAxisTests\obj\Debug\net10.0\Microsoft.AspNetCore.OpenApi.SourceGenerators\Microsoft.AspNetCore.OpenApi.SourceGenerators.XmlCommentGenerator\OpenApiXmlCommentSupport.generated.csutf-8t
+iC:\Users\310511\source\repos\HealthAxis\HealthAxisTests\obj\Debug\net10.0\HealthAxisTests.AssemblyInfo.csutf-8„
+yC:\Users\310511\source\repos\HealthAxis\HealthAxisTests\obj\Debug\net10.0\.NETCoreApp,Version=v10.0.AssemblyAttributes.csutf-8v
+kC:\Users\310511\source\repos\HealthAxis\HealthAxisTests\obj\Debug\net10.0\HealthAxisTests.GlobalUsings.g.csutf-8x
+mC:\Users\310511\.nuget\packages\microsoft.net.test.sdk\17.14.1\build\net8.0\Microsoft.NET.Test.Sdk.Program.csutf-8i
+`C:\Users\310511\source\repos\HealthAxis\HealthAxisTests\ServiceTests\HealthRecordServiceTests.csutf-8a
+XC:\Users\310511\source\repos\HealthAxis\HealthAxisTests\ServiceTests\AuthServiceTests.csutf-8b
+YC:\Users\310511\source\repos\HealthAxis\HealthAxisTests\ServiceTests\AdminServiceTests.csutf-8d
+[C:\Users\310511\source\repos\HealthAxis\HealthAxisTests\ServiceTests\PatientServiceTests.csutf-8c
+ZC:\Users\310511\source\repos\HealthAxis\HealthAxisTests\ServiceTests\DoctorServiceTests.csutf-8h
+_C:\Users\310511\source\repos\HealthAxis\HealthAxisTests\ServiceTests\AppointmentServiceTests.csutf-8i
+`C:\Users\310511\source\repos\HealthAxis\HealthAxisTests\ServiceTests\AdminHandoffServiceTests.csutf-8

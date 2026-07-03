@@ -2,10 +2,11 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import {
   FormBuilder,
   ReactiveFormsModule,
+  FormsModule,
   Validators
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+
 
 import {
   PatientDto,
