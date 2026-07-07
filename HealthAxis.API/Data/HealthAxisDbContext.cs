@@ -15,6 +15,7 @@ public class HealthAxisDbContext(DbContextOptions<HealthAxisDbContext> options) 
     public DbSet<Appointment> Appointments { get; set; }
 
     public DbSet<HealthRecord> HealthRecords { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -65,5 +66,39 @@ public class HealthAxisDbContext(DbContextOptions<HealthAxisDbContext> options) 
             .HasConversion<string>()
             .HasMaxLength(100)
             .IsRequired();
+
+        builder.Entity<Notification>()
+            .HasOne(notification => notification.RecipientUser)
+            .WithMany()
+            .HasForeignKey(notification => notification.RecipientUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Notification>()
+            .Property(notification => notification.Title)
+            .HasMaxLength(150)
+            .IsRequired();
+
+        builder.Entity<Notification>()
+            .Property(notification => notification.Message)
+            .HasMaxLength(500)
+            .IsRequired();
+
+        builder.Entity<Notification>()
+            .Property(notification => notification.NotificationType)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Entity<Notification>()
+            .Property(notification => notification.RelatedEntityType)
+            .HasMaxLength(100);
+
+        builder.Entity<Notification>()
+            .HasIndex(notification => notification.RecipientUserId);
+
+        builder.Entity<Notification>()
+            .HasIndex(notification => notification.CreatedAtUtc);
+
+        builder.Entity<Notification>()
+            .HasIndex(notification => notification.IsRead);
     }
 }

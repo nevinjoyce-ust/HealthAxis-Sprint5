@@ -1,4 +1,5 @@
 using AutoMapper;
+using HealthAxis.API.BackgroundServices;
 using HealthAxis.API.Data;
 using HealthAxis.API.Mappings;
 using HealthAxis.API.Middlewares;
@@ -143,6 +144,9 @@ try
     builder.Services.AddScoped<IAdminService, AdminService>();
     builder.Services.AddMemoryCache();
     builder.Services.AddScoped<IAdminHandoffService, AdminHandoffService>();
+
+    builder.Services.AddHostedService<HeartbeatService>();
+    builder.Services.AddHostedService<NotificationCleanupService>();
 
     builder.Services.AddAutoMapper(cfg =>
     {
