@@ -1,6 +1,8 @@
 using AutoMapper;
 using HealthAxis.API.Constants;
+using HealthAxis.API.Events;
 using HealthAxis.API.Exceptions;
+using HealthAxis.API.Messaging;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
 using HealthAxis.API.Services.Impl;
@@ -8,6 +10,7 @@ using HealthAxis.Shared.Constants;
 using HealthAxis.Shared.Dtos;
 using HealthAxis.Shared.Dtos.Appointment;
 using HealthAxis.Shared.Enums;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace HealthAxisTests.ServiceTests;
@@ -18,6 +21,8 @@ public class AppointmentServiceTests
     private readonly Mock<IPatientRepository> _patientRepositoryMock;
     private readonly Mock<IDoctorRepository> _doctorRepositoryMock;
     private readonly Mock<IMapper> _mapperMock;
+    private readonly Mock<IRabbitMqPublisher> _rabbitMqPublisherMock;
+    private readonly Mock<ILogger<AppointmentService>> _loggerMock;
     private readonly AppointmentService _appointmentService;
 
     public AppointmentServiceTests()
@@ -26,16 +31,23 @@ public class AppointmentServiceTests
         _patientRepositoryMock = new Mock<IPatientRepository>();
         _doctorRepositoryMock = new Mock<IDoctorRepository>();
         _mapperMock = new Mock<IMapper>();
+        _rabbitMqPublisherMock = new Mock<IRabbitMqPublisher>();
+        _loggerMock = new Mock<ILogger<AppointmentService>>();
 
         _appointmentRepositoryMock
             .Setup(repo => repo.GetExpiredPendingAppointmentsAsync(It.IsAny<DateTime>()))
             .ReturnsAsync([]);
 
+        _rabbitMqPublisherMock
+            .Setup(publisher => publisher.PublishAppointmentBookedAsync(It.IsAny<AppointmentBookedEvent>()))
+            .Returns(Task.CompletedTask);
+
         _appointmentService = new AppointmentService(
             _appointmentRepositoryMock.Object,
             _patientRepositoryMock.Object,
             _doctorRepositoryMock.Object,
-            _mapperMock.Object);
+            _mapperMock.Object,
+            _rabbitMqPublisherMock.Object);
     }
 
     [Fact]
@@ -179,6 +191,7 @@ public class AppointmentServiceTests
         var exception = await Assert.ThrowsAsync<NotFoundException>(() => _appointmentService.CreateAppointmentAsync(request));
 
         Assert.Equal(ErrorMessages.PatientNotFound, exception.Message);
+        VerifyAppointmentBookedEventWasNotPublished();
     }
 
     [Fact]
@@ -191,6 +204,7 @@ public class AppointmentServiceTests
         var exception = await Assert.ThrowsAsync<NotFoundException>(() => _appointmentService.CreateAppointmentAsync(request));
 
         Assert.Equal(ErrorMessages.DoctorNotFound, exception.Message);
+        VerifyAppointmentBookedEventWasNotPublished();
     }
 
     [Fact]
@@ -203,6 +217,7 @@ public class AppointmentServiceTests
         var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _appointmentService.CreateAppointmentAsync(request));
 
         Assert.Equal(ErrorMessages.DoctorUnavailable, exception.Message);
+        VerifyAppointmentBookedEventWasNotPublished();
     }
 
     [Fact]
@@ -215,6 +230,7 @@ public class AppointmentServiceTests
         var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _appointmentService.CreateAppointmentAsync(request));
 
         Assert.Equal(ErrorMessages.AppointmentMustBeBookedAtLeast48HoursAhead, exception.Message);
+        VerifyAppointmentBookedEventWasNotPublished();
     }
 
     [Fact]
@@ -227,6 +243,7 @@ public class AppointmentServiceTests
         var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _appointmentService.CreateAppointmentAsync(request));
 
         Assert.Equal(ErrorMessages.AppointmentCannotBeBookedMoreThanSixMonthsAhead, exception.Message);
+        VerifyAppointmentBookedEventWasNotPublished();
     }
 
     [Fact]
@@ -239,6 +256,7 @@ public class AppointmentServiceTests
         var exception = await Assert.ThrowsAsync<ConflictException>(() => _appointmentService.CreateAppointmentAsync(request));
 
         Assert.Equal(ErrorMessages.DoctorSlotAlreadyBooked, exception.Message);
+        VerifyAppointmentBookedEventWasNotPublished();
     }
 
     [Fact]
@@ -252,6 +270,7 @@ public class AppointmentServiceTests
         var exception = await Assert.ThrowsAsync<ConflictException>(() => _appointmentService.CreateAppointmentAsync(request));
 
         Assert.Equal(ErrorMessages.PatientSlotAlreadyBooked, exception.Message);
+        VerifyAppointmentBookedEventWasNotPublished();
     }
 
     [Fact]
@@ -266,6 +285,7 @@ public class AppointmentServiceTests
         var exception = await Assert.ThrowsAsync<ConflictException>(() => _appointmentService.CreateAppointmentAsync(request));
 
         Assert.Equal(ErrorMessages.PatientAlreadyHasAppointmentWithDoctorOnDate, exception.Message);
+        VerifyAppointmentBookedEventWasNotPublished();
     }
 
     [Fact]
@@ -280,10 +300,11 @@ public class AppointmentServiceTests
         var exception = await Assert.ThrowsAsync<NotFoundException>(() => _appointmentService.CreateAppointmentAsync(request));
 
         Assert.Equal(ErrorMessages.AppointmentNotFoundAfterCreation, exception.Message);
+        VerifyAppointmentBookedEventWasNotPublished();
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WhenValid_ShouldCreateAppointmentWithPendingStatus()
+    public async Task CreateAppointmentAsync_WhenValid_ShouldCreateAppointmentWithPendingStatusAndPublishAppointmentBookedEvent()
     {
         var request = CreateAppointmentRequest();
         var createdAppointment = CreateAppointment(id: 1, patientId: request.PatientId, doctorId: request.DoctorId, date: request.AppointmentDate, time: request.AppointmentTime);
@@ -299,6 +320,14 @@ public class AppointmentServiceTests
         Assert.NotNull(result);
         Assert.Equal(AppointmentStatus.Pending, result!.Status);
         _appointmentRepositoryMock.Verify(repo => repo.AddAsync(It.Is<Appointment>(appointment => appointment.Status == AppointmentStatus.Pending)), Times.Once);
+        _rabbitMqPublisherMock.Verify(
+            publisher => publisher.PublishAppointmentBookedAsync(It.Is<AppointmentBookedEvent>(appointmentEvent =>
+                appointmentEvent.AppointmentId == createdAppointment.Id &&
+                appointmentEvent.PatientId == createdAppointment.PatientId &&
+                appointmentEvent.DoctorId == createdAppointment.DoctorId &&
+                appointmentEvent.ScheduledDate == createdAppointment.AppointmentDate &&
+                appointmentEvent.TimeSlot == createdAppointment.AppointmentTime)),
+            Times.Once);
     }
 
     [Fact]
@@ -568,6 +597,13 @@ public class AppointmentServiceTests
         _appointmentRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Appointment>())).ReturnsAsync((Appointment updated) => updated);
     }
 
+    private void VerifyAppointmentBookedEventWasNotPublished()
+    {
+        _rabbitMqPublisherMock.Verify(
+            publisher => publisher.PublishAppointmentBookedAsync(It.IsAny<AppointmentBookedEvent>()),
+            Times.Never);
+    }
+
     private static PaginationQueryDto CreatePagination() => new() { PageNumber = 1, PageSize = 10 };
 
     private static PagedResult<Appointment> CreatePagedResult(List<Appointment> appointments) => new()
@@ -600,16 +636,16 @@ public class AppointmentServiceTests
         DateOnly? date = null,
         TimeOnly? time = null,
         AppointmentStatus status = AppointmentStatus.Pending) => new()
-    {
-        Id = id,
-        PatientId = patientId,
-        DoctorId = doctorId,
-        AppointmentDate = date ?? DateOnly.FromDateTime(GetFutureDateTime()),
-        AppointmentTime = time ?? TimeOnly.FromDateTime(GetFutureDateTime()),
-        Status = status,
-        Patient = CreatePatient(patientId),
-        Doctor = CreateDoctor(doctorId, true)
-    };
+        {
+            Id = id,
+            PatientId = patientId,
+            DoctorId = doctorId,
+            AppointmentDate = date ?? DateOnly.FromDateTime(GetFutureDateTime()),
+            AppointmentTime = time ?? TimeOnly.FromDateTime(GetFutureDateTime()),
+            Status = status,
+            Patient = CreatePatient(patientId),
+            Doctor = CreateDoctor(doctorId, true)
+        };
 
     private static AppointmentDto CreateAppointmentDtoFromAppointment(Appointment appointment) => new()
     {

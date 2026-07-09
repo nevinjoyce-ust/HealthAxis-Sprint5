@@ -2,17 +2,21 @@ using AutoMapper;
 using HealthAxis.API.BackgroundServices;
 using HealthAxis.API.Data;
 using HealthAxis.API.Mappings;
+using HealthAxis.API.Messaging;
 using HealthAxis.API.Middlewares;
+using HealthAxis.API.Options;
 using HealthAxis.API.Repositories;
 using HealthAxis.API.Repositories.Impl;
 using HealthAxis.API.Services;
 using HealthAxis.API.Services.Impl;
+using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Serilog;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -31,11 +35,14 @@ try
 
     var appName = builder.Configuration["AppSettings:AppName"] ?? "HealthAxis API";
 
-    builder.Services.AddSerilog((services, loggerConfiguration) => loggerConfiguration
-        .ReadFrom.Configuration(builder.Configuration)
-        .ReadFrom.Services(services)
-        .Enrich.FromLogContext()
-        .Enrich.WithProperty("Application", appName));
+    builder.Host.UseSerilog((context, services, loggerConfiguration) =>
+    {
+        loggerConfiguration
+            .ReadFrom.Configuration(context.Configuration)
+            .ReadFrom.Services(services)
+            .Enrich.FromLogContext()
+            .Enrich.WithProperty("Application", appName);
+    });
 
     builder.Services.AddCors(options =>
     {
@@ -125,6 +132,9 @@ try
                 Encoding.UTF8.GetBytes(jwtSettings["Key"]!)
             ),
 
+            NameClaimType = ClaimTypes.Email,
+            RoleClaimType = ClaimTypes.Role,
+
             ClockSkew = TimeSpan.Zero
         };
     });
@@ -135,6 +145,7 @@ try
     builder.Services.AddScoped<IPatientRepository, PatientRepository>();
     builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
     builder.Services.AddScoped<IHealthRecordRepository, HealthRecordRepository>();
+    builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
     builder.Services.AddScoped<IAuthService, AuthService>();
     builder.Services.AddScoped<IDoctorService, DoctorService>();
@@ -148,6 +159,43 @@ try
     builder.Services.AddHostedService<HeartbeatService>();
     builder.Services.AddHostedService<NotificationCleanupService>();
 
+    builder.Services.AddScoped<IRabbitMqPublisher, RabbitMqPublisher>();
+
+    builder.Services.AddMassTransit(options =>
+    {
+        options.AddConsumer<AppointmentBookedConsumer>();
+
+        options.UsingRabbitMq((context, cfg) =>
+        {
+            var rabbitConfig = builder.Configuration.GetSection("RabbitMq");
+
+            cfg.Host(
+                rabbitConfig["HostName"] ?? "localhost",
+                rabbitConfig["VirtualHost"] ?? "/",
+                host =>
+                {
+                    host.Username(rabbitConfig["UserName"] ?? "guest");
+                    host.Password(rabbitConfig["Password"] ?? "guest");
+                });
+
+            cfg.ReceiveEndpoint(
+                rabbitConfig["AppointmentBookedQueue"] ?? "appointment.booked.queue",
+                endpoint =>
+                {
+                    endpoint.ConfigureConsumer<AppointmentBookedConsumer>(context);
+                });
+        });
+    });
+    builder.Services.Configure<GarnetOptions>(builder.Configuration.GetSection("Garnet"));
+
+    builder.Services.AddStackExchangeRedisCache(option =>
+    {
+        var garnetOptions = builder.Configuration.GetSection("Garnet").Get<GarnetOptions>() 
+            ?? new GarnetOptions();
+        option.Configuration = garnetOptions.ConnectionString;
+        option.InstanceName = garnetOptions.InstanceName;
+    });
+
     builder.Services.AddAutoMapper(cfg =>
     {
         cfg.AddProfile<MappingProfile>();
@@ -159,13 +207,34 @@ try
 
     app.UseSerilogRequestLogging(options =>
     {
-        options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+        options.MessageTemplate =
+            "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
 
         options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
         {
+            var userId =
+                httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? httpContext.User.FindFirstValue("nameid")
+                ?? httpContext.User.FindFirstValue("sub")
+                ?? "anonymous";
+
+            var userName =
+                httpContext.User.Identity?.Name
+                ?? httpContext.User.FindFirstValue(ClaimTypes.Email)
+                ?? httpContext.User.FindFirstValue("email")
+                ?? httpContext.User.FindFirstValue("unique_name")
+                ?? userId;
+
+            var role =
+                httpContext.User.FindFirstValue(ClaimTypes.Role)
+                ?? httpContext.User.FindFirstValue("role")
+                ?? "unknown";
+
             diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value ?? string.Empty);
             diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
-            diagnosticContext.Set("UserName", httpContext.User.Identity?.Name ?? "anonymous");
+            diagnosticContext.Set("UserId", userId);
+            diagnosticContext.Set("UserName", userName);
+            diagnosticContext.Set("UserRole", role);
         };
     });
 

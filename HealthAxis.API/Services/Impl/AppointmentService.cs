@@ -1,12 +1,14 @@
 using AutoMapper;
 using HealthAxis.API.Constants;
+using HealthAxis.API.Events;
+using HealthAxis.API.Exceptions;
+using HealthAxis.API.Messaging;
+using HealthAxis.API.Models;
+using HealthAxis.API.Repositories;
 using HealthAxis.Shared.Constants;
 using HealthAxis.Shared.Dtos;
 using HealthAxis.Shared.Dtos.Appointment;
 using HealthAxis.Shared.Enums;
-using HealthAxis.API.Exceptions;
-using HealthAxis.API.Models;
-using HealthAxis.API.Repositories;
 
 namespace HealthAxis.API.Services.Impl;
 
@@ -14,7 +16,8 @@ public class AppointmentService(
     IAppointmentRepository appointmentRepository,
     IPatientRepository patientRepository,
     IDoctorRepository doctorRepository,
-    IMapper mapper) : IAppointmentService
+    IMapper mapper,
+    IRabbitMqPublisher rabbitMqPublisher) : IAppointmentService
 {
     private const int MinimumBookingHoursBeforeAppointment = 48;
     private const int MinimumCancellationHoursBeforeAppointment = 24;
@@ -61,11 +64,25 @@ public class AppointmentService(
 
         var createdAppointment = await appointmentRepository.AddAsync(appointment);
 
-        var appointmentWithDetails = await appointmentRepository.GetAppointmentByIdWithDetailsAsync(createdAppointment.Id);
+        var appointmentWithDetails = await appointmentRepository
+            .GetAppointmentByIdWithDetailsAsync(createdAppointment.Id);
 
-        return appointmentWithDetails == null
-            ? throw new NotFoundException(ErrorMessages.AppointmentNotFoundAfterCreation)
-            : mapper.Map<AppointmentDto>(appointmentWithDetails);
+        if (appointmentWithDetails == null)
+        {
+            throw new NotFoundException(ErrorMessages.AppointmentNotFoundAfterCreation);
+        }
+
+        await rabbitMqPublisher.PublishAppointmentBookedAsync(new AppointmentBookedEvent
+        {
+            AppointmentId = appointmentWithDetails.Id,
+            PatientId = appointmentWithDetails.PatientId,
+            DoctorId = appointmentWithDetails.DoctorId,
+            ScheduledDate = appointmentWithDetails.AppointmentDate,
+            TimeSlot = appointmentWithDetails.AppointmentTime,
+            OccurredAt = DateTime.UtcNow
+        });
+
+        return mapper.Map<AppointmentDto>(appointmentWithDetails);
     }
 
     public async Task<PagedResultDto<AppointmentDto>> GetAppointmentsByDoctorIdAsync(
@@ -206,10 +223,12 @@ public class AppointmentService(
         {
             throw new BusinessRuleException(ErrorMessages.AppointmentMustBeBookedAtLeast48HoursAhead);
         }
+
         if (IsMoreThanMonthsAhead(dto.AppointmentDate, MaximumBookingMonthsAhead))
         {
             throw new BusinessRuleException(ErrorMessages.AppointmentCannotBeBookedMoreThanSixMonthsAhead);
         }
+
         if (await appointmentRepository.DoctorHasNonCancelledAppointmentAtAsync(
                 dto.DoctorId,
                 dto.AppointmentDate,
@@ -257,11 +276,11 @@ public class AppointmentService(
     }
 
     private static void CancelAppointment(
-    Appointment appointment,
-    UpdateAppointmentStatusDto dto,
-    string currentRole,
-    int? currentPatientId,
-    int? currentDoctorId)
+        Appointment appointment,
+        UpdateAppointmentStatusDto dto,
+        string currentRole,
+        int? currentPatientId,
+        int? currentDoctorId)
     {
         EnsureAppointmentCanBeCancelled(appointment, dto);
 
@@ -288,8 +307,8 @@ public class AppointmentService(
     }
 
     private static void EnsureAppointmentCanBeCancelled(
-    Appointment appointment,
-    UpdateAppointmentStatusDto dto)
+        Appointment appointment,
+        UpdateAppointmentStatusDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.CancellationReason))
         {
@@ -372,12 +391,14 @@ public class AppointmentService(
 
         return scheduledAt >= DateTime.Now.AddHours(minimumHours);
     }
+
     private static bool IsMoreThanMonthsAhead(DateOnly date, int maximumMonths)
     {
         var latestAllowedDate = DateOnly.FromDateTime(DateTime.Today).AddMonths(maximumMonths);
 
         return date > latestAllowedDate;
     }
+
     private PagedResultDto<TDestination> MapPagedResult<TSource, TDestination>(PagedResult<TSource> pagedResult)
     {
         return new PagedResultDto<TDestination>
