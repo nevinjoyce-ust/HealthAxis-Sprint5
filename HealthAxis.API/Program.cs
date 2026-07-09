@@ -155,6 +155,7 @@ try
     builder.Services.AddScoped<IAdminService, AdminService>();
     builder.Services.AddMemoryCache();
     builder.Services.AddScoped<IAdminHandoffService, AdminHandoffService>();
+    builder.Services.AddScoped<IDoctorAvailabilityCacheService, DoctorAvailabilityCacheService>();
 
     builder.Services.AddHostedService<HeartbeatService>();
     builder.Services.AddHostedService<NotificationCleanupService>();

@@ -3,6 +3,7 @@ using HealthAxis.API.Constants;
 using HealthAxis.API.Exceptions;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
+using HealthAxis.API.Services;
 using HealthAxis.API.Services.Impl;
 using HealthAxis.Shared.Constants;
 using HealthAxis.Shared.Dtos;
@@ -18,6 +19,7 @@ public class DoctorServiceTests
     private readonly Mock<IDoctorRepository> _doctorRepositoryMock;
     private readonly Mock<IAppointmentRepository> _appointmentRepositoryMock;
     private readonly Mock<IMapper> _mapperMock;
+    private readonly Mock<IDoctorAvailabilityCacheService> _availabilityCacheServiceMock;
     private readonly DoctorService _doctorService;
 
     public DoctorServiceTests()
@@ -25,11 +27,36 @@ public class DoctorServiceTests
         _doctorRepositoryMock = new Mock<IDoctorRepository>();
         _appointmentRepositoryMock = new Mock<IAppointmentRepository>();
         _mapperMock = new Mock<IMapper>();
+        _availabilityCacheServiceMock = new Mock<IDoctorAvailabilityCacheService>();
+
+        _availabilityCacheServiceMock
+            .Setup(service => service.GetDoctorSlotsAsync(It.IsAny<int>(), It.IsAny<DateOnly>()))
+            .ReturnsAsync((DoctorAvailableSlotsDto?)null);
+
+        _availabilityCacheServiceMock
+            .Setup(service => service.SetDoctorSlotsAsync(
+                It.IsAny<int>(),
+                It.IsAny<DateOnly>(),
+                It.IsAny<DoctorAvailableSlotsDto>()))
+            .Returns(Task.CompletedTask);
+
+        _availabilityCacheServiceMock
+            .Setup(service => service.RemoveDoctorSlotsAsync(
+                It.IsAny<int>(),
+                It.IsAny<DateOnly>()))
+            .Returns(Task.CompletedTask);
+
+        _availabilityCacheServiceMock
+            .Setup(service => service.RemoveDoctorAvailabilityRangeAsync(
+                It.IsAny<int>(),
+                It.IsAny<int>()))
+            .Returns(Task.CompletedTask);
 
         _doctorService = new DoctorService(
             _doctorRepositoryMock.Object,
             _mapperMock.Object,
-            _appointmentRepositoryMock.Object);
+            _appointmentRepositoryMock.Object,
+            _availabilityCacheServiceMock.Object);
     }
 
     [Fact]
@@ -166,6 +193,29 @@ public class DoctorServiceTests
     }
 
     [Fact]
+    public async Task GetDoctorSlotsAsync_WhenCachedSlotsExist_ShouldReturnCachedSlots()
+    {
+        var date = DateOnly.FromDateTime(DateTime.Today.AddDays(5));
+        var cachedSlots = new DoctorAvailableSlotsDto
+        {
+            DoctorId = 1,
+            DoctorName = "Cached Doctor",
+            IsAvailable = true,
+            AvailableSlots = [new TimeOnly(10, 0)]
+        };
+
+        _availabilityCacheServiceMock
+            .Setup(service => service.GetDoctorSlotsAsync(1, date))
+            .ReturnsAsync(cachedSlots);
+
+        var result = await _doctorService.GetDoctorSlotsAsync(1, date);
+
+        Assert.Equal(cachedSlots, result);
+        _doctorRepositoryMock.Verify(repo => repo.GetDoctorByIdAsync(It.IsAny<int>()), Times.Never);
+        _appointmentRepositoryMock.Verify(repo => repo.GetNonCancelledAppointmentsByDoctorIdAndDateAsync(It.IsAny<int>(), It.IsAny<DateOnly>()), Times.Never);
+    }
+
+    [Fact]
     public async Task GetDoctorSlotsAsync_WhenDoctorDoesNotExist_ShouldThrowNotFoundException()
     {
         _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(99)).ReturnsAsync((Doctor?)null);
@@ -176,7 +226,7 @@ public class DoctorServiceTests
     }
 
     [Fact]
-    public async Task GetDoctorSlotsAsync_WhenDoctorIsAvailable_ShouldExcludeLunchAndBookedSlots()
+    public async Task GetDoctorSlotsAsync_WhenDoctorIsAvailable_ShouldExcludeLunchAndBookedSlotsAndCacheResult()
     {
         var date = DateOnly.FromDateTime(DateTime.Today.AddDays(5));
         var doctor = CreateDoctor(isAvailable: true);
@@ -190,6 +240,7 @@ public class DoctorServiceTests
         Assert.DoesNotContain(new TimeOnly(9, 0), result.AvailableSlots);
         Assert.DoesNotContain(new TimeOnly(12, 0), result.AvailableSlots);
         Assert.Contains(new TimeOnly(9, 30), result.AvailableSlots);
+        _availabilityCacheServiceMock.Verify(service => service.SetDoctorSlotsAsync(1, date, It.IsAny<DoctorAvailableSlotsDto>()), Times.Once);
     }
 
     [Fact]
@@ -216,7 +267,9 @@ public class DoctorServiceTests
             CreateDoctor(id: 3, isAvailable: true)
         };
         _doctorRepositoryMock.Setup(repo => repo.GetAvailableDoctorsAsync(null)).ReturnsAsync(doctors);
-        _appointmentRepositoryMock.Setup(repo => repo.GetNonCancelledAppointmentsByDateAsync(date)).ReturnsAsync([]);
+        _appointmentRepositoryMock
+            .Setup(repo => repo.GetNonCancelledAppointmentsByDoctorIdAndDateAsync(It.IsAny<int>(), date))
+            .ReturnsAsync([]);
 
         var result = await _doctorService.GetAvailableSlotsAsync(date, null, new PaginationQueryDto { PageNumber = 2, PageSize = 2 });
 
@@ -231,7 +284,9 @@ public class DoctorServiceTests
     {
         var date = DateOnly.FromDateTime(DateTime.Today);
         _doctorRepositoryMock.Setup(repo => repo.GetAvailableDoctorsAsync(null)).ReturnsAsync([CreateDoctor(isAvailable: true)]);
-        _appointmentRepositoryMock.Setup(repo => repo.GetNonCancelledAppointmentsByDateAsync(date)).ReturnsAsync([]);
+        _appointmentRepositoryMock
+            .Setup(repo => repo.GetNonCancelledAppointmentsByDoctorIdAndDateAsync(It.IsAny<int>(), date))
+            .ReturnsAsync([]);
 
         var result = await _doctorService.GetAvailableSlotsAsync(date, null, new PaginationQueryDto { PageNumber = 1, PageSize = 10 });
 
@@ -282,7 +337,7 @@ public class DoctorServiceTests
     }
 
     [Fact]
-    public async Task UpdateAvailabilityAsync_WhenDoctorActivatesSelf_ShouldUpdateAvailability()
+    public async Task UpdateAvailabilityAsync_WhenDoctorActivatesSelf_ShouldUpdateAvailabilityAndInvalidateCache()
     {
         _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(1)).ReturnsAsync(CreateDoctor(isAvailable: false));
         _doctorRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Doctor>())).ReturnsAsync(CreateDoctor(isAvailable: true));
@@ -291,6 +346,7 @@ public class DoctorServiceTests
 
         Assert.True(result.IsAvailable);
         _appointmentRepositoryMock.Verify(repo => repo.DoctorHasConfirmedAppointmentsOnDateAsync(It.IsAny<int>(), It.IsAny<DateOnly>()), Times.Never);
+        _availabilityCacheServiceMock.Verify(service => service.RemoveDoctorAvailabilityRangeAsync(1, 6), Times.Once);
     }
 
     [Fact]
@@ -304,6 +360,7 @@ public class DoctorServiceTests
         var result = await _doctorService.UpdateAvailabilityAsync(1, new UpdateDoctorAvailabilityDto { IsAvailable = false }, AppRoles.Doctor, 1);
 
         Assert.False(result.IsAvailable);
+        _availabilityCacheServiceMock.Verify(service => service.RemoveDoctorAvailabilityRangeAsync(1, 6), Times.Once);
     }
 
     [Fact]
@@ -316,6 +373,7 @@ public class DoctorServiceTests
         var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _doctorService.UpdateAvailabilityAsync(1, new UpdateDoctorAvailabilityDto { IsAvailable = false }, AppRoles.Doctor, 1));
 
         Assert.Equal(ErrorMessages.DoctorCannotDeactivateWithConfirmedAppointmentsToday, exception.Message);
+        _availabilityCacheServiceMock.Verify(service => service.RemoveDoctorAvailabilityRangeAsync(It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
     [Fact]
@@ -338,6 +396,7 @@ public class DoctorServiceTests
         _appointmentRepositoryMock.Verify(repo => repo.UpdateAsync(It.Is<Appointment>(appointment =>
             appointment.Status == AppointmentStatus.Cancelled &&
             appointment.CancellationReason == ErrorMessages.DoctorEmergencyCancellationReason)), Times.Exactly(2));
+        _availabilityCacheServiceMock.Verify(service => service.RemoveDoctorAvailabilityRangeAsync(1, 6), Times.Once);
     }
 
     private static DoctorSearchQueryDto CreateDoctorSearchQuery() => new()

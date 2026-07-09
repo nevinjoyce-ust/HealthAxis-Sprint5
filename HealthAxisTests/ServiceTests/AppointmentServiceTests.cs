@@ -5,6 +5,7 @@ using HealthAxis.API.Exceptions;
 using HealthAxis.API.Messaging;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
+using HealthAxis.API.Services;
 using HealthAxis.API.Services.Impl;
 using HealthAxis.Shared.Constants;
 using HealthAxis.Shared.Dtos;
@@ -24,6 +25,7 @@ public class AppointmentServiceTests
     private readonly Mock<IRabbitMqPublisher> _rabbitMqPublisherMock;
     private readonly Mock<ILogger<AppointmentService>> _loggerMock;
     private readonly AppointmentService _appointmentService;
+    private readonly Mock<IDoctorAvailabilityCacheService> _availabilityCacheServiceMock;
 
     public AppointmentServiceTests()
     {
@@ -33,6 +35,7 @@ public class AppointmentServiceTests
         _mapperMock = new Mock<IMapper>();
         _rabbitMqPublisherMock = new Mock<IRabbitMqPublisher>();
         _loggerMock = new Mock<ILogger<AppointmentService>>();
+        _availabilityCacheServiceMock = new Mock<IDoctorAvailabilityCacheService>();
 
         _appointmentRepositoryMock
             .Setup(repo => repo.GetExpiredPendingAppointmentsAsync(It.IsAny<DateTime>()))
@@ -42,12 +45,17 @@ public class AppointmentServiceTests
             .Setup(publisher => publisher.PublishAppointmentBookedAsync(It.IsAny<AppointmentBookedEvent>()))
             .Returns(Task.CompletedTask);
 
+        _availabilityCacheServiceMock
+            .Setup(service => service.RemoveDoctorSlotsAsync(It.IsAny<int>(), It.IsAny<DateOnly>()))
+            .Returns(Task.CompletedTask);
+
         _appointmentService = new AppointmentService(
             _appointmentRepositoryMock.Object,
             _patientRepositoryMock.Object,
             _doctorRepositoryMock.Object,
             _mapperMock.Object,
-            _rabbitMqPublisherMock.Object);
+            _rabbitMqPublisherMock.Object,
+            _availabilityCacheServiceMock.Object);
     }
 
     [Fact]

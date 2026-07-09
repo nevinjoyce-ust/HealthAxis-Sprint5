@@ -17,7 +17,8 @@ public class AppointmentService(
     IPatientRepository patientRepository,
     IDoctorRepository doctorRepository,
     IMapper mapper,
-    IRabbitMqPublisher rabbitMqPublisher) : IAppointmentService
+    IRabbitMqPublisher rabbitMqPublisher,
+    IDoctorAvailabilityCacheService availabilityCacheService) : IAppointmentService
 {
     private const int MinimumBookingHoursBeforeAppointment = 48;
     private const int MinimumCancellationHoursBeforeAppointment = 24;
@@ -71,6 +72,10 @@ public class AppointmentService(
         {
             throw new NotFoundException(ErrorMessages.AppointmentNotFoundAfterCreation);
         }
+
+        await availabilityCacheService.RemoveDoctorSlotsAsync(
+            appointmentWithDetails.DoctorId,
+            appointmentWithDetails.AppointmentDate);
 
         await rabbitMqPublisher.PublishAppointmentBookedAsync(new AppointmentBookedEvent
         {
@@ -165,6 +170,8 @@ public class AppointmentService(
             throw new NotFoundException(ErrorMessages.AppointmentNotFound);
         }
 
+        var shouldInvalidateAvailabilityCache = dto.Status == AppointmentStatus.Cancelled;
+
         switch (dto.Status)
         {
             case AppointmentStatus.Confirmed:
@@ -183,6 +190,13 @@ public class AppointmentService(
         }
 
         await appointmentRepository.UpdateAsync(appointment);
+
+        if (shouldInvalidateAvailabilityCache)
+        {
+            await availabilityCacheService.RemoveDoctorSlotsAsync(
+                appointment.DoctorId,
+                appointment.AppointmentDate);
+        }
 
         var appointmentWithDetails = await appointmentRepository.GetAppointmentByIdWithDetailsAsync(id);
 
@@ -382,6 +396,10 @@ public class AppointmentService(
             appointment.CancellationReason = ErrorMessages.PendingAppointmentAutoCancelledReason;
 
             await appointmentRepository.UpdateAsync(appointment);
+
+            await availabilityCacheService.RemoveDoctorSlotsAsync(
+                appointment.DoctorId,
+                appointment.AppointmentDate);
         }
     }
 

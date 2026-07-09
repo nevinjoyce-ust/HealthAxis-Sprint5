@@ -1,19 +1,20 @@
 using AutoMapper;
 using HealthAxis.API.Constants;
-using HealthAxis.Shared.Constants;
-using HealthAxis.Shared.Dtos.Doctor;
-using HealthAxis.Shared.Dtos;
-using HealthAxis.Shared.Enums;
 using HealthAxis.API.Exceptions;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
+using HealthAxis.Shared.Constants;
+using HealthAxis.Shared.Dtos;
+using HealthAxis.Shared.Dtos.Doctor;
+using HealthAxis.Shared.Enums;
 
 namespace HealthAxis.API.Services.Impl;
 
 public class DoctorService(
     IDoctorRepository doctorRepository,
     IMapper mapper,
-    IAppointmentRepository appointmentRepository) : IDoctorService
+    IAppointmentRepository appointmentRepository,
+    IDoctorAvailabilityCacheService availabilityCacheService) : IDoctorService
 {
     private static readonly TimeOnly WorkDayStart = new(9, 0);
     private static readonly TimeOnly LunchStart = new(12, 0);
@@ -22,6 +23,7 @@ public class DoctorService(
     private static readonly TimeSpan SlotDuration = TimeSpan.FromMinutes(30);
 
     private const int MinimumBookingHoursBeforeAppointment = 48;
+    private const int AvailabilityCacheInvalidationMonthsAhead = 6;
 
     public async Task<PagedResultDto<PublicDoctorDto>> GetAllDoctorsAsync(DoctorSearchQueryDto query)
     {
@@ -82,6 +84,13 @@ public class DoctorService(
 
     public async Task<DoctorAvailableSlotsDto> GetDoctorSlotsAsync(int id, DateOnly date)
     {
+        var cachedSlots = await availabilityCacheService.GetDoctorSlotsAsync(id, date);
+
+        if (cachedSlots != null)
+        {
+            return cachedSlots;
+        }
+
         var doctor = await doctorRepository.GetDoctorByIdAsync(id);
 
         if (doctor == null)
@@ -89,9 +98,7 @@ public class DoctorService(
             throw new NotFoundException(ErrorMessages.DoctorNotFound);
         }
 
-        var bookedTimes = await GetBookedTimesAsync(doctor.Id, date);
-
-        return CreateDoctorAvailableSlotsDto(doctor, date, bookedTimes);
+        return await BuildAndCacheDoctorSlotsAsync(doctor, date);
     }
 
     public async Task<PagedResultDto<DoctorAvailableSlotsDto>> GetAvailableSlotsAsync(
@@ -100,24 +107,11 @@ public class DoctorService(
         PaginationQueryDto pagination)
     {
         var doctors = await doctorRepository.GetAvailableDoctorsAsync(specialisation);
-        var appointments = await appointmentRepository.GetNonCancelledAppointmentsByDateAsync(date);
-
-        var bookedTimesByDoctor = appointments
-            .GroupBy(appointment => appointment.DoctorId)
-            .ToDictionary(
-                group => group.Key,
-                group => group
-                    .Select(appointment => appointment.AppointmentTime)
-                    .ToHashSet());
-
         var doctorsWithAvailableSlots = new List<DoctorAvailableSlotsDto>();
 
         foreach (var doctor in doctors)
         {
-            bookedTimesByDoctor.TryGetValue(doctor.Id, out var bookedTimes);
-            bookedTimes ??= [];
-
-            var doctorSlots = CreateDoctorAvailableSlotsDto(doctor, date, bookedTimes);
+            var doctorSlots = await GetCachedOrBuildDoctorSlotsAsync(doctor, date);
 
             if (doctorSlots.AvailableSlots.Count > 0)
             {
@@ -176,8 +170,13 @@ public class DoctorService(
             throw new NotFoundException(ErrorMessages.DoctorNotFound);
         }
 
+        await availabilityCacheService.RemoveDoctorAvailabilityRangeAsync(
+            updatedDoctor.Id,
+            AvailabilityCacheInvalidationMonthsAhead);
+
         return CreateAvailabilityDto(updatedDoctor.Id, updatedDoctor.IsAvailable);
     }
+
     public async Task<DoctorDto?> GetDoctorProfileByIdAsync(int id)
     {
         var doctor = await doctorRepository.GetDoctorByIdWithUserAsync(id);
@@ -188,6 +187,28 @@ public class DoctorService(
         }
 
         return mapper.Map<DoctorDto>(doctor);
+    }
+
+    private async Task<DoctorAvailableSlotsDto> GetCachedOrBuildDoctorSlotsAsync(Doctor doctor, DateOnly date)
+    {
+        var cachedSlots = await availabilityCacheService.GetDoctorSlotsAsync(doctor.Id, date);
+
+        if (cachedSlots != null)
+        {
+            return cachedSlots;
+        }
+
+        return await BuildAndCacheDoctorSlotsAsync(doctor, date);
+    }
+
+    private async Task<DoctorAvailableSlotsDto> BuildAndCacheDoctorSlotsAsync(Doctor doctor, DateOnly date)
+    {
+        var bookedTimes = await GetBookedTimesAsync(doctor.Id, date);
+        var slots = CreateDoctorAvailableSlotsDto(doctor, date, bookedTimes);
+
+        await availabilityCacheService.SetDoctorSlotsAsync(doctor.Id, date, slots);
+
+        return slots;
     }
 
     private static DoctorAvailableSlotsDto CreateDoctorAvailableSlotsDto(
