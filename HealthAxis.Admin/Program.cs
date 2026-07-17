@@ -1,5 +1,6 @@
 using HealthAxis.Admin;
 using HealthAxis.Admin.Auth;
+using HealthAxis.Admin.Constants;
 using HealthAxis.Admin.Services;
 using HealthAxis.Admin.Services.Impl;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -15,8 +16,22 @@ var apiBaseUrl = builder.Configuration["ApiBaseUrl"];
 
 if (string.IsNullOrWhiteSpace(apiBaseUrl))
 {
-    throw new InvalidOperationException("ApiBaseUrl is missing from wwwroot/appsettings.json.");
+    throw new InvalidOperationException(
+        "ApiBaseUrl is missing from wwwroot/appsettings.json.");
 }
+
+var angularLoginUrl = builder.Configuration["AngularLoginUrl"];
+
+if (string.IsNullOrWhiteSpace(angularLoginUrl))
+{
+    throw new InvalidOperationException(
+        "AngularLoginUrl is missing from wwwroot/appsettings.json.");
+}
+
+builder.Services.AddSingleton(new AppUrls
+{
+    AngularLoginUrl = angularLoginUrl
+});
 
 builder.Services.AddTransient<AuthTokenHandler>();
 

@@ -13,13 +13,14 @@
   <SonarQubeHostUrl>http://localhost:9000</SonarQubeHostUrl>
   <SonarQubeVersion>26.1.0.118079</SonarQubeVersion>
   <SonarProjectKey>HealthAxis</SonarProjectKey>
+  <SonarProjectName>HealthAxis</SonarProjectName>
   <AdditionalConfig>
     <ConfigSetting Id="BuildUri" />
     <ConfigSetting Id="TfsUri" />
     <ConfigSetting Id="VsCoverageConverterToolPath" />
     <ConfigSetting Id="UnchangedFilesPath" />
     <ConfigSetting Id="sonar.pullrequest.cache.basepath" Value="C:\Users\310511\source\repos\HealthAxis" />
-    <ConfigSetting Id="settings.file.path" Value="C:\Users\310511\.dotnet\tools\.store\dotnet-sonarscanner\11.2.1\dotnet-sonarscanner\11.2.1\tools\netcoreapp3.1\any\SonarQube.Analysis.xml" />
+    <ConfigSetting Id="settings.file.path" Value="C:\Users\310511\source\repos\HealthAxis\SonarQube.Analysis.xml" />
   </AdditionalConfig>
   <ServerSettings>
     <Property Name="sonar.cs.ignoreHeaderComments">true</Property>
@@ -149,15 +150,10 @@
     <Property Name="sonar.java.jvmframeworkconfig.activate">true</Property>
     <Property Name="sonar.updatecenter.url">https://downloads.sonarsource.com/sonarqube/update/update-center.properties</Property>
     <Property Name="sonar.core.id">147B411E-AZ6beXIJN5w0HtsvmDpt</Property>
-    <Property Name="sonar.core.startTime">03-07-2026 10:02:54</Property>
+    <Property Name="sonar.core.startTime">17-07-2026 10:30:55</Property>
   </ServerSettings>
   <LocalSettings>
-    <Property Name="sonar.host.url">http://localhost:9000</Property>
-    <Property Name="sonar.coverage.inclusions">HealthAxis.API/Services/**/*.cs</Property>
-    <Property Name="sonar.cpd.exclusions">**/Dtos/**/*.cs,**/*.css,**/*.scss,**/*.sass,**/*.less,**/*.html,**/*.spec.ts,**/Data/IdentityDataSeeder.cs,**/Migrations/**,**/bin/**,**/obj/**</Property>
-    <Property Name="sonar.coverage.exclusions">**/HealthAxis.Web/**,**/HealthAxis.Admin/**,**/HealthAxis.Shared/**,**/*Tests*/**,**/*.Tests/**,**/*Test*.cs,**/Controllers/**,**/Repositories/**,**/Data/**,**/Models/**,**/Dtos/**,**/Constants/**,**/Exceptions/**,**/Middlewares/**,**/Extensions/**,**/Mappings/**,**/Program.cs</Property>
-    <Property Name="sonar.cs.opencover.reportsPaths">TestResults/**/coverage.opencover.xml</Property>
-    <Property Name="sonar.exclusions">**/bin/**,**/obj/**,**/Migrations/**,**/wwwroot/**,**/*.Designer.cs,**/*.g.cs,**/*.generated.cs,**/*.razor.g.cs,**/Mappings/MappingProfile.cs,**/Data/IdentityDataSeeder.cs,**/HealthAxis.Admin/wwwroot/**,**/HealthAxis.Admin/bin/**,**/HealthAxis.Admin/obj/**,**/HealthAxis.Web/.angular/**,**/HealthAxis.Web/dist/**,**/HealthAxis.Web/node_modules/**,**/HealthAxis.Web/coverage/**,**/HealthAxis.Web/src/**/*.css,**/HealthAxis.Web/src/**/*.scss,**/HealthAxis.Web/src/**/*.sass,**/HealthAxis.Web/src/**/*.less,**/HealthAxis.Web/src/**/*.html,**/HealthAxis.Web/src/**/*.spec.ts,**/*.css,**/*.scss,**/*.sass,**/*.less,TestResults/**/coverage.opencover.xml</Property>
+    <Property Name="sonar.exclusions">**/bin/**,**/obj/**,**/.angular/**,**/node_modules/**,**/dist/**,**/coverage/**,**/TestResults/**,**/.sonarqube/**,**/.sonar-temp/**,**/logs/**,**/Migrations/**,**/HealthAxis.Admin/wwwroot/lib/**,**/*.css,**/*.scss,**/*.sass,**/*.Designer.cs,**/*.g.cs,**/*.generated.cs,**/*.razor.g.cs,**/*.min.js,**/*.map,**/*.csproj.user,**/*.slnLaunch.user,**/*.spec.ts,**/HealthAxis.API/Data/IdentityDataSeeder.cs,coverage.xml,solution-inventory.txt,TestResults/**/coverage.opencover.xml</Property>
   </LocalSettings>
   <ScannerOptsSettings />
   <AnalyzersSettings>

@@ -21,11 +21,15 @@ public class AuthService : IAuthService
         _authStateProvider = authStateProvider;
     }
 
-    public async Task<(AuthResponseDto? Response, string? ErrorMessage)> LoginAsync(LoginDto request)
+    public async Task<(AuthResponseDto? Response, string? ErrorMessage)>
+        LoginAsync(LoginDto request)
     {
-        var response = await _httpClient.PostAsJsonAsync("api/auth/login", request);
+        var response = await _httpClient.PostAsJsonAsync(
+            "api/auth/login",
+            request);
 
-        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        if (response.StatusCode is
+            HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
         {
             return (null, "Invalid credentials.");
         }
@@ -35,14 +39,18 @@ public class AuthService : IAuthService
             return (null, "Unable to sign in. Please try again.");
         }
 
-        var authResponse = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+        var authResponse = await response.Content
+            .ReadFromJsonAsync<AuthResponseDto>();
 
         if (authResponse is null)
         {
             return (null, "Unable to sign in. Please try again.");
         }
 
-        if (!string.Equals(authResponse.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(
+                authResponse.Role,
+                "Admin",
+                StringComparison.OrdinalIgnoreCase))
         {
             await _tokenService.ClearTokensAsync();
             _authStateProvider.NotifyUserLoggedOut();
@@ -50,10 +58,6 @@ public class AuthService : IAuthService
         }
 
         await _tokenService.SetAccessTokenAsync(authResponse.AccessToken);
-
-        // Refresh token support is intentionally paused for now.
-        // await _tokenService.SetRefreshTokenAsync(authResponse.RefreshToken);
-
         _authStateProvider.NotifyUserLoggedIn(authResponse.AccessToken);
 
         return (authResponse, null);
@@ -61,7 +65,9 @@ public class AuthService : IAuthService
 
     public async Task<string?> ChangePasswordAsync(ChangePasswordDto request)
     {
-        var response = await _httpClient.PutAsJsonAsync("api/auth/change-password", request);
+        var response = await _httpClient.PutAsJsonAsync(
+            "api/auth/change-password",
+            request);
 
         var result = await ApiResponseHandler.ReadMessageResponseAsync(
             response,

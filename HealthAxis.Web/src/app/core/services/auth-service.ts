@@ -130,15 +130,19 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
-    const token = this.getAccessToken();
-    const payload = this.getJwtPayload();
+  const token = this.getAccessToken();
+  const payload = this.getJwtPayload();
 
-    if (!token || !payload?.exp) {
-      return false;
-    }
+  const isValid = !!token &&
+    !!payload?.exp &&
+    payload.exp * 1000 > Date.now();
 
-    return payload.exp * 1000 > Date.now();
+  if (!isValid) {
+    this.clearSession();
   }
+
+  return isValid;
+}
 
   getUserRole(): AppRole | null {
     const responseRole = normalizeAppRole(this.getStoredAuthResponse()?.role);

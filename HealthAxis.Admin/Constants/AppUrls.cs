@@ -1,6 +1,6 @@
-﻿namespace HealthAxis.Admin.Constants;
+namespace HealthAxis.Admin.Constants;
 
-public static class AppUrls
+public sealed class AppUrls
 {
-    public const string AngularLoginUrl = "http://localhost:4200/login";
+    public required string AngularLoginUrl { get; init; }
 }

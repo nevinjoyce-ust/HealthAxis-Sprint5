@@ -1,4 +1,4 @@
-﻿using HealthAxis.API.Events;
+using HealthAxis.API.Events;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
 using MassTransit;
@@ -26,13 +26,13 @@ public class AppointmentBookedConsumer : IConsumer<AppointmentBookedEvent>
     public async Task Consume(ConsumeContext<AppointmentBookedEvent> context)
     {
         var appointmentEvent = context.Message;
-
-        var doctor = await _doctorRepository.GetDoctorByIdAsync(appointmentEvent.DoctorId);
+        var doctor = await _doctorRepository
+            .GetDoctorByIdAsync(appointmentEvent.DoctorId);
 
         if (doctor == null)
         {
             _logger.LogWarning(
-                "AppointmentBookedEvent consumed, but doctor was not found. AppointmentId={AppointmentId}, DoctorId={DoctorId}",
+                "Appointment booked event could not create a notification because the doctor was not found. AppointmentId={AppointmentId}, DoctorId={DoctorId}",
                 appointmentEvent.AppointmentId,
                 appointmentEvent.DoctorId);
 
@@ -43,7 +43,10 @@ public class AppointmentBookedConsumer : IConsumer<AppointmentBookedEvent>
         {
             RecipientUserId = doctor.UserId,
             Title = "New appointment booked",
-            Message = $"New appointment booked. Appointment ID: {appointmentEvent.AppointmentId}, Patient ID: {appointmentEvent.PatientId}, Date: {appointmentEvent.ScheduledDate}, Time: {appointmentEvent.TimeSlot}.",
+            Message =
+                $"New appointment booked. Appointment ID: {appointmentEvent.AppointmentId}, " +
+                $"Patient ID: {appointmentEvent.PatientId}, Date: {appointmentEvent.ScheduledDate}, " +
+                $"Time: {appointmentEvent.TimeSlot}.",
             NotificationType = AppointmentBookedNotificationType,
             IsRead = false,
             CreatedAtUtc = DateTime.UtcNow,
@@ -53,27 +56,16 @@ public class AppointmentBookedConsumer : IConsumer<AppointmentBookedEvent>
 
         var createdNotification = await _notificationRepository.AddAsync(notification);
 
-        _logger.LogInformation(
-            """
-    
-            ==========================================
-             APPOINTMENT BOOKED
-             Source          : RabbitMQ via MassTransit
-             Appointment ID  : {AppointmentId}
-             Patient ID      : {PatientId}
-             Doctor ID       : {DoctorId}
-             Notification ID : {NotificationId}
-             Date            : {ScheduledDate}
-             Time            : {TimeSlot}
-             Status          : Notification created successfully
-            ==========================================
-    
-            """,
-            appointmentEvent.AppointmentId,
-            appointmentEvent.PatientId,
-            appointmentEvent.DoctorId,
-            createdNotification.Id,
-            appointmentEvent.ScheduledDate,
-            appointmentEvent.TimeSlot);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Appointment booked event consumed and notification created. AppointmentId={AppointmentId}, PatientId={PatientId}, DoctorId={DoctorId}, NotificationId={NotificationId}, ScheduledDate={ScheduledDate}, TimeSlot={TimeSlot}",
+                appointmentEvent.AppointmentId,
+                appointmentEvent.PatientId,
+                appointmentEvent.DoctorId,
+                createdNotification.Id,
+                appointmentEvent.ScheduledDate,
+                appointmentEvent.TimeSlot);
+        }
     }
 }

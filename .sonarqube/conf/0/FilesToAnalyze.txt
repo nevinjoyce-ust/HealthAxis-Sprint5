@@ -12,7 +12,6 @@ C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\AdminResetPa
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\AuthResponseDto.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\ChangePasswordDto.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\LoginDto.cs
-C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\RefreshTokenRequestDto.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\RegisterDto.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\CreateDoctorDto.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\DoctorAvailabilityDto.cs

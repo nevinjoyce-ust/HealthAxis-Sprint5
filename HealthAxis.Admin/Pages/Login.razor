@@ -1,8 +1,10 @@
 @page "/login"
 @layout HealthAxis.Admin.Layout.LoginLayout
-@using HealthAxis.Shared.Dtos.Auth
+@using HealthAxis.Admin.Constants
 @using HealthAxis.Admin.Services
+@using HealthAxis.Shared.Dtos.Auth
 @inject IAuthService AuthService
+@inject AppUrls AppUrls
 @inject NavigationManager NavigationManager
 
 <PageTitle>Admin Login - HealthAxis</PageTitle>
@@ -61,7 +63,9 @@
                     <ValidationMessage For="@(() => _loginRequest.Password)" />
                 </div>
 
-                <button class="btn btn-primary w-100 login-button" type="submit" disabled="@_isLoading">
+                <button class="btn btn-primary w-100 login-button"
+                        type="submit"
+                        disabled="@_isLoading">
                     @(_isLoading ? "Signing in..." : "Sign in")
                 </button>
 
@@ -75,18 +79,14 @@
 </div>
 
 @code {
-
-
     private readonly LoginDto _loginRequest = new();
     private bool _isLoading;
     private string? _errorMessage;
 
-    
     protected override void OnInitialized()
     {
         NavigationManager.NavigateTo(AppUrls.AngularLoginUrl, forceLoad: true);
     }
-
 
     private async Task HandleLoginAsync()
     {
@@ -99,7 +99,8 @@
 
             if (result.Response is null)
             {
-                _errorMessage = result.ErrorMessage ?? "Unable to sign in. Please try again.";
+                _errorMessage = result.ErrorMessage ??
+                    "Unable to sign in. Please try again.";
                 return;
             }
 

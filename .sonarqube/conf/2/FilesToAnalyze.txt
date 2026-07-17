@@ -1,4 +1,8 @@
-﻿C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Constants\ErrorMessages.cs
+﻿C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\BackgroundServices\ExpiredConfirmedAppointmentService.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\BackgroundServices\HeartbeatService.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\BackgroundServices\NotificationCleanupService.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\BackgroundServices\PendingAppointmentDeadlineService.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Constants\ErrorMessages.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Controllers\AccountController.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Controllers\AdminController.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Controllers\AdminHandoffController.cs
@@ -9,6 +13,8 @@ C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Controllers\HealthRecords
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Controllers\PatientsController.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Data\HealthAxisDbContext.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Data\IdentityDataSeeder.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Events\AppointmentBookedEvent.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Events\UserRegisteredEvent.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Exceptions\AppException.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Exceptions\BadRequestException.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Exceptions\BusinessRuleException.cs
@@ -17,6 +23,7 @@ C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Exceptions\ForbiddenExcep
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Exceptions\NotFoundException.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Extensions\ClaimsPrincipalExtensions.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Mappings\MappingProfile.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Messaging\AppointmentBookedConsumer.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Middlewares\GlobalExceptionHandler.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Migrations\20260617112732_Initial Migration but like fr.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Migrations\20260617112732_Initial Migration but like fr.Designer.cs
@@ -24,11 +31,15 @@ C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Migrations\20260618045538
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Migrations\20260618045538_Improvements.Designer.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Migrations\20260702113831_Added_PatientAge_toHealthRecords.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Migrations\20260702113831_Added_PatientAge_toHealthRecords.Designer.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Migrations\20260707042527_AddedNotifications.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Migrations\20260707042527_AddedNotifications.Designer.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Migrations\HealthAxisDbContextModelSnapshot.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Models\Appointment.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Models\Doctor.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Models\HealthRecord.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Models\Notification.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Models\Patient.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Options\GarnetOptions.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Program.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Repositories\IAppointmentRepository.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Repositories\IDoctorRepository.cs
@@ -36,8 +47,10 @@ C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Repositories\IHealthRecor
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Repositories\Impl\AppointmentRepository.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Repositories\Impl\DoctorRepository.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Repositories\Impl\HealthRecordRepository.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Repositories\Impl\NotificationRepository.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Repositories\Impl\PatientRepository.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Repositories\Impl\Repository.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Repositories\INotificationRepository.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Repositories\IPatientRepository.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Repositories\IRepository.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Repositories\PagedResult.cs
@@ -45,12 +58,14 @@ C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\IAdminHandoffSer
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\IAdminService.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\IAppointmentService.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\IAuthService.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\IDoctorAvailabilityCacheService.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\IDoctorService.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\IHealthRecordService.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\Impl\AdminHandoffService.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\Impl\AdminService.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\Impl\AppointmentService.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\Impl\AuthService.cs
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\Impl\DoctorAvailabilityCacheService.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\Impl\DoctorService.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\Impl\HealthRecordService.cs
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Services\Impl\PatientService.cs
@@ -68,4 +83,12 @@ C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\logs\healthaxis-api-20260
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\logs\healthaxis-api-20260630.log
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\logs\healthaxis-api-20260701.log
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\logs\healthaxis-api-20260702.log
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\logs\healthaxis-api-20260703.log
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\logs\healthaxis-api-20260704.log
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\logs\healthaxis-api-20260707.log
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\logs\healthaxis-api-20260708.log
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\logs\healthaxis-api-20260709.log
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\logs\healthaxis-api-20260713.log
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\logs\healthaxis-api-20260714.log
+C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\logs\healthaxis-api-20260716.log
 C:\Users\310511\source\repos\HealthAxis\HealthAxis.API\Properties\launchSettings.json

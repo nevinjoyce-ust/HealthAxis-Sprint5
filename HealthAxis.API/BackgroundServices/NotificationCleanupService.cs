@@ -1,4 +1,4 @@
-﻿using HealthAxis.API.Data;
+using HealthAxis.API.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace HealthAxis.API.BackgroundServices;
@@ -30,7 +30,6 @@ public class NotificationCleanupService(
         {
             await using var scope = scopeFactory.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<HealthAxisDbContext>();
-
             var cutoffDateUtc = DateTime.UtcNow.Subtract(RetentionPeriod);
 
             var oldNotifications = await context.Notifications
@@ -39,7 +38,8 @@ public class NotificationCleanupService(
 
             if (oldNotifications.Count == 0)
             {
-                logger.LogInformation("Notification cleanup completed. No old notifications found.");
+                logger.LogDebug(
+                    "Notification cleanup completed. No old notifications found.");
                 return;
             }
 
@@ -47,12 +47,14 @@ public class NotificationCleanupService(
             await context.SaveChangesAsync(stoppingToken);
 
             logger.LogInformation(
-                "Notification cleanup completed. Deleted {NotificationCount} old notifications.",
+                "Notification cleanup deleted {NotificationCount} old notifications.",
                 oldNotifications.Count);
         }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        catch (OperationCanceledException exception) when (stoppingToken.IsCancellationRequested)
         {
-            logger.LogInformation("Notification cleanup cancelled during shutdown.");
+            logger.LogDebug(
+                exception,
+                "Notification cleanup cancelled during shutdown.");
         }
         catch (Exception exception)
         {
@@ -63,7 +65,6 @@ public class NotificationCleanupService(
     public override Task StopAsync(CancellationToken cancellationToken)
     {
         logger.LogInformation("NotificationCleanupService stopping.");
-
         return base.StopAsync(cancellationToken);
     }
 }

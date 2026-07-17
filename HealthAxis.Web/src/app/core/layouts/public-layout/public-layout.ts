@@ -14,8 +14,9 @@ export class PublicLayout {
   private readonly router = inject(Router);
 
   get showLoggedInPublicActions(): boolean {
-    return !!this.auth.getDashboardUrl();
-  }
+  return this.auth.isLoggedIn() &&
+    this.auth.getDashboardUrl() !== null;
+}
 
   logout(): void {
     this.auth.logout();

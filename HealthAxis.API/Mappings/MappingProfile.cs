@@ -1,15 +1,23 @@
 using AutoMapper;
-using HealthAxis.Shared.Dtos.Doctor;
-using HealthAxis.Shared.Dtos.Patient;
-using HealthAxis.Shared.Dtos.Appointment;
-using HealthAxis.Shared.Dtos.HealthRecord;
 using HealthAxis.API.Models;
+using HealthAxis.Shared.Dtos.Appointment;
+using HealthAxis.Shared.Dtos.Doctor;
+using HealthAxis.Shared.Dtos.HealthRecord;
+using HealthAxis.Shared.Dtos.Patient;
 
 namespace HealthAxis.API.Mappings;
 
 public class MappingProfile : Profile
 {
     public MappingProfile()
+    {
+        ConfigureDoctorMappings();
+        ConfigurePatientMappings();
+        ConfigureAppointmentMappings();
+        ConfigureHealthRecordMappings();
+    }
+
+    private void ConfigureDoctorMappings()
     {
         CreateMap<Doctor, PublicDoctorDto>()
             .ForMember(dest => dest.YearsOfExperience,
@@ -28,7 +36,10 @@ public class MappingProfile : Profile
                     src.User != null && src.User.PhoneNumber != null
                         ? src.User.PhoneNumber
                         : string.Empty));
+    }
 
+    private void ConfigurePatientMappings()
+    {
         CreateMap<Patient, PatientDto>()
             .ForMember(dest => dest.Email,
                 opt => opt.MapFrom(src =>
@@ -40,7 +51,10 @@ public class MappingProfile : Profile
                     src.User != null && src.User.PhoneNumber != null
                         ? src.User.PhoneNumber
                         : string.Empty));
+    }
 
+    private void ConfigureAppointmentMappings()
+    {
         CreateMap<Appointment, AppointmentDto>()
             .ForMember(dest => dest.PatientName,
                 opt => opt.MapFrom(src =>
@@ -59,7 +73,10 @@ public class MappingProfile : Profile
                         : (int?)null));
 
         CreateMap<CreateAppointmentDto, Appointment>();
+    }
 
+    private void ConfigureHealthRecordMappings()
+    {
         CreateMap<HealthRecord, HealthRecordDto>()
             .ForMember(dest => dest.PatientId,
                 opt => opt.MapFrom(src =>

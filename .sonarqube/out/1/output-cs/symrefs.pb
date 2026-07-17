@@ -439,23 +439,27 @@ MC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\Patients.razor
 ÜÜ 2
 žž 2
 ÊÊ- @O
-MC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\NotFound.razor›
+MC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\NotFound.razor±
 KC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\Logout.razor
 
-" 4
-		 + 
-* ; 
- " þ
+" 4
+
+
+ + 
+		  
+* ; 
+ " ”
 JC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\Login.razorF
-PP +,, *33, 9444 A<<, 9==4 Abb6 C2
-QQ @@\ fAA  ]] rr <
-RR !DD0 =FF? L^^ ff nn 
+RR +.. *55, 9664 A>>, 9??4 Abb6 C2
+SS DD# -EE  ]] ss <
+TT !HH0 =JJ? L^^ ff oo 
 
-UU )
-[[ ',,; K
+VV )
+[[ '..; K
 bb dd ff  &
- +WW jj 
-  bb *m
+ +XX kk 
+ XX% ,
+  bb *m
 IC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\Home.razor
 
 		 )
@@ -1539,7 +1543,30 @@ WC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Components\AdminStatCa
  # 
  %		( /+ 2
  " 
- *! -Ý
+ *! -ë
+aC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Components\AdminResetPasswordModal.razor
+HH " Z
+II- >$$0 A%%8 I//0 A008 IXXD UZZ -[[+ <dd /(
+JJ $77' /88 "==' /
+KK +0 <: F
+LL # 
+MM *
+
+, 7 
+NN /886 G
+OO% .jj 
+PP% ,uu (
+RR $# /XX [[ 
+SS# 0XX5 BZZ P
+TT &0 B: L\\ bb ff oo tt 
+
+VV +
+`` #% 1
+mm $' :
+rr !>>& 0
+xx (dd <
+xx0 8zz {{ || }} ~~ 
+~~ "~~< EÝ
 YC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Components\AdminPageHeader.razor
  & ,
   
@@ -1657,31 +1684,35 @@ cC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Components\AdminAppoin
 îî 5	]]i „
 
 îîH N
-ðð ë
-aC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Components\AdminResetPasswordModal.razor
-HH " Z
-II- >$$0 A%%8 I//0 A008 IXXD UZZ -[[+ <dd /(
-JJ $77' /88 "==' /
-KK +0 <: F
-LL # 
-MM *
-
-, 7 
-NN /886 G
-OO% .jj 
-PP% ,uu (
-RR $# /XX [[ 
-SS# 0XX5 BZZ P
-TT &0 B: L\\ bb ff oo tt 
+ðð D
+BC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\App.razorœ
+RC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\ITokenService.cs
 
-VV +
-`` #% 1
-mm $' :
-rr !>>& 0
-xx (dd <
-xx0 8zz {{ || }} ~~ 
-~~ "~~< ED
-BC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\App.razorì
+ 
+
+	 
+
+$ )
+
+ %
+
+	 
+
+	 ¨
+VC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\TokenService.cs
+
+ (
+ '  ## 2
+		  *   !! 
+# , 
+
+ )
+1 6 
+
+ 2
+ ,(( $
+
+&& &ì
 \C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\DoctorAdminService.cs
 
 
@@ -1721,7 +1752,30 @@ BC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\App.razorì
 KK OO' /
 LL !QQ SS3 9
 MM %OOJ TOOk u
-OO SS VVQ T½
+OO SS VVQ T¯
+UC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AuthService.cs
+
+ (
+
+
+  +  (DD (2
+# 0 77 << TT 2
+7 I 88 == UU 
+   
+ " $
+* ; .
+
+ 
+ # (
+  %% **! )<
+** -- 33 <<0 <==. :?? 
+
+BB 2
+BBE LFF 
+DD II (
+HH MM NN OO 
+
+RR !½
 \C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AdminReportService.cs
 
  (
@@ -1743,57 +1797,7 @@ BC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\App.razorì
 $$3 O
 %% ))  -
 &&# *** 
-(( -- œ
-RC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\ITokenService.cs
-
- 
-
-	 
-
-$ )
-
- %
-
-	 
-
-	 ¨
-VC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\TokenService.cs
-
- 2
-  *    (
-		 'A OM [D R
-# , 
-
- )
-1 6Q V
-
- 2
- ,66 $
-
-44 &¯
-UC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AuthService.cs
-
- (
-
-
-  +  (@@ (2
-# 0 // 44 NN 2
-7 I 00 99 OO 
-   
- " $
-* ; .
-
-I S
-] dK R(
-  !! &&! )<
-&& (( -- '440 <99. :;; 
-
->> 2
->>E L@@T [
-@@ CC (
-BB GG HH II 
-
-LL !©
+(( -- ©
 ]C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AdminPatientService.cs
 
 
@@ -1822,7 +1826,16 @@ UC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AuthServ
 // 33( 1
 00 !55 773 9
 11 %33L V33m w
-33 77 ::Q TÊ
+33 77 ::Q T¯
+_C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AdminDashboardService.cs
+
+ "
+  +   
+
+
+, 6  
+
+0 HÊ
 XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\IDoctorAdminService.cs
 
 		 $
@@ -1863,16 +1876,7 @@ XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\IDoctorAdminS
 
  !
 
- %¯
-_C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AdminDashboardService.cs
-
- "
-  +   
-
-
-, 6  
-
-0 H›
+ %›
 QC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\IAuthService.cs
 
  
@@ -1940,12 +1944,7 @@ YC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\IAdminPatient
 
  '
 
-# ;g
-MC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Constants\AppUrls.cs
-
- 
-
- 'ÿ
+# ;ÿ
 
 WC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\ApiResponseHandler.cs
 
@@ -2023,13 +2022,21 @@ PC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\ApiResponse.c
 , 0 
 
 ! (
-0 < '¸
-CC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Program.csŽ
-		       !! ## $$ %% '' (( )) ** ++ -- 
-  (% /
-   
-  
-%%8 :&& †
+0 < 'ê
+CC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Program.cs 
+
+
+      $$ && -- 00 22 33 44 66 77 88 99 :: << 
+  ())% /
+  -!! %
+''  )) 
+-- .. 
+448 :55 g
+MC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Constants\AppUrls.cs
+
+ 
+
+ *†
 bC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Auth\CustomAuthenticationStateProvider.cs
 
 		 .
@@ -2060,24 +2067,26 @@ bC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Auth\CustomAuthenticat
 jjQ Zll &nn !nn& /
 jjc mll( 2pp2 <
 tt #nn 2
-tt+ 4vv &ww &xx &yy ™
+tt+ 4vv &ww &xx &yy Ï
 QC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Auth\AuthTokenHandler.cs
 
 		 (
-# 0  ')) 
-7 I ** 
-' 9 ++ 
- " $
-* ; .
- + .
+# 0    ',, 
+7 I -- 
+' 9 .. 
+ % // 
+ " $
+* ; .
+ + .
+  
 
-7 @(
- "!! %%, 3''/ 6
- +%%5 F(
- ' ,""8 =''B G
-%% ''8 @00 
-33 :'' .
-44 "BB 
-55 $88 
-66 ==& +
-BB DD EE 
+7 @(
+ "$$ ((, 3**/ 6
+ +((5 F(
+   ""' ,%%8 =**B G
+(( **8 @33 
+66 :** .
+77 "EE 
+88 $;; 
+99 @@& +
+EE GG HH 

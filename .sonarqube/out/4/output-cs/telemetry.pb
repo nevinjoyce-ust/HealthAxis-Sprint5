@@ -1,0 +1,1 @@
+fROC:\Users\310511\source\repos\HealthAxis\.sonar-temp\HealthAxis.Web.Sonar.csproj¢net10.0òCSharp14

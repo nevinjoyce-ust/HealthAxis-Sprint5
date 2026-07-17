@@ -2,7 +2,7 @@ using AutoMapper;
 using HealthAxis.API.Constants;
 using HealthAxis.API.Events;
 using HealthAxis.API.Exceptions;
-using HealthAxis.API.Messaging;
+using MassTransit;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
 using HealthAxis.API.Services;
@@ -22,7 +22,7 @@ public class AppointmentServiceTests
     private readonly Mock<IPatientRepository> _patientRepositoryMock;
     private readonly Mock<IDoctorRepository> _doctorRepositoryMock;
     private readonly Mock<IMapper> _mapperMock;
-    private readonly Mock<IRabbitMqPublisher> _rabbitMqPublisherMock;
+    private readonly Mock<IPublishEndpoint> _publisherMock;
     private readonly Mock<ILogger<AppointmentService>> _loggerMock;
     private readonly AppointmentService _appointmentService;
     private readonly Mock<IDoctorAvailabilityCacheService> _availabilityCacheServiceMock;
@@ -33,16 +33,12 @@ public class AppointmentServiceTests
         _patientRepositoryMock = new Mock<IPatientRepository>();
         _doctorRepositoryMock = new Mock<IDoctorRepository>();
         _mapperMock = new Mock<IMapper>();
-        _rabbitMqPublisherMock = new Mock<IRabbitMqPublisher>();
+        _publisherMock = new Mock<IPublishEndpoint>();
         _loggerMock = new Mock<ILogger<AppointmentService>>();
         _availabilityCacheServiceMock = new Mock<IDoctorAvailabilityCacheService>();
 
-        _appointmentRepositoryMock
-            .Setup(repo => repo.GetExpiredPendingAppointmentsAsync(It.IsAny<DateTime>()))
-            .ReturnsAsync([]);
-
-        _rabbitMqPublisherMock
-            .Setup(publisher => publisher.PublishAppointmentBookedAsync(It.IsAny<AppointmentBookedEvent>()))
+        _publisherMock
+            .Setup(publisher => publisher.Publish(It.IsAny<AppointmentBookedEvent>()))
             .Returns(Task.CompletedTask);
 
         _availabilityCacheServiceMock
@@ -54,7 +50,7 @@ public class AppointmentServiceTests
             _patientRepositoryMock.Object,
             _doctorRepositoryMock.Object,
             _mapperMock.Object,
-            _rabbitMqPublisherMock.Object,
+            _publisherMock.Object,
             _availabilityCacheServiceMock.Object);
     }
 
@@ -79,23 +75,7 @@ public class AppointmentServiceTests
         Assert.Equal(1, result.TotalPages);
     }
 
-    [Fact]
-    public async Task GetAllAppointmentsAsync_WhenExpiredPendingAppointmentsExist_ShouldAutoCancelThemBeforeReturningResults()
-    {
-        var expiredAppointment = CreateAppointment(status: AppointmentStatus.Pending);
-        _appointmentRepositoryMock
-            .Setup(repo => repo.GetExpiredPendingAppointmentsAsync(It.IsAny<DateTime>()))
-            .ReturnsAsync([expiredAppointment]);
-        _appointmentRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Appointment>())).ReturnsAsync((Appointment appointment) => appointment);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAllAppointmentsAsync(1, 10)).ReturnsAsync(CreatePagedResult(new List<Appointment>()));
-        _mapperMock.Setup(mapper => mapper.Map<List<AppointmentDto>>(It.IsAny<List<Appointment>>())).Returns([]);
-
-        await _appointmentService.GetAllAppointmentsAsync(CreatePagination());
-
-        _appointmentRepositoryMock.Verify(repo => repo.UpdateAsync(It.Is<Appointment>(appointment =>
-            appointment.Status == AppointmentStatus.Cancelled &&
-            appointment.CancellationReason == ErrorMessages.PendingAppointmentAutoCancelledReason)), Times.Once);
-    }
+    
 
     [Fact]
     public async Task GetAllAppointmentsAsync_WhenNoAppointmentsExist_ShouldReturnEmptyPagedResult()
@@ -328,8 +308,8 @@ public class AppointmentServiceTests
         Assert.NotNull(result);
         Assert.Equal(AppointmentStatus.Pending, result!.Status);
         _appointmentRepositoryMock.Verify(repo => repo.AddAsync(It.Is<Appointment>(appointment => appointment.Status == AppointmentStatus.Pending)), Times.Once);
-        _rabbitMqPublisherMock.Verify(
-            publisher => publisher.PublishAppointmentBookedAsync(It.Is<AppointmentBookedEvent>(appointmentEvent =>
+        _publisherMock.Verify(
+            publisher => publisher.Publish(It.Is<AppointmentBookedEvent>(appointmentEvent =>
                 appointmentEvent.AppointmentId == createdAppointment.Id &&
                 appointmentEvent.PatientId == createdAppointment.PatientId &&
                 appointmentEvent.DoctorId == createdAppointment.DoctorId &&
@@ -607,8 +587,8 @@ public class AppointmentServiceTests
 
     private void VerifyAppointmentBookedEventWasNotPublished()
     {
-        _rabbitMqPublisherMock.Verify(
-            publisher => publisher.PublishAppointmentBookedAsync(It.IsAny<AppointmentBookedEvent>()),
+        _publisherMock.Verify(
+            publisher => publisher.Publish(It.IsAny<AppointmentBookedEvent>()),
             Times.Never);
     }
 

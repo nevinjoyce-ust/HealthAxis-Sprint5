@@ -34,12 +34,12 @@ HealthAxis
 (  
 )  !
 ;! "
-Task 
-ClearTokensAsync	 
-( 
-) 
-; 
-} ±
+Task 
+ClearTokensAsync	 
+( 
+) 
+; 
+}		 ±
 VC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\TokenService.cs
 	namespace 	
 
@@ -58,58 +58,58 @@ HealthAxis
 : 
 ITokenService )
 { 
-private 
-readonly 
+private 
+const 
+string 
+AccessTokenKey '
+=( )
+$str* F
+;F G
+private		 
+readonly		 
 
-IJSRuntime 
+IJSRuntime		 
 
-_jsRuntime  *
-;* +
-private		 
-const		 
-string		 
-AccessTokenKey		 '
-=		( )
-$str		* F
-;		F G
-public 
+_jsRuntime		  *
+;		* +
+public 
 
-TokenService 
-( 
+TokenService 
+( 
 
-IJSRuntime "
-	jsRuntime# ,
-), -
-{ 
+IJSRuntime "
+	jsRuntime# ,
+), -
+{ 
 
-_jsRuntime 
-= 
-	jsRuntime 
-; 
-} 
-public 
+_jsRuntime 
+= 
+	jsRuntime 
+; 
+} 
+public 
 
-async 
-Task 
-SetAccessTokenAsync )
-() *
-string* 0
-token1 6
-)6 7
-{ 
-await 
+async 
+Task 
+SetAccessTokenAsync )
+() *
+string* 0
+token1 6
+)6 7
+{ 
+await 
 
-_jsRuntime 
-. 
-InvokeVoidAsync (
-(( )
-$str) ?
-,? @
-AccessTokenKeyA O
-,O P
-tokenQ V
-)V W
-;W X
+_jsRuntime 
+. 
+InvokeVoidAsync (
+(( )
+$str "
+," #
+AccessTokenKey 
+, 
+token 
+) 
+; 
 } 
 public 
 
@@ -134,47 +134,47 @@ _jsRuntime 
 ?2 3
 >3 4
 (4 5
-$str5 K
-,K L
-AccessTokenKeyM [
-)[ \
-;\ ]
-} 
-public 
+$str "
+," #
+AccessTokenKey 
+) 
+; 
+} 
+public 
 
-async 
-Task "
-RemoveAccessTokenAsync ,
-(, -
-)- .
-{ 
-await 
+async 
+Task "
+RemoveAccessTokenAsync ,
+(, -
+)- .
+{   
+await!! 
 
-_jsRuntime 
-. 
-InvokeVoidAsync (
-(( )
-$str) B
-,B C
-AccessTokenKeyD R
-)R S
-;S T
-}   
-public44 
+_jsRuntime!! 
+.!! 
+InvokeVoidAsync!! (
+(!!( )
+$str"" %
+,""% &
+AccessTokenKey## 
+)## 
+;## 
+}$$ 
+public&& 
 
-async44 
-Task44 
-ClearTokensAsync44 &
-(44& '
-)44' (
-{55 
-await66 "
-RemoveAccessTokenAsync66 $
-(66$ %
-)66% &
-;66& '
-}:: 
-};; ¦@
+async&& 
+Task&& 
+ClearTokensAsync&& &
+(&&& '
+)&&' (
+{'' 
+await(( "
+RemoveAccessTokenAsync(( $
+((($ %
+)((% &
+;((& '
+})) 
+}** ¦@
 \C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\DoctorAdminService.cs
 	namespace 	
 
@@ -663,7 +663,336 @@ httpClientVV 
 )WW2 3
 ;WW3 4
 }XX 
-}YY •$
+}YY á-
+UC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AuthService.cs
+	namespace 	
+
+HealthAxis
+ 
+. 
+Admin 
+. 
+Services #
+.# $
+Impl$ (
+;( )
+public 
+class 
+AuthService 
+: 
+IAuthService '
+{		 
+private
+
+ 
+readonly
+
+ 
+
+HttpClient
+
+ 
+_httpClient
+
+  +
+;
+
++ ,
+private 
+readonly 
+ITokenService "
+_tokenService# 0
+;0 1
+private 
+readonly -
+!CustomAuthenticationStateProvider 6
+_authStateProvider7 I
+;I J
+public 
+
+AuthService 
+( 
+
+HttpClient 
+
+httpClient 
+, 
+ITokenService 
+tokenService "
+," #-
+!CustomAuthenticationStateProvider )
+authStateProvider* ;
+); <
+{ 
+_httpClient 
+= 
+
+httpClient  
+;  !
+_tokenService 
+= 
+tokenService $
+;$ %
+_authStateProvider 
+= 
+authStateProvider .
+;. /
+} 
+public 
+
+async 
+Task 
+< 
+( 
+AuthResponseDto &
+?& '
+Response( 0
+,0 1
+string2 8
+?8 9
+ErrorMessage: F
+)F G
+>G H
+
+LoginAsync 
+( 
+LoginDto 
+request #
+)# $
+{ 
+var 
+response 
+= 
+await 
+_httpClient (
+.( )
+PostAsJsonAsync) 8
+(8 9
+$str 
+, 
+request 
+) 
+; 
+if 
+
+( 
+response 
+. 
+
+StatusCode 
+is  "
+HttpStatusCode   
+.   
+Unauthorized   '
+or  ( *
+HttpStatusCode  + 9
+.  9 :
+	Forbidden  : C
+)  C D
+{!! 	
+return"" 
+("" 
+null"" 
+,"" 
+$str"" 0
+)""0 1
+;""1 2
+}## 	
+if%% 
+
+(%% 
+!%% 
+response%% 
+.%% 
+IsSuccessStatusCode%% )
+)%%) *
+{&& 	
+return'' 
+('' 
+null'' 
+,'' 
+$str'' @
+)''@ A
+;''A B
+}(( 	
+var** 
+authResponse** 
+=** 
+await**  
+response**! )
+.**) *
+Content*** 1
+.++ 
+ReadFromJsonAsync++ 
+<++ 
+AuthResponseDto++ .
+>++. /
+(++/ 0
+)++0 1
+;++1 2
+if-- 
+
+(-- 
+authResponse-- 
+is-- 
+null--  
+)--  !
+{.. 	
+return// 
+(// 
+null// 
+,// 
+$str// @
+)//@ A
+;//A B
+}00 	
+if22 
+
+(22 
+!22 
+string22 
+.22 
+Equals22 
+(22 
+authResponse33 
+.33 
+Role33 !
+,33! "
+$str44 
+,44 
+StringComparison55  
+.55  !
+OrdinalIgnoreCase55! 2
+)552 3
+)553 4
+{66 	
+await77 
+_tokenService77 
+.77  
+ClearTokensAsync77  0
+(770 1
+)771 2
+;772 3
+_authStateProvider88 
+.88 
+NotifyUserLoggedOut88 2
+(882 3
+)883 4
+;884 5
+return99 
+(99 
+null99 
+,99 
+$str99 0
+)990 1
+;991 2
+}:: 	
+await<< 
+_tokenService<< 
+.<< 
+SetAccessTokenAsync<< /
+(<</ 0
+authResponse<<0 <
+.<<< =
+AccessToken<<= H
+)<<H I
+;<<I J
+_authStateProvider== 
+.== 
+NotifyUserLoggedIn== -
+(==- .
+authResponse==. :
+.==: ;
+AccessToken==; F
+)==F G
+;==G H
+return?? 
+(?? 
+authResponse?? 
+,?? 
+null?? "
+)??" #
+;??# $
+}@@ 
+publicBB 
+
+asyncBB 
+TaskBB 
+<BB 
+stringBB 
+?BB 
+>BB 
+ChangePasswordAsyncBB 2
+(BB2 3
+ChangePasswordDtoBB3 D
+requestBBE L
+)BBL M
+{CC 
+varDD 
+responseDD 
+=DD 
+awaitDD 
+_httpClientDD (
+.DD( )
+PutAsJsonAsyncDD) 7
+(DD7 8
+$strEE &
+,EE& '
+requestFF 
+)FF 
+;FF 
+varHH 
+resultHH 
+=HH 
+awaitHH 
+ApiResponseHandlerHH -
+.HH- .$
+ReadMessageResponseAsyncHH. F
+(HHF G
+responseII 
+,II 
+$strJJ (
+,JJ( )
+$strKK ,
+)KK, -
+;KK- .
+returnMM 
+resultMM 
+.MM 
+	IsSuccessMM 
+?NN 
+resultNN 
+.NN 
+DataNN 
+:OO 
+resultOO 
+.OO 
+ErrorMessageOO !
+;OO! "
+}PP 
+publicRR 
+
+asyncRR 
+TaskRR 
+LogoutAsyncRR !
+(RR! "
+)RR" #
+{SS 
+awaitTT 
+_tokenServiceTT 
+.TT 
+ClearTokensAsyncTT ,
+(TT, -
+)TT- .
+;TT. /
+_authStateProviderUU 
+.UU 
+NotifyUserLoggedOutUU .
+(UU. /
+)UU/ 0
+;UU0 1
+}VV 
+}WW •$
 \C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AdminReportService.cs
 	namespace 	
 
@@ -950,336 +1279,7 @@ httpClient(( '
 )..2 3
 ;..3 4
 }// 
-}00 á-
-UC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AuthService.cs
-	namespace 	
-
-HealthAxis
- 
-. 
-Admin 
-. 
-Services #
-.# $
-Impl$ (
-;( )
-public 
-class 
-AuthService 
-: 
-IAuthService '
-{		 
-private
-
- 
-readonly
-
- 
-
-HttpClient
-
- 
-_httpClient
-
-  +
-;
-
-+ ,
-private 
-readonly 
-ITokenService "
-_tokenService# 0
-;0 1
-private 
-readonly -
-!CustomAuthenticationStateProvider 6
-_authStateProvider7 I
-;I J
-public 
-
-AuthService 
-( 
-
-HttpClient 
-
-httpClient 
-, 
-ITokenService 
-tokenService "
-," #-
-!CustomAuthenticationStateProvider )
-authStateProvider* ;
-); <
-{ 
-_httpClient 
-= 
-
-httpClient  
-;  !
-_tokenService 
-= 
-tokenService $
-;$ %
-_authStateProvider 
-= 
-authStateProvider .
-;. /
-} 
-public 
-
-async 
-Task 
-< 
-( 
-AuthResponseDto &
-?& '
-Response( 0
-,0 1
-string2 8
-?8 9
-ErrorMessage: F
-)F G
->G H
-
-LoginAsyncI S
-(S T
-LoginDtoT \
-request] d
-)d e
-{ 
-var 
-response 
-= 
-await 
-_httpClient (
-.( )
-PostAsJsonAsync) 8
-(8 9
-$str9 I
-,I J
-requestK R
-)R S
-;S T
-if 
-
-( 
-response 
-. 
-
-StatusCode 
-is  "
-HttpStatusCode# 1
-.1 2
-Unauthorized2 >
-or? A
-HttpStatusCodeB P
-.P Q
-	ForbiddenQ Z
-)Z [
-{ 	
-return 
-( 
-null 
-, 
-$str 0
-)0 1
-;1 2
-} 	
-if!! 
-
-(!! 
-!!! 
-response!! 
-.!! 
-IsSuccessStatusCode!! )
-)!!) *
-{"" 	
-return## 
-(## 
-null## 
-,## 
-$str## @
-)##@ A
-;##A B
-}$$ 	
-var&& 
-authResponse&& 
-=&& 
-await&&  
-response&&! )
-.&&) *
-Content&&* 1
-.&&1 2
-ReadFromJsonAsync&&2 C
-<&&C D
-AuthResponseDto&&D S
->&&S T
-(&&T U
-)&&U V
-;&&V W
-if(( 
-
-((( 
-authResponse(( 
-is(( 
-null((  
-)((  !
-{)) 	
-return** 
-(** 
-null** 
-,** 
-$str** @
-)**@ A
-;**A B
-}++ 	
-if-- 
-
-(-- 
-!-- 
-string-- 
-.-- 
-Equals-- 
-(-- 
-authResponse-- '
-.--' (
-Role--( ,
-,--, -
-$str--. 5
-,--5 6
-StringComparison--7 G
-.--G H
-OrdinalIgnoreCase--H Y
-)--Y Z
-)--Z [
-{.. 	
-await// 
-_tokenService// 
-.//  
-ClearTokensAsync//  0
-(//0 1
-)//1 2
-;//2 3
-_authStateProvider00 
-.00 
-NotifyUserLoggedOut00 2
-(002 3
-)003 4
-;004 5
-return11 
-(11 
-null11 
-,11 
-$str11 0
-)110 1
-;111 2
-}22 	
-await44 
-_tokenService44 
-.44 
-SetAccessTokenAsync44 /
-(44/ 0
-authResponse440 <
-.44< =
-AccessToken44= H
-)44H I
-;44I J
-_authStateProvider99 
-.99 
-NotifyUserLoggedIn99 -
-(99- .
-authResponse99. :
-.99: ;
-AccessToken99; F
-)99F G
-;99G H
-return;; 
-(;; 
-authResponse;; 
-,;; 
-null;; "
-);;" #
-;;;# $
-}<< 
-public>> 
-
-async>> 
-Task>> 
-<>> 
-string>> 
-?>> 
->>> 
-ChangePasswordAsync>> 2
-(>>2 3
-ChangePasswordDto>>3 D
-request>>E L
-)>>L M
-{?? 
-var@@ 
-response@@ 
-=@@ 
-await@@ 
-_httpClient@@ (
-.@@( )
-PutAsJsonAsync@@) 7
-(@@7 8
-$str@@8 R
-,@@R S
-request@@T [
-)@@[ \
-;@@\ ]
-varBB 
-resultBB 
-=BB 
-awaitBB 
-ApiResponseHandlerBB -
-.BB- .$
-ReadMessageResponseAsyncBB. F
-(BBF G
-responseCC 
-,CC 
-$strDD (
-,DD( )
-$strEE ,
-)EE, -
-;EE- .
-returnGG 
-resultGG 
-.GG 
-	IsSuccessGG 
-?HH 
-resultHH 
-.HH 
-DataHH 
-:II 
-resultII 
-.II 
-ErrorMessageII !
-;II! "
-}JJ 
-publicLL 
-
-asyncLL 
-TaskLL 
-LogoutAsyncLL !
-(LL! "
-)LL" #
-{MM 
-awaitNN 
-_tokenServiceNN 
-.NN 
-ClearTokensAsyncNN ,
-(NN, -
-)NN- .
-;NN. /
-_authStateProviderOO 
-.OO 
-NotifyUserLoggedOutOO .
-(OO. /
-)OO/ 0
-;OO0 1
-}PP 
-}QQ š-
+}00 š-
 ]C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AdminPatientService.cs
 	namespace 	
 
@@ -2077,31 +2077,7 @@ HealthAxis
 (; <
 )< =
 ;= >
-} Ã
-MC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Constants\AppUrls.cs
-	namespace 	
-
-HealthAxis
- 
-. 
-Admin 
-. 
-	Constants $
-;$ %
-public 
-static 
-class 
-AppUrls 
-{ 
-public 
-
-const 
-string 
-AngularLoginUrl '
-=( )
-$str* G
-;G H
-} Ýd
+} Ýd
 WC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\ApiResponseHandler.cs
 	namespace 	
 
@@ -3017,271 +2993,364 @@ HealthAxis
 ;	 
 
 } 
-} À%
+} Þ+
 CC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Program.cs
-var		 
-builder		 
-=		 "
-WebAssemblyHostBuilder		 $
-.		$ %
-CreateDefault		% 2
-(		2 3
-args		3 7
-)		7 8
-;		8 9
-builder 
-. 
-RootComponents 
-. 
-Add 
-< 
-App 
-> 
-(  
-$str  &
-)& '
-;' (
+var
+
+ 
+builder
+
+ 
+=
+
+ "
+WebAssemblyHostBuilder
+
+ $
+.
+
+$ %
+CreateDefault
+
+% 2
+(
+
+2 3
+args
+
+3 7
+)
+
+7 8
+;
+
+8 9
 builder 
 . 
 RootComponents 
 . 
 Add 
-< 
+< 
+App 
+> 
+(  
+$str  &
+)& '
+;' (
+builder 
+. 
+RootComponents 
+. 
+Add 
+< 
 
-HeadOutlet %
->% &
-(& '
-$str' 4
-)4 5
-;5 6
-var 
+HeadOutlet %
+>% &
+(& '
+$str' 4
+)4 5
+;5 6
+var 
 
-apiBaseUrl 
-= 
-builder 
-. 
-Configuration &
-[& '
-$str' 3
-]3 4
-;4 5
-if 
-( 
-string 
+apiBaseUrl 
+= 
+builder 
+. 
+Configuration &
+[& '
+$str' 3
+]3 4
+;4 5
+if 
+( 
+string 
 
-.
+.
  
-IsNullOrWhiteSpace 
-( 
+IsNullOrWhiteSpace 
+( 
 
-apiBaseUrl (
-)( )
-)) *
-{ 
-throw 	
-new
+apiBaseUrl (
+)( )
+)) *
+{ 
+throw 	
+new
  %
-InvalidOperationException '
-(' (
-$str( ^
-)^ _
-;_ `
-} 
-builder 
-. 
-Services 
-. 
-AddTransient 
-< 
-AuthTokenHandler .
->. /
-(/ 0
-)0 1
-;1 2
-builder 
-. 
-Services 
-. 
-AddHttpClient 
-( 
-$str 
-, 
-client  
-=>! #
-{ 
-client 
-. 
-BaseAddress 
-= 
-new  
-Uri! $
-($ %
-
-apiBaseUrl% /
-)/ 0
-;0 1
-} 
-) 
-. !
-AddHttpMessageHandler 
-< 
-AuthTokenHandler +
->+ ,
-(, -
-)- .
-;. /
-builder 
-. 
-Services 
-. 
-	AddScoped 
-( 
-sp 
-=>  
-sp 
-. 
-GetRequiredService 
-< 
-IHttpClientFactory ,
->, -
-(- .
-). /
-./ 0
-CreateClient0 <
-(< =
-$str= B
-)B C
-)C D
-;D E
-builder!! 
-.!! 
-Services!! 
-.!!  
-AddAuthorizationCore!! %
-(!!% &
-)!!& '
-;!!' (
-builder## 
-.## 
-Services## 
-.## 
-	AddScoped## 
-<## 
-ITokenService## (
-,##( )
-TokenService##* 6
->##6 7
-(##7 8
-)##8 9
-;##9 :
+InvalidOperationException '
+(' (
+$str >
+)> ?
+;? @
+} 
+var 
+angularLoginUrl 
+= 
+builder 
+. 
+Configuration +
+[+ ,
+$str, =
+]= >
+;> ?
+if 
+( 
+string 
+
+.
+ 
+IsNullOrWhiteSpace 
+( 
+angularLoginUrl -
+)- .
+). /
+{ 
+throw 	
+new
+ %
+InvalidOperationException '
+(' (
+$str C
+)C D
+;D E
+} 
+builder 
+. 
+Services 
+. 
+AddSingleton 
+( 
+new !
+AppUrls" )
+{   
+AngularLoginUrl!! 
+=!! 
+angularLoginUrl!! %
+}"" 
+)"" 
+;"" 
 builder$$ 
 .$$ 
 Services$$ 
-.$$ 
-	AddScoped$$ 
-<$$ -
-!CustomAuthenticationStateProvider$$ <
->$$< =
-($$= >
-)$$> ?
-;$$? @
-builder%% 
-.%% 
-Services%% 
-.%% 
-	AddScoped%% 
-<%% '
-AuthenticationStateProvider%% 6
->%%6 7
-(%%7 8
-sp%%8 :
-=>%%; =
-sp&& 
-.&& 
-GetRequiredService&& 
-<&& -
-!CustomAuthenticationStateProvider&& ;
->&&; <
-(&&< =
-)&&= >
-)&&> ?
-;&&? @
-builder'' 
-.'' 
-Services'' 
-.'' 
-	AddScoped'' 
-<'' 
-IAuthService'' '
-,''' (
-AuthService'') 4
->''4 5
-(''5 6
-)''6 7
-;''7 8
-builder(( 
-.(( 
-Services(( 
-.(( 
-	AddScoped(( 
-<(( 
-IDoctorAdminService(( .
-,((. /
-DoctorAdminService((0 B
->((B C
-(((C D
-)((D E
-;((E F
-builder)) 
-.)) 
-Services)) 
-.)) 
-	AddScoped)) 
-<)) 
-IAdminReportService)) .
-,)). /
-AdminReportService))0 B
->))B C
-())C D
-)))D E
-;))E F
-builder** 
-.** 
-Services** 
-.** 
-	AddScoped** 
-<**  
-IAdminPatientService** /
-,**/ 0
-AdminPatientService**1 D
->**D E
-(**E F
-)**F G
-;**G H
-builder++ 
-.++ 
-Services++ 
-.++ 
-	AddScoped++ 
-<++ "
-IAdminDashboardService++ 1
-,++1 2!
-AdminDashboardService++3 H
->++H I
-(++I J
-)++J K
-;++K L
-await-- 
-builder-- 
-.-- 
-Build-- 
-(-- 
-)-- 
-.-- 
-RunAsync-- 
-(-- 
-)--  
-;--  !¶R
+.$$ 
+AddTransient$$ 
+<$$ 
+AuthTokenHandler$$ .
+>$$. /
+($$/ 0
+)$$0 1
+;$$1 2
+builder&& 
+.&& 
+Services&& 
+.'' 
+AddHttpClient'' 
+('' 
+$str'' 
+,'' 
+client''  
+=>''! #
+{(( 
+client)) 
+.)) 
+BaseAddress)) 
+=)) 
+new))  
+Uri))! $
+())$ %
+
+apiBaseUrl))% /
+)))/ 0
+;))0 1
+}** 
+)** 
+.++ !
+AddHttpMessageHandler++ 
+<++ 
+AuthTokenHandler++ +
+>+++ ,
+(++, -
+)++- .
+;++. /
+builder-- 
+.-- 
+Services-- 
+.-- 
+	AddScoped-- 
+(-- 
+sp-- 
+=>--  
+sp.. 
+... 
+GetRequiredService.. 
+<.. 
+IHttpClientFactory.. ,
+>.., -
+(..- .
+)... /
+.../ 0
+CreateClient..0 <
+(..< =
+$str..= B
+)..B C
+)..C D
+;..D E
+builder00 
+.00 
+Services00 
+.00  
+AddAuthorizationCore00 %
+(00% &
+)00& '
+;00' (
+builder22 
+.22 
+Services22 
+.22 
+	AddScoped22 
+<22 
+ITokenService22 (
+,22( )
+TokenService22* 6
+>226 7
+(227 8
+)228 9
+;229 :
+builder33 
+.33 
+Services33 
+.33 
+	AddScoped33 
+<33 -
+!CustomAuthenticationStateProvider33 <
+>33< =
+(33= >
+)33> ?
+;33? @
+builder44 
+.44 
+Services44 
+.44 
+	AddScoped44 
+<44 '
+AuthenticationStateProvider44 6
+>446 7
+(447 8
+sp448 :
+=>44; =
+sp55 
+.55 
+GetRequiredService55 
+<55 -
+!CustomAuthenticationStateProvider55 ;
+>55; <
+(55< =
+)55= >
+)55> ?
+;55? @
+builder66 
+.66 
+Services66 
+.66 
+	AddScoped66 
+<66 
+IAuthService66 '
+,66' (
+AuthService66) 4
+>664 5
+(665 6
+)666 7
+;667 8
+builder77 
+.77 
+Services77 
+.77 
+	AddScoped77 
+<77 
+IDoctorAdminService77 .
+,77. /
+DoctorAdminService770 B
+>77B C
+(77C D
+)77D E
+;77E F
+builder88 
+.88 
+Services88 
+.88 
+	AddScoped88 
+<88 
+IAdminReportService88 .
+,88. /
+AdminReportService880 B
+>88B C
+(88C D
+)88D E
+;88E F
+builder99 
+.99 
+Services99 
+.99 
+	AddScoped99 
+<99  
+IAdminPatientService99 /
+,99/ 0
+AdminPatientService991 D
+>99D E
+(99E F
+)99F G
+;99G H
+builder:: 
+.:: 
+Services:: 
+.:: 
+	AddScoped:: 
+<:: "
+IAdminDashboardService:: 1
+,::1 2!
+AdminDashboardService::3 H
+>::H I
+(::I J
+)::J K
+;::K L
+await<< 
+builder<< 
+.<< 
+Build<< 
+(<< 
+)<< 
+.<< 
+RunAsync<< 
+(<< 
+)<<  
+;<<  !õ
+MC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Constants\AppUrls.cs
+	namespace 	
+
+HealthAxis
+ 
+. 
+Admin 
+. 
+	Constants $
+;$ %
+public 
+sealed 
+class 
+AppUrls 
+{ 
+public 
+
+required 
+string 
+AngularLoginUrl *
+{+ ,
+get- 0
+;0 1
+init2 6
+;6 7
+}8 9
+} ¶R
 bC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Auth\CustomAuthenticationStateProvider.cs
 	namespace 	
 
@@ -3869,7 +3938,7 @@ ClaimTypesxx( 2
 )yyM N
 ;yyN O
 }zz 
-}{{ Ø'
+}{{ À)
 QC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Auth\AuthTokenHandler.cs
 	namespace 	
 
@@ -3902,237 +3971,249 @@ HealthAxis
 readonly 
 NavigationManager &
 _navigationManager' 9
-;9 :
-public 
+;9 :
+private 
+readonly 
+AppUrls 
+_appUrls %
+;% &
+public 
 
-AuthTokenHandler 
-( 
-ITokenService 
-tokenService "
-," #-
-!CustomAuthenticationStateProvider )
-authStateProvider* ;
-,; <
-NavigationManager 
-navigationManager +
-)+ ,
-{ 
-_tokenService 
-= 
-tokenService $
-;$ %
-_authStateProvider 
-= 
-authStateProvider .
-;. /
-_navigationManager 
-= 
-navigationManager .
-;. /
-} 
-	protected 
-override 
-async 
-Task !
-<! "
-HttpResponseMessage" 5
->5 6
-	SendAsync7 @
-(@ A
-HttpRequestMessage 
-request "
-," #
-CancellationToken 
-cancellationToken +
-)+ ,
-{ 
-var 
-token 
-= 
-await 
-_tokenService '
-.' (
-GetAccessTokenAsync( ;
-(; <
-)< =
-;= >
-if 
+AuthTokenHandler 
+( 
+ITokenService 
+tokenService "
+," #-
+!CustomAuthenticationStateProvider )
+authStateProvider* ;
+,; <
+NavigationManager 
+navigationManager +
+,+ ,
+AppUrls 
+appUrls 
+) 
+{ 
+_tokenService 
+= 
+tokenService $
+;$ %
+_authStateProvider 
+= 
+authStateProvider .
+;. /
+_navigationManager 
+= 
+navigationManager .
+;. /
+_appUrls 
+= 
+appUrls 
+; 
+} 
+	protected 
+override 
+async 
+Task !
+<! "
+HttpResponseMessage" 5
+>5 6
+	SendAsync7 @
+(@ A
+HttpRequestMessage 
+request "
+," #
+CancellationToken 
+cancellationToken +
+)+ ,
+{ 
+var   
+token   
+=   
+await   
+_tokenService   '
+.  ' (
+GetAccessTokenAsync  ( ;
+(  ; <
+)  < =
+;  = >
+if"" 
 
-( 
-! 
-string 
-. 
-IsNullOrWhiteSpace &
-(& '
-token' ,
-), -
-)- .
-{   	
-request!! 
-.!! 
-Headers!! 
-.!! 
-Authorization!! )
-=!!* +
-new"" %
-AuthenticationHeaderValue"" -
-(""- .
-$str"". 6
-,""6 7
-token""8 =
-)""= >
-;""> ?
-}## 	
-var%% 
-response%% 
-=%% 
-await%% 
-base%% !
-.%%! "
-	SendAsync%%" +
-(%%+ ,
-request%%, 3
-,%%3 4
-cancellationToken%%5 F
-)%%F G
-;%%G H
-if'' 
+("" 
+!"" 
+string"" 
+."" 
+IsNullOrWhiteSpace"" &
+(""& '
+token""' ,
+)"", -
+)""- .
+{## 	
+request$$ 
+.$$ 
+Headers$$ 
+.$$ 
+Authorization$$ )
+=$$* +
+new%% %
+AuthenticationHeaderValue%% -
+(%%- .
+$str%%. 6
+,%%6 7
+token%%8 =
+)%%= >
+;%%> ?
+}&& 	
+var(( 
+response(( 
+=(( 
+await(( 
+base(( !
+.((! "
+	SendAsync((" +
+(((+ ,
+request((, 3
+,((3 4
+cancellationToken((5 F
+)((F G
+;((G H
+if** 
 
-('' .
-"ShouldHandleSessionExpiredResponse'' .
-(''. /
-request''/ 6
-,''6 7
-response''8 @
-,''@ A
-token''B G
-)''G H
-)''H I
-{(( 	
-await)) 
-_tokenService)) 
-.))  
-ClearTokensAsync))  0
-())0 1
-)))1 2
-;))2 3
-_authStateProvider** 
-.** 
-NotifyUserLoggedOut** 2
-(**2 3
-)**3 4
-;**4 5
-_navigationManager++ 
-.++ 
+(** .
+"ShouldHandleSessionExpiredResponse** .
+(**. /
+request**/ 6
+,**6 7
+response**8 @
+,**@ A
+token**B G
+)**G H
+)**H I
+{++ 	
+await,, 
+_tokenService,, 
+.,,  
+ClearTokensAsync,,  0
+(,,0 1
+),,1 2
+;,,2 3
+_authStateProvider-- 
+.-- 
+NotifyUserLoggedOut-- 2
+(--2 3
+)--3 4
+;--4 5
+_navigationManager.. 
+... 
 
-NavigateTo++ )
-(++) *
-$",, 
-{,, 
-AppUrls,, 
-.,, 
-AngularLoginUrl,, *
-},,* +
-$str,,+ B
-",,B C
-,,,C D
-	forceLoad-- 
-:-- 
-true-- 
-)--  
-;--  !
-}.. 	
-return00 
-response00 
-;00 
-}11 
-private33 
-static33 
-bool33 .
-"ShouldHandleSessionExpiredResponse33 :
-(33: ;
-HttpRequestMessage44 
-request44 "
-,44" #
-HttpResponseMessage55 
-response55 $
-,55$ %
-string66 
-?66 
-token66 
-)66 
-{77 
-if88 
+NavigateTo.. )
+(..) *
+$"// 
+{// 
+_appUrls// 
+.// 
+AngularLoginUrl// +
+}//+ ,
+$str//, C
+"//C D
+,//D E
+	forceLoad00 
+:00 
+true00 
+)00  
+;00  !
+}11 	
+return33 
+response33 
+;33 
+}44 
+private66 
+static66 
+bool66 .
+"ShouldHandleSessionExpiredResponse66 :
+(66: ;
+HttpRequestMessage77 
+request77 "
+,77" #
+HttpResponseMessage88 
+response88 $
+,88$ %
+string99 
+?99 
+token99 
+)99 
+{:: 
+if;; 
 
-(88 
-response88 
-.88 
+(;; 
+response;; 
+.;; 
 
-StatusCode88 
-!=88  "
-HttpStatusCode88# 1
-.881 2
-Unauthorized882 >
-)88> ?
-{99 	
-return:: 
-false:: 
-;:: 
-};; 	
-if== 
+StatusCode;; 
+!=;;  "
+HttpStatusCode;;# 1
+.;;1 2
+Unauthorized;;2 >
+);;> ?
+{<< 	
+return== 
+false== 
+;== 
+}>> 	
+if@@ 
 
-(== 
-string== 
-.== 
-IsNullOrWhiteSpace== %
-(==% &
-token==& +
-)==+ ,
-)==, -
-{>> 	
-return?? 
-false?? 
-;?? 
-}@@ 	
-varBB 
-pathBB 
-=BB 
-requestBB 
-.BB 
+(@@ 
+string@@ 
+.@@ 
+IsNullOrWhiteSpace@@ %
+(@@% &
+token@@& +
+)@@+ ,
+)@@, -
+{AA 	
+returnBB 
+falseBB 
+;BB 
+}CC 	
+varEE 
+pathEE 
+=EE 
+requestEE 
+.EE 
 
-RequestUriBB %
-?BB% &
-.BB& '
-AbsolutePathBB' 3
-??BB4 6
-stringBB7 =
-.BB= >
-EmptyBB> C
-;BBC D
-returnDD 
-!DD 
-pathDD 
-.DD 
-ContainsDD 
-(DD 
-$strDD /
-,DD/ 0
-StringComparisonDD1 A
-.DDA B
-OrdinalIgnoreCaseDDB S
-)DDS T
-&&DDU W
-!EE 
-pathEE 
-.EE 
-ContainsEE 
-(EE 
-$strEE 2
-,EE2 3
-StringComparisonEE4 D
-.EED E
-OrdinalIgnoreCaseEEE V
-)EEV W
-;EEW X
-}FF 
-}GG 
+RequestUriEE %
+?EE% &
+.EE& '
+AbsolutePathEE' 3
+??EE4 6
+stringEE7 =
+.EE= >
+EmptyEE> C
+;EEC D
+returnGG 
+!GG 
+pathGG 
+.GG 
+ContainsGG 
+(GG 
+$strGG /
+,GG/ 0
+StringComparisonGG1 A
+.GGA B
+OrdinalIgnoreCaseGGB S
+)GGS T
+&&GGU W
+!HH 
+pathHH 
+.HH 
+ContainsHH 
+(HH 
+$strHH 2
+,HH2 3
+StringComparisonHH4 D
+.HHD E
+OrdinalIgnoreCaseHHE V
+)HHV W
+;HHW X
+}II 
+}JJ 

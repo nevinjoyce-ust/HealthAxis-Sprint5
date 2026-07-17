@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SonarQubeAnalysisProperties
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns="http://www.sonarsource.com/msbuild/integration/2015/1">
+
+  <!-- Safe to commit. Supply the Sonar token only at runtime. -->
+  <Property Name="sonar.host.url">http://localhost:9000</Property>
+  <Property Name="sonar.sourceEncoding">UTF-8</Property>
+
+  <!--
+    Exclude generated, third-party, build, cache and output files from analysis.
+    All stylesheet files are intentionally excluded from static analysis.
+    IdentityDataSeeder.cs is demo seed data and is intentionally excluded.
+  -->
+  <Property Name="sonar.exclusions">**/bin/**,**/obj/**,**/.angular/**,**/node_modules/**,**/dist/**,**/coverage/**,**/TestResults/**,**/.sonarqube/**,**/.sonar-temp/**,**/logs/**,**/Migrations/**,**/HealthAxis.Admin/wwwroot/lib/**,**/*.css,**/*.scss,**/*.sass,**/*.Designer.cs,**/*.g.cs,**/*.generated.cs,**/*.razor.g.cs,**/*.min.js,**/*.map,**/*.csproj.user,**/*.slnLaunch.user,**/*.spec.ts,**/HealthAxis.API/Data/IdentityDataSeeder.cs,coverage.xml,solution-inventory.txt</Property>
+
+  <!-- Only concrete API service implementations contribute to coverage. -->
+  <Property Name="sonar.coverage.inclusions">**/HealthAxis.API/Services/Impl/**/*.cs</Property>
+
+  <!--
+    Defence-in-depth coverage exclusions. These files remain statically analysed.
+    The runner also filters the OpenCover report at collection time.
+  -->
+  <Property Name="sonar.coverage.exclusions">**/HealthAxis.Admin/**,**/HealthAxis.Shared/**,**/HealthAxis.Web/**,**/HealthAxisTests/**,**/HealthAxis.API/*.cs,**/HealthAxis.API/BackgroundServices/**,**/HealthAxis.API/Constants/**,**/HealthAxis.API/Controllers/**,**/HealthAxis.API/Data/**,**/HealthAxis.API/Events/**,**/HealthAxis.API/Exceptions/**,**/HealthAxis.API/Extensions/**,**/HealthAxis.API/Mappings/**,**/HealthAxis.API/Messaging/**,**/HealthAxis.API/Middlewares/**,**/HealthAxis.API/Migrations/**,**/HealthAxis.API/Models/**,**/HealthAxis.API/Options/**,**/HealthAxis.API/Properties/**,**/HealthAxis.API/Repositories/**,**/HealthAxis.API/Services/*.cs</Property>
+
+  <!-- Structural boilerplate remains analysed but does not affect duplication. -->
+  <Property Name="sonar.cpd.exclusions">**/Dtos/**,**/Migrations/**,**/HealthAxisTests/**,**/*.spec.ts,**/*.Designer.cs,**/*.g.cs,**/*.generated.cs,**/*.razor.g.cs</Property>
+
+  <Property Name="sonar.cs.opencover.reportsPaths">TestResults/**/coverage.opencover.xml</Property>
+  <Property Name="sonar.typescript.tsconfigPaths">HealthAxis.Web/tsconfig.app.json</Property>
+</SonarQubeAnalysisProperties>

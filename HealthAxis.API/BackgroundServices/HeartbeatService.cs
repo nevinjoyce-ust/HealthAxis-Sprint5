@@ -1,4 +1,4 @@
-﻿namespace HealthAxis.API.BackgroundServices;
+namespace HealthAxis.API.BackgroundServices;
 
 public class HeartbeatService(
     ILogger<HeartbeatService> logger) : BackgroundService
@@ -11,17 +11,12 @@ public class HeartbeatService(
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            logger.LogInformation(
-                """
-    
-                ==========================================
-                 HEALTHAXIS HEARTBEAT SERVICE IS RUNNING
-                 Timestamp UTC : {TimestampUtc}
-                 Status        : Background worker alive
-                ==========================================
-    
-                """,
-                DateTime.UtcNow);
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                logger.LogInformation(
+                    "HealthAxis heartbeat. TimestampUtc={TimestampUtc}",
+                    DateTime.UtcNow);
+            }
 
             await Task.Delay(HeartbeatInterval, stoppingToken);
         }
@@ -30,7 +25,6 @@ public class HeartbeatService(
     public override Task StopAsync(CancellationToken cancellationToken)
     {
         logger.LogInformation("HeartbeatService stopping.");
-
         return base.StopAsync(cancellationToken);
     }
 }

@@ -1,4 +1,4 @@
-﻿window.healthAxisScroll = {
+﻿globalThis.healthAxisScroll = {
     scrollToElementById: function (elementId) {
         const element = document.getElementById(elementId);
 

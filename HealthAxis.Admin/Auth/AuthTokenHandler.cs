@@ -1,8 +1,8 @@
-﻿using HealthAxis.Admin.Constants;
-using HealthAxis.Admin.Services;
-using Microsoft.AspNetCore.Components;
 using System.Net;
 using System.Net.Http.Headers;
+using HealthAxis.Admin.Constants;
+using HealthAxis.Admin.Services;
+using Microsoft.AspNetCore.Components;
 
 namespace HealthAxis.Admin.Auth;
 
@@ -11,15 +11,18 @@ public class AuthTokenHandler : DelegatingHandler
     private readonly ITokenService _tokenService;
     private readonly CustomAuthenticationStateProvider _authStateProvider;
     private readonly NavigationManager _navigationManager;
+    private readonly AppUrls _appUrls;
 
     public AuthTokenHandler(
         ITokenService tokenService,
         CustomAuthenticationStateProvider authStateProvider,
-        NavigationManager navigationManager)
+        NavigationManager navigationManager,
+        AppUrls appUrls)
     {
         _tokenService = tokenService;
         _authStateProvider = authStateProvider;
         _navigationManager = navigationManager;
+        _appUrls = appUrls;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
@@ -41,7 +44,7 @@ public class AuthTokenHandler : DelegatingHandler
             await _tokenService.ClearTokensAsync();
             _authStateProvider.NotifyUserLoggedOut();
             _navigationManager.NavigateTo(
-                $"{AppUrls.AngularLoginUrl}?reason=session-expired",
+                $"{_appUrls.AngularLoginUrl}?reason=session-expired",
                 forceLoad: true);
         }
 

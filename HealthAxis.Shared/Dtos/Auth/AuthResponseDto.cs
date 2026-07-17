@@ -4,9 +4,6 @@ public class AuthResponseDto
 {
     public string AccessToken { get; set; } = string.Empty;
 
-    // Refresh token support is intentionally paused for now.
-    // public string RefreshToken { get; set; } = string.Empty;
-
     public string Message { get; set; } = string.Empty;
 
     public int ExpiresIn { get; set; }

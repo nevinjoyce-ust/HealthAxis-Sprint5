@@ -1,14 +1,14 @@
-using HealthAxis.API.Constants;
-using HealthAxis.Shared.Constants;
-using HealthAxis.API.Data;
-using HealthAxis.Shared.Dtos.Auth;
-using HealthAxis.API.Models;
-using HealthAxis.API.Repositories;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using HealthAxis.API.Constants;
+using HealthAxis.API.Data;
+using HealthAxis.API.Models;
+using HealthAxis.API.Repositories;
+using HealthAxis.Shared.Constants;
+using HealthAxis.Shared.Dtos.Auth;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
 
 namespace HealthAxis.API.Services.Impl;
 
@@ -19,13 +19,8 @@ public class AuthService(
     IDoctorRepository doctorRepository,
     IConfiguration configuration) : IAuthService
 {
-    //private const string RefreshTokenProvider = "HealthAxis";
-
-    //private const string RefreshTokenName = "RefreshToken";
-
-    //private const string RefreshTokenExpiryName = "RefreshTokenExpiryUtc";
-
-    public async Task<(bool Success, string Message, string UserId)> RegisterAsync(RegisterDto request)
+    public async Task<(bool Success, string Message, string UserId)> RegisterAsync(
+        RegisterDto request)
     {
         if (request.Password != request.ConfirmPassword)
         {
@@ -55,7 +50,10 @@ public class AuthService(
 
             if (!createResult.Succeeded)
             {
-                var errors = string.Join(", ", createResult.Errors.Select(error => error.Description));
+                var errors = string.Join(
+                    ", ",
+                    createResult.Errors.Select(error => error.Description));
+
                 await transaction.RollbackAsync();
                 return (false, errors, string.Empty);
             }
@@ -64,7 +62,10 @@ public class AuthService(
 
             if (!roleResult.Succeeded)
             {
-                var errors = string.Join(", ", roleResult.Errors.Select(error => error.Description));
+                var errors = string.Join(
+                    ", ",
+                    roleResult.Errors.Select(error => error.Description));
+
                 await transaction.RollbackAsync();
                 return (false, errors, string.Empty);
             }
@@ -80,7 +81,6 @@ public class AuthService(
 
             await context.Patients.AddAsync(patient);
             await context.SaveChangesAsync();
-
             await transaction.CommitAsync();
 
             return (true, "User registered successfully.", user.Id);
@@ -92,7 +92,8 @@ public class AuthService(
         }
     }
 
-    public async Task<(bool Success, string Message, AuthResponseDto? Response)> LoginAsync(LoginDto request)
+    public async Task<(bool Success, string Message, AuthResponseDto? Response)>
+        LoginAsync(LoginDto request)
     {
         var user = await userManager.FindByEmailAsync(request.Email);
 
@@ -101,7 +102,9 @@ public class AuthService(
             return (false, ErrorMessages.InvalidCredentials, null);
         }
 
-        var isPasswordValid = await userManager.CheckPasswordAsync(user, request.Password);
+        var isPasswordValid = await userManager.CheckPasswordAsync(
+            user,
+            request.Password);
 
         if (!isPasswordValid)
         {
@@ -115,7 +118,7 @@ public class AuthService(
             return (false, profileResult.Message, null);
         }
 
-        var response = await GenerateAuthResponseAsync(
+        var response = GenerateAuthResponse(
             user,
             profileResult.Roles,
             profileResult.Role,
@@ -126,75 +129,13 @@ public class AuthService(
         return (true, response.Message, response);
     }
 
-    // Refresh token support is intentionally paused for now.
-    // Keep this implementation here so refresh support can be restored later if needed.
-    /*
-    public async Task<(bool Success, string Message, AuthResponseDto? Response)> RefreshTokenAsync(RefreshTokenRequestDto request)
-    {
-        var user = await userManager.FindByIdAsync(request.UserId);
-
-        if (user == null)
-        {
-            return (false, ErrorMessages.InvalidRefreshToken, null);
-        }
-
-        var storedRefreshTokenHash = await userManager.GetAuthenticationTokenAsync(
-            user,
-            RefreshTokenProvider,
-            RefreshTokenName);
-
-        var storedExpiryValue = await userManager.GetAuthenticationTokenAsync(
-            user,
-            RefreshTokenProvider,
-            RefreshTokenExpiryName);
-
-        if (string.IsNullOrWhiteSpace(storedRefreshTokenHash) || string.IsNullOrWhiteSpace(storedExpiryValue))
-        {
-            return (false, ErrorMessages.InvalidRefreshToken, null);
-        }
-
-        if (!DateTime.TryParse(
-            storedExpiryValue,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.RoundtripKind,
-            out var expiresAtUtc))
-        {
-            return (false, ErrorMessages.InvalidRefreshToken, null);
-        }
-
-        if (DateTime.UtcNow >= expiresAtUtc)
-        {
-            await RemoveRefreshTokenAsync(user);
-            return (false, ErrorMessages.RefreshTokenExpired, null);
-        }
-
-        var incomingRefreshTokenHash = HashToken(request.RefreshToken);
-
-        if (!string.Equals(storedRefreshTokenHash, incomingRefreshTokenHash, StringComparison.Ordinal))
-        {
-            return (false, ErrorMessages.InvalidRefreshToken, null);
-        }
-
-        var profileResult = await BuildUserProfileAsync(user);
-
-        if (!profileResult.Success)
-        {
-            return (false, profileResult.Message, null);
-        }
-
-        var response = await GenerateAuthResponseAsync(
-            user,
-            profileResult.Roles,
-            profileResult.Role,
-            profileResult.PatientId,
-            profileResult.DoctorId,
-            "Token refreshed successfully.");
-
-        return (true, response.Message, response);
-    }
-    */
-
-    private async Task<(bool Success, string Message, IList<string> Roles, string Role, int? PatientId, int? DoctorId)> BuildUserProfileAsync(IdentityUser user)
+    private async Task<(
+        bool Success,
+        string Message,
+        IList<string> Roles,
+        string Role,
+        int? PatientId,
+        int? DoctorId)> BuildUserProfileAsync(IdentityUser user)
     {
         var roles = await userManager.GetRolesAsync(user);
         var role = roles.FirstOrDefault() ?? string.Empty;
@@ -208,7 +149,13 @@ public class AuthService(
 
             if (patient == null)
             {
-                return (false, ErrorMessages.PatientProfileNotFound, roles, role, null, null);
+                return (
+                    false,
+                    ErrorMessages.PatientProfileNotFound,
+                    roles,
+                    role,
+                    null,
+                    null);
             }
 
             patientId = patient.Id;
@@ -220,7 +167,13 @@ public class AuthService(
 
             if (doctor == null)
             {
-                return (false, ErrorMessages.DoctorProfileNotFound, roles, role, null, null);
+                return (
+                    false,
+                    ErrorMessages.DoctorProfileNotFound,
+                    roles,
+                    role,
+                    null,
+                    null);
             }
 
             doctorId = doctor.Id;
@@ -229,7 +182,7 @@ public class AuthService(
         return (true, string.Empty, roles, role, patientId, doctorId);
     }
 
-    private async Task<AuthResponseDto> GenerateAuthResponseAsync(
+    private AuthResponseDto GenerateAuthResponse(
         IdentityUser user,
         IList<string> roles,
         string role,
@@ -237,17 +190,19 @@ public class AuthService(
         int? doctorId,
         string message)
     {
-        var expiresIn = int.Parse(configuration.GetSection("Jwt")["AccessTokenExpirationMinutes"]!);
-        var token = GenerateToken(user, roles, expiresIn, patientId, doctorId);
+        var expiresIn = int.Parse(
+            configuration.GetSection("Jwt")["AccessTokenExpirationMinutes"]!);
 
-        // Refresh token support is intentionally paused for now.
-        // var refreshToken = GenerateRefreshToken();
-        // await StoreRefreshTokenAsync(user, refreshToken);
+        var token = GenerateToken(
+            user,
+            roles,
+            expiresIn,
+            patientId,
+            doctorId);
 
         return new AuthResponseDto
         {
             AccessToken = token,
-            // RefreshToken = refreshToken,
             Message = message,
             ExpiresIn = expiresIn,
             UserId = user.Id,
@@ -257,39 +212,6 @@ public class AuthService(
             Role = role
         };
     }
-
-    // Refresh token support is intentionally paused for now.
-    /*
-    private async Task StoreRefreshTokenAsync(IdentityUser user, string refreshToken)
-    {
-        var refreshTokenExpirationDays = int.TryParse(
-            configuration.GetSection("Jwt")["RefreshTokenExpirationDays"],
-            out var configuredDays)
-            ? configuredDays
-            : 7;
-
-        var refreshTokenHash = HashToken(refreshToken);
-        var expiresAtUtc = DateTime.UtcNow.AddDays(refreshTokenExpirationDays);
-
-        await userManager.SetAuthenticationTokenAsync(
-            user,
-            RefreshTokenProvider,
-            RefreshTokenName,
-            refreshTokenHash);
-
-        await userManager.SetAuthenticationTokenAsync(
-            user,
-            RefreshTokenProvider,
-            RefreshTokenExpiryName,
-            expiresAtUtc.ToString("O", CultureInfo.InvariantCulture));
-    }
-
-    private async Task RemoveRefreshTokenAsync(IdentityUser user)
-    {
-        await userManager.RemoveAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenName);
-        await userManager.RemoveAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenExpiryName);
-    }
-    */
 
     private string GenerateToken(
         IdentityUser user,
@@ -301,35 +223,40 @@ public class AuthService(
         var jwtSettings = configuration.GetSection("Jwt");
 
         var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtSettings["Key"]!)
-        );
+            Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
 
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var credentials = new SigningCredentials(
+            key,
+            SecurityAlgorithms.HmacSha256);
 
         var claims = new List<Claim>
         {
-            new Claim(AppClaimTypes.UserId, user.Id),
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-            new Claim(ClaimTypes.NameIdentifier, user.Id),
-            new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(AppClaimTypes.UserId, user.Id),
+            new(JwtRegisteredClaimNames.Sub, user.Id),
+            new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+            new(ClaimTypes.NameIdentifier, user.Id),
+            new(ClaimTypes.Email, user.Email ?? string.Empty),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
-        foreach (var role in roles)
+        foreach (var userRole in roles)
         {
-            claims.Add(new Claim(AppClaimTypes.Role, role));
-            claims.Add(new Claim(ClaimTypes.Role, role));
+            claims.Add(new Claim(AppClaimTypes.Role, userRole));
+            claims.Add(new Claim(ClaimTypes.Role, userRole));
         }
 
         if (patientId.HasValue)
         {
-            claims.Add(new Claim(AppClaimTypes.PatientId, patientId.Value.ToString()));
+            claims.Add(new Claim(
+                AppClaimTypes.PatientId,
+                patientId.Value.ToString()));
         }
 
         if (doctorId.HasValue)
         {
-            claims.Add(new Claim(AppClaimTypes.DoctorId, doctorId.Value.ToString()));
+            claims.Add(new Claim(
+                AppClaimTypes.DoctorId,
+                doctorId.Value.ToString()));
         }
 
         var token = new JwtSecurityToken(
@@ -337,13 +264,13 @@ public class AuthService(
             audience: jwtSettings["Audience"],
             claims: claims,
             expires: DateTime.UtcNow.AddMinutes(expiresIn),
-            signingCredentials: credentials
-        );
+            signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public async Task<(bool Success, string Message, AuthResponseDto? Response)> CreateAuthResponseForUserIdAsync(string userId)
+    public async Task<(bool Success, string Message, AuthResponseDto? Response)>
+        CreateAuthResponseForUserIdAsync(string userId)
     {
         var user = await userManager.FindByIdAsync(userId);
 
@@ -359,7 +286,7 @@ public class AuthService(
             return (false, profileResult.Message, null);
         }
 
-        var response = await GenerateAuthResponseAsync(
+        var response = GenerateAuthResponse(
             user,
             profileResult.Roles,
             profileResult.Role,
@@ -369,20 +296,4 @@ public class AuthService(
 
         return (true, response.Message, response);
     }
-    // Refresh token support is intentionally paused for now.
-    /*
-    private static string GenerateRefreshToken()
-    {
-        var randomBytes = RandomNumberGenerator.GetBytes(64);
-
-        return Convert.ToBase64String(randomBytes);
-    }
-
-    private static string HashToken(string token)
-    {
-        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
-
-        return Convert.ToBase64String(hashBytes);
-    }
-    */
 }

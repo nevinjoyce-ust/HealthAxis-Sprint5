@@ -4,12 +4,9 @@ namespace HealthAxis.Admin.Services.Impl;
 
 public class TokenService : ITokenService
 {
-    private readonly IJSRuntime _jsRuntime;
-
     private const string AccessTokenKey = "healthAxisAdminAccessToken";
 
-    // Refresh token support is intentionally paused for now.
-    // private const string RefreshTokenKey = "healthAxisAdminRefreshToken";
+    private readonly IJSRuntime _jsRuntime;
 
     public TokenService(IJSRuntime jsRuntime)
     {
@@ -18,42 +15,28 @@ public class TokenService : ITokenService
 
     public async Task SetAccessTokenAsync(string token)
     {
-        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", AccessTokenKey, token);
+        await _jsRuntime.InvokeVoidAsync(
+            "localStorage.setItem",
+            AccessTokenKey,
+            token);
     }
 
     public async Task<string?> GetAccessTokenAsync()
     {
-        return await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", AccessTokenKey);
+        return await _jsRuntime.InvokeAsync<string?>(
+            "localStorage.getItem",
+            AccessTokenKey);
     }
 
     public async Task RemoveAccessTokenAsync()
     {
-        await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AccessTokenKey);
+        await _jsRuntime.InvokeVoidAsync(
+            "localStorage.removeItem",
+            AccessTokenKey);
     }
-
-    // Refresh token support is intentionally paused for now.
-    /*
-    public async Task SetRefreshTokenAsync(string token)
-    {
-        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", RefreshTokenKey, token);
-    }
-
-    public async Task<string?> GetRefreshTokenAsync()
-    {
-        return await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", RefreshTokenKey);
-    }
-
-    public async Task RemoveRefreshTokenAsync()
-    {
-        await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", RefreshTokenKey);
-    }
-    */
 
     public async Task ClearTokensAsync()
     {
         await RemoveAccessTokenAsync();
-
-        // Refresh token support is intentionally paused for now.
-        // await RemoveRefreshTokenAsync();
     }
 }

@@ -10,9 +10,11 @@ GC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\_Imports.razor8r
 ­
 MC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\Patients.razorĞ #8_rü	
  !"#$()*+,-./349:?@EFKLMNOQVW\]_bijnpqrsuvwx‰Š‘’“•–˜™š›¢§¨®¯±µ·»½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÑÒÓÔÕÖ×ÙÚÛÜİŞßàãåæèéêëíîïğñòóõö÷øùúûüıÿ€‚„…†ˆŠ‹Œ‘“”•–˜™š›œŸ ¡¢£¤¥§¨©ª«¬®¯°±²³´µ¶·¸¹»¼½¾¿ÀÁÂÃÅÆÇÈÉÊÌÍÎÏĞÑÒÓÔÕÖØÙÚÜİŞàáâãäæçèéêìíîïğñòóôõö÷øúûüışÿ‚ƒ„…†‡‰Š‹Œ‘’“”•—˜™šœŸ ¢£¤¥¦¨©ª«¬­®¯°±²³µ¶·¸¹º»¼¾¿ÀÁÂÃÅÆÈÉÊËÌÍÏĞÑÒÓÔÕÖ×ØÙÛÜİŞßàâãäåæèéêëìîïğñòôõö÷øúûüışÿ€‚ƒ„…†ˆ‰Š‹Œ‘’“”•–˜™š›œŸ ¢£¤¥¦§¨©ª¬­®¯°²³´µ¶¸¹º»¼½¾¿ÀÁÂÃÄÅÇÈÉÊËÌÎÏĞÑÒÓÔÕ×ØÙÚÛÜİŞßàáãäåæçèêëìîïğñòóõö÷ùúûüış€‚„…†‡ˆ‰‹Œ‘’“”–—˜™š›Ÿ ¡¢¤¥¦§¨©«¬­®¯°±²³´µ¶·¹º»¼½¾¿ÀÂÃÄÅÆÇÈx7‚Ğ(*,.349:?@EFKLNQVW]ipruw‰‘“•–˜™š›¢®±µ·Ôñò…†ˆŠŒ•–š›Ÿ£©ª«°±³´µ¶·¸»¼½¾¿ÀÁÂÇÈÉÎĞÒÓÔÕÖÚÜİàâãæèéìíîòöüş‚ƒ„…†‹Œ’”—˜™šŸ¢¤¥¨©­±·¸¹º»ÀÂÅÆÊËÏÓ×İŞßäåæêëìîğñôö÷úûü€„Š‹Œ“•˜š›Ÿ ¤¥¨©¬®¯²´µ¸¹º»¿ÃÉÊËĞÑÒÓÔÙÚÛÜİŞßàåçêëğòõöûı€†ˆ‹Œ‘’“˜™šŸ ¡¦§¨­®¯°³´µ»¼½¾¿ÄÆU
-MC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\NotFound.razor8rl
-KC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\Logout.razor 8r	‚š
-JC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\Login.razor 8r0,34<=@ADEFGPQRUVWX[\]^`abdefghjklmnopqrstx‚34<=ADFW]^bdfgjnr]
+MC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\NotFound.razor8rm
+KC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\Logout.razor 	8
+r
+	‚œ
+JC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\Login.razor 8r2.56>?DEHIJKRSTVWXY[\]^`abdefghiklmnopqrstux‚56>?EHJX]^bdfhkos]
 IC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\Home.razor 8r	
 ‚ô
 LC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Pages\Doctors.razor§ 68œrŞ	
@@ -37,45 +39,46 @@ YC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Components\RedirectToL
 ,9;>@CEHNOTYz
 WC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Components\AdminStatCard.razor 
 8r	
-x‚	„
+x‚	Û
+aC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Components\AdminResetPasswordModal.razor 8'rM
+$%/078=>EHIJKLMNOPRSTVWXYZ[\]^`abdefghjkmnoprstuvxyz{|}~x‚
+$%/08XZ[\bdfgjotuz{|}~„
 YC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Components\AdminPageHeader.razor 
 8r !x‚
 TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Components\AdminModal.razor 8r	
  !"#$%&x‚
  ·
-cC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Components\AdminAppointmentListModal.razor, .8Zrï #%&()*/0245789;=>@DEGIJKLMNOPQRSTUVWXYZ[]_`bcdgjklmpqrsvwxz{|}~€‚„†‡‹”–šŸ ¥¦«°´·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊÌÍÏÑÒÓÔÕÖØÙÚÛÜİßàâãäåæèéêëìîïğñòóôõö÷øxM‚U%/48=DLNOQSTVXZ]_bdgkmqsw{}”–Ÿ¥¦«ÏÓÔÕÖÚÛßäåêëğòóôõÛ
-aC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Components\AdminResetPasswordModal.razor 8'rM
-$%/078=>EHIJKLMNOPRSTVWXYZ[\]^`abdefghjkmnoprstuvxyz{|}~x‚
-$%/08XZ[\bdfgjotuz{|}~O
-BC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\App.razor8r‚È
+cC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Components\AdminAppointmentListModal.razor, .8Zrï #%&()*/0245789;=>@DEGIJKLMNOPQRSTUVWXYZ[]_`bcdgjklmpqrsvwxz{|}~€‚„†‡‹”–šŸ ¥¦«°´·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊÌÍÏÑÒÓÔÕÖØÙÚÛÜİßàâãäåæèéêëìîïğñòóôõö÷øxM‚U%/48=DLNOQSTVXZ]_bdgkmqsw{}”–Ÿ¥¦«ÏÓÔÕÖÚÛßäåêëğòóôõO
+BC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\App.razor8r‚`
+RC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\ITokenService.csr	Œ
+VC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\TokenService.cs 8r"	 !"#$&'()*‚!(È
 \C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\DoctorAdminService.cs 8rI
-!"#%&'(*+,./01345789:;=>?@ABCEFGHJKLMNOQRSTVWXYx‚#%,.57AEOQSV
-\C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AdminReportService.cs	 8r(	
- !"$%&'()*,-./0x‚	 (,g
-RC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\ITokenService.csj	
-r’
-VC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\TokenService.cs 8j"$&)+.089r	 456:;‚6Á
+!"#%&'(*+,./01345789:;=>?@ABCEFGHJKLMNOQRSTVWXYx‚#%,.57AEOQSVÊ
 UC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AuthService.cs 8
-j67r>	
-!"#$&()*+-./01249;<>?@BCDEGHIJLMNOPQx‚!#&(*-/0149;@BGHINO¬
+rH	
+ !"#%&'(*+-./023456789:<=?@BCDEFHIJKMNOPRSTUVWx‚ "%'*-/235789<=?DHMNOTU
+\C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AdminReportService.cs	 8r(	
+ !"$%&'()*,-./0x‚	 (,¬
 ]C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AdminPatientService.cs 8r2
- !"$%&()*+,./01235678:;<=x‚&(357:s
-XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\IDoctorAdminService.csr	
-€
+ !"$%&()*+,./01235678:;<=x‚&(357:€
 _C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\Impl\AdminDashboardService.cs 8r
-‚_
+‚s
+XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\IDoctorAdminService.csr	
+_
 QC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\IAuthService.csr	m
 XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\IAdminReportService.csr	o
 YC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\IAdminPatientService.csr	
 g
-[C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\IAdminDashboardService.csrX
-MC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Constants\AppUrls.csrÁ
+[C:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\IAdminDashboardService.csrÁ
 WC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\ApiResponseHandler.cs* 	8r˜	
  !#$%'()*+-./0245679:;<=>@ABCEFGHIJLMNOQRSTVWXYZ[\]^`abcdefhijklmopqrtuvwxyz{|~€‚ƒ„…†ˆ‰ŠŒ‘’“”•–˜™šx‚@ #$+-/24;=@ABIJLNQSVWX\bcdlmoqtvwxyz{~€„ŠŒ“•˜x
-PC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\ApiResponse.cs 8r	‚Š
-CC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Program.cs&8r#	!#$%&'()*+-x‚	!#$%&'()*+-ÿ
+PC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Services\ApiResponse.cs 8r	‚š
+CC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Program.cs-8r/
+ !"$&'()*+-.023456789:<x‚
+$&')-.023456789:<\
+MC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Constants\AppUrls.cs 8rÿ
 bC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Auth\CustomAuthenticationStateProvider.cs( 8rd	
- "#$&')*+,-/02345689:;=>?@BCDFGHIJKLMNPQSTUVXYZ[\]^_`abcdeghjklnopqrtuvwxyz{x‚("$&+-/45;=?BFIJLMPQSUXZ\^cglnpvwxy±
-QC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Auth\AuthTokenHandler.cs 8
-r;	
- !"#%'()*+,-.013456789:;=>?@BDEFGx‚!%')*+,08:=?BDE
+ "#$&')*+,-/02345689:;=>?@BCDFGHIJKLMNPQSTUVXYZ[\]^_`abcdeghjklnopqrtuvwxyz{x‚("$&+-/45;=?BFIJLMPQSUXZ\^cglnpvwxyµ
+QC:\Users\310511\source\repos\HealthAxis\HealthAxis.Admin\Auth\AuthTokenHandler.cs 8
+r>	
+ "#$%&(*+,-./01346789:;<=>@ABCEGHIJx‚ "$(*,-./3;=@BEGH

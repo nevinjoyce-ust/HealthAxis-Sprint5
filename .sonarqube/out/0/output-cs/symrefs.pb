@@ -34,19 +34,91 @@ YC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Validation\FullNameAt
   "Y
 KC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\UserRole.cs
 
- b
-TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\AppointmentStatus.cs
-
- ]
-OC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\DoctorSortBy.cs
-
- ^
+ ^
 PC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\SortDirection.cs
 
- e
+ ∞
+ZC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Patient\UpdatePatientDto.cs
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+"" ]
+OC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\DoctorSortBy.cs
+
+ e
 WC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\DoctorSpecialisation.cs
 
-  Æ
+  ¬
+TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Patient\PatientDto.cs
+
+ 
+
+ 
+
+ 
+
+		 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ z
+TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\PaginationQueryDto.cs
+
+ 
+
+ 
+
+ b
+TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\AppointmentStatus.cs
+
+ Ê
+PC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\PagedResultDto.cs
+
+ 
+  
+
+ 
+ # - )
+
+		 
+
+ 
+ , 6
+
+ 
+
+ Æ
+dC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\HealthRecord\CreateHealthRecordDto.cs
+
+ "
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+ Æ
 XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\UpdateDoctorDto.cs
 
  
@@ -61,24 +133,50 @@ XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\UpdateDoc
 
  %
 
-## "¬
-`C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\DoctorAvailableSlotsDto.cs
+## "
+^C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\HealthRecord\HealthRecordDto.cs
 
- $
+ 
 
- 
+ 
 
-		 
+ 
 
-  .
+		 
 
-  
+ 
 
- "
+ 
 
- 
+ 
 
- (Æ
+ 
+
+ 
+
+ 
+
+ 
+
+ ~
+dC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\UpdateDoctorAvailabilityDto.cs
+
+ (
+
+ ú
+RC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\ErrorResponseDto.cs
+
+ 
+
+ 
+
+ 
+
+		 
+
+ 
+
+ Æ
 XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\PublicDoctorDto.cs
 
  
@@ -106,117 +204,7 @@ XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\PublicDoc
 
  
 
- &∞
-ZC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Patient\UpdatePatientDto.cs
-
- 
-
- 
-
- 
-
- 
-
- 
-
- 
-
-"" ¬
-TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Patient\PatientDto.cs
-
- 
-
- 
-
- 
-
-		 
-
- 
-
- 
-
- 
-
- 
-
- z
-TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\PaginationQueryDto.cs
-
- 
-
- 
-
- Ê
-PC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\PagedResultDto.cs
-
- 
-  
-
- 
- # - )
-
-		 
-
- 
- , 6
-
- 
-
- 
-^C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\HealthRecord\HealthRecordDto.cs
-
- 
-
- 
-
- 
-
-		 
-
- 
-
- 
-
- 
-
- 
-
- 
-
- 
-
- 
-
- Æ
-dC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\HealthRecord\CreateHealthRecordDto.cs
-
- "
-
-
-
- 
-
- 
-
- 
-
- 
-
- ú
-RC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\ErrorResponseDto.cs
-
- 
-
- 
-
- 
-
-		 
-
- 
-
- ÿ
+ &ÿ
 RC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\DoctorDto.cs
 
  
@@ -239,12 +227,24 @@ RC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\DoctorDto
 
  "
 
- ~
-dC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\UpdateDoctorAvailabilityDto.cs
+ ¬
+`C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\DoctorAvailableSlotsDto.cs
 
- (
+ $
 
- ê
+ 
+
+		 
+
+  .
+
+  
+
+ "
+
+ 
+
+ (ê
 ^C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\DoctorAvailabilityDto.cs
 
  "
@@ -292,14 +292,7 @@ RC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\RegisterDto
 
 %% 
 
-)) É
-]C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\RefreshTokenRequestDto.cs
-
- #
-
- 
-
- u
+)) u
 OC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\LoginDto.cs
 
  
@@ -321,21 +314,19 @@ VC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\AuthRespons
 
  
 
-
-
- 
+ 
 
- 
+		 
 
- 
+ 
 
- 
+ 
 
- 
+ 
 
- 
+ 
 
- å
+ å
 \C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\AdminResetPasswordDto.cs
 
  "
@@ -388,57 +379,7 @@ bC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\Appo
 
  
 
- Ï
-ZC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\AdminDashboardSummaryDto.cs
-
- %
-
- !
-
- &
-
-		 '
-
- )
-
- )
-
- )
-
- &
-
- -
-
- /
-
- /
-
- /‚
-\C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\AppointmentDto.cs
-
- 
-
- 
-
- 
-
-
-
- 
-
- 
-
- 
-
- #
-
- #
-
- #
-
- %
-
- Ä
+ Ä
 nC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\AppointmentHealthRecordReportDto.cs
 
  -
@@ -463,7 +404,57 @@ nC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\Appo
 
  
 
- *±
+ *‚
+\C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\AppointmentDto.cs
+
+ 
+
+ 
+
+ 
+
+
+
+ 
+
+ 
+
+ 
+
+ #
+
+ #
+
+ #
+
+ %
+
+ Ï
+ZC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\AdminDashboardSummaryDto.cs
+
+ %
+
+ !
+
+ &
+
+		 '
+
+ )
+
+ )
+
+ )
+
+ &
+
+ -
+
+ /
+
+ /
+
+ /±
 OC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Constants\AppRoles.cs
 
  
