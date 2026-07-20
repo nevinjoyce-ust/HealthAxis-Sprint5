@@ -1,57 +1,57 @@
  
 bC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Validation\PracticeStartDateAttribute.cs 8r!
  !#$%&()*x‚ #%(Ž
-YC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Validation\FullNameAttribute.cs 8r	
- !"#$x‚Ž
 \C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Validation\DateOfBirthAttribute.cs 8r	
 x‚
-V
+Ž
+YC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Validation\FullNameAttribute.cs 8r	
+ !"#$x‚V
 KC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\UserRole.csrZ
-PC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\SortDirection.csrˆ
+PC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\SortDirection.csr`
+TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\AppointmentStatus.csr	ˆ
 ZC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Patient\UpdatePatientDto.cs 8r	
- !"#‚"Z
-OC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\DoctorSortBy.csri
+ !"#‚"s
+TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Patient\PatientDto.cs 8r	‚	i
 WC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\DoctorSpecialisation.csr	
-s
-TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Patient\PatientDto.cs 8r	‚	g
+Z
+OC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\DoctorSortBy.csrg
 TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\PaginationQueryDto.cs 8r	
-`
-TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Enums\AppointmentStatus.csr	e
-PC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\PagedResultDto.cs 8r	‡
+e
+PC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\PagedResultDto.cs 8r	~
+^C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\HealthRecord\HealthRecordDto.cs 8r	‚‡
 dC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\HealthRecord\CreateHealthRecordDto.cs 
 8
 r	
-‚…
+‚q
+XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\PublicDoctorDto.cs 8r	‚	…
 XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\UpdateDoctorDto.cs 8r	
-!"#$‚~
-^C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\HealthRecord\HealthRecordDto.cs 8r	‚u
-dC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\UpdateDoctorAvailabilityDto.cs 8r	k
+!"#$‚t
+RC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\DoctorDto.cs 8r	‚k
 RC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\ErrorResponseDto.cs 
 8
-r		‚	q
-XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\PublicDoctorDto.cs 8r	‚	v
+r		‚	v
 ]C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\DoctorSearchQueryDto.cs 
 8
 r
-	‚t
-RC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\DoctorDto.cs 8r	‚z
+	‚u
+dC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\UpdateDoctorAvailabilityDto.cs 8r	z
 `C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\DoctorAvailableSlotsDto.cs 8r	‚	s
 ^C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\DoctorAvailabilityDto.cs 8r	
-‚	‹
-XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\CreateDoctorDto.cs 8r"	
- !"#%&')*+‚†
+‚	†
 RC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\RegisterDto.cs 8r 	
  !#$%'()*‚
 %)h
 OC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\LoginDto.cs 8r
-	‚	v
+	‚	‹
+XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Doctor\CreateDoctorDto.cs 8r"	
+ !"#%&')*+‚v
 XC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\ChangePasswordDto.cs 8r	‚	t
 VC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\AuthResponseDto.cs 8r	‚v
 \C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\AdminResetPasswordDto.cs 8r	‚	s
-^C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\AdminHandoffExchangeDto.cs 8r	‚~
-hC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\UpdateAppointmentStatusDto.cs 8r	
-s
+^C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\AdminHandoffExchangeDto.cs 8r	‚s
 _C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\AdminHandoffCodeResponse.cs 8r‚~
+hC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\UpdateAppointmentStatusDto.cs 8r	
+~
 bC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\CreateAppointmentDto.cs 8r	
 v
 bC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\AppointmentReportDto.cs 8r
@@ -59,6 +59,6 @@ bC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\Appo
 nC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\AppointmentHealthRecordReportDto.cs 8r	‚z
 \C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\AppointmentDto.cs 8r
 ‚s
-ZC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\AdminDashboardSummaryDto.cs 8r	`
-OC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Constants\AppRoles.csr	b
-TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Constants\AppClaimTypes.csr	
+ZC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\AdminDashboardSummaryDto.cs 8r	b
+TC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Constants\AppClaimTypes.csr	`
+OC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Constants\AppRoles.csr	

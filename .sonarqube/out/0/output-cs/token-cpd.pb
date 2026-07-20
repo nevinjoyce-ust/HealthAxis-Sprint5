@@ -3094,7 +3094,49 @@ HealthAxis
 .- .
 Empty. 3
 ;3 4
-}		 §
+}		 ÷
+_C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\AdminHandoffCodeResponse.cs
+	namespace 	
+
+HealthAxis
+ 
+. 
+Shared 
+. 
+Dtos  
+.  !
+Auth! %
+;% &
+public 
+class '
+AdminHandoffCodeResponseDto (
+{ 
+public 
+
+string 
+Code 
+{ 
+get 
+; 
+set !
+;! "
+}# $
+=% &
+string' -
+.- .
+Empty. 3
+;3 4
+public 
+
+int 
+ExpiresInSeconds 
+{  !
+get" %
+;% &
+set' *
+;* +
+}, -
+} §
 hC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\UpdateAppointmentStatusDto.cs
 	namespace 	
 
@@ -3150,49 +3192,7 @@ HealthAxis
 set- 0
 ;0 1
 }2 3
-} ÷
-_C:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Auth\AdminHandoffCodeResponse.cs
-	namespace 	
-
-HealthAxis
- 
-. 
-Shared 
-. 
-Dtos  
-.  !
-Auth! %
-;% &
-public 
-class '
-AdminHandoffCodeResponseDto (
-{ 
-public 
-
-string 
-Code 
-{ 
-get 
-; 
-set !
-;! "
-}# $
-=% &
-string' -
-.- .
-Empty. 3
-;3 4
-public 
-
-int 
-ExpiresInSeconds 
-{  !
-get" %
-;% &
-set' *
-;* +
-}, -
-} š
+} š
 bC:\Users\310511\source\repos\HealthAxis\HealthAxis.Shared\Dtos\Appointment\CreateAppointmentDto.cs
 	namespace 	
 

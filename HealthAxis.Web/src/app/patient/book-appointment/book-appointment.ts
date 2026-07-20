@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -20,7 +20,7 @@ interface SelectedSlot {
   templateUrl: './book-appointment.html',
   styleUrl: './book-appointment.css'
 })
-export class BookAppointment implements OnInit {
+export class BookAppointment {
   private readonly patientService = inject(PatientService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -65,10 +65,6 @@ export class BookAppointment implements OnInit {
 
       this.loadAvailableSlots();
     });
-  }
-
-  ngOnInit(): void {
-    this.loadAvailableSlots();
   }
 
   get filteredDoctorSlots(): DoctorAvailableSlots[] {

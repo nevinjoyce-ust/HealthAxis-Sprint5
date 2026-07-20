@@ -56,16 +56,14 @@ public class AppointmentBookedConsumer : IConsumer<AppointmentBookedEvent>
 
         var createdNotification = await _notificationRepository.AddAsync(notification);
 
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation(
-                "Appointment booked event consumed and notification created. AppointmentId={AppointmentId}, PatientId={PatientId}, DoctorId={DoctorId}, NotificationId={NotificationId}, ScheduledDate={ScheduledDate}, TimeSlot={TimeSlot}",
-                appointmentEvent.AppointmentId,
-                appointmentEvent.PatientId,
-                appointmentEvent.DoctorId,
-                createdNotification.Id,
-                appointmentEvent.ScheduledDate,
-                appointmentEvent.TimeSlot);
-        }
+
+        _logger.LogInformation(
+            "APPOINTMENT BOOKED | Appointment {AppointmentId} | Patient {PatientId} | Doctor {DoctorId} | {ScheduledDate} at {TimeSlot} | Notification {NotificationId} created",
+            appointmentEvent.AppointmentId,
+            appointmentEvent.PatientId,
+            appointmentEvent.DoctorId,
+            appointmentEvent.ScheduledDate,
+            appointmentEvent.TimeSlot,
+            createdNotification.Id);
     }
 }
