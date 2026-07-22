@@ -1,6 +1,9 @@
 @implements IDisposable
+@using HealthAxis.Admin.Constants
 @using HealthAxis.Admin.Services
+
 @inject ITokenService TokenService
+@inject AppUrls AppUrls
 @inject NavigationManager NavigationManager
 
 <div class="sidebar-brand">
@@ -11,7 +14,9 @@
     </div>
 </div>
 
-<button title="Toggle navigation" class="sidebar-toggle" @onclick="ToggleNavMenu">
+<button title="Toggle navigation"
+        class="sidebar-toggle"
+        @onclick="ToggleNavMenu">
     <span class="bi bi-list" aria-hidden="true"></span>
     Menu
 </button>
@@ -53,18 +58,19 @@
     }
     else
     {
-        <NavLink class="sidebar-link" href="login">
+        <a class="sidebar-link" href="@AppUrls.AngularLoginUrl">
             <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span>
             Login
-        </NavLink>
+        </a>
     }
 </nav>
 
 @code {
-    private bool collapseNavMenu = true;
+    private bool _collapseNavMenu = true;
     private bool _isLoggedIn;
 
-    private string NavMenuCssClass => collapseNavMenu ? "sidebar-nav-collapsed" : string.Empty;
+    private string NavMenuCssClass =>
+        _collapseNavMenu ? "sidebar-nav-collapsed" : string.Empty;
 
     protected override void OnInitialized()
     {
@@ -79,7 +85,9 @@
         }
     }
 
-    private async void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    private async void HandleLocationChanged(
+        object? sender,
+        LocationChangedEventArgs eventArgs)
     {
         await RefreshLoginStateAsync();
     }
@@ -93,7 +101,7 @@
 
     private void ToggleNavMenu()
     {
-        collapseNavMenu = !collapseNavMenu;
+        _collapseNavMenu = !_collapseNavMenu;
     }
 
     public void Dispose()

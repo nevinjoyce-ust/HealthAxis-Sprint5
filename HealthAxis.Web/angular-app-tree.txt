@@ -1,0 +1,171 @@
+Folder PATH listing for volume Windows
+Volume serial number is 0000020E 2ADD:32DD
+C:\USERS\310511\SOURCE\REPOS\UST\HEALTHAXIS.WEB\SRC\APP
+|   app.config.server.ts
+|   app.config.ts
+|   app.css
+|   app.html
+|   app.routes.server.ts
+|   app.routes.ts
+|   app.spec.ts
+|   app.ts
+|   
++---core
+|   +---constants
+|   |       api-constants.ts
+|   |       route-paths.ts
+|   |       
+|   +---guards
+|   |       auth-guard.spec.ts
+|   |       auth-guard.ts
+|   |       role-guard.spec.ts
+|   |       role-guard.ts
+|   |       
+|   +---interceptors
+|   |       auth-interceptor.ts
+|   |       
+|   +---layouts
+|   |   +---doctor-layout
+|   |   |       doctor-layout.css
+|   |   |       doctor-layout.html
+|   |   |       doctor-layout.spec.ts
+|   |   |       doctor-layout.ts
+|   |   |       
+|   |   +---patient-layout
+|   |   |       patient-layout.css
+|   |   |       patient-layout.html
+|   |   |       patient-layout.spec.ts
+|   |   |       patient-layout.ts
+|   |   |       
+|   |   \---public-layout
+|   |           public-layout.css
+|   |           public-layout.html
+|   |           public-layout.spec.ts
+|   |           public-layout.ts
+|   |           
+|   \---services
+|           auth-service.spec.ts
+|           auth-service.ts
+|           doctor-service.spec.ts
+|           doctor-service.ts
+|           patient-service.spec.ts
+|           patient-service.ts
+|           
++---doctor
+|   +---appointments
+|   |       appointments.css
+|   |       appointments.html
+|   |       appointments.spec.ts
+|   |       appointments.ts
+|   |       
+|   +---dashboard
+|   |       dashboard.css
+|   |       dashboard.html
+|   |       dashboard.spec.ts
+|   |       dashboard.ts
+|   |       
+|   +---health-records
+|   |       health-records.css
+|   |       health-records.html
+|   |       health-records.spec.ts
+|   |       health-records.ts
+|   |       
+|   +---patient-history
+|   |       patient-history.css
+|   |       patient-history.html
+|   |       patient-history.spec.ts
+|   |       patient-history.ts
+|   |       
+|   \---profile
+|           profile.css
+|           profile.html
+|           profile.spec.ts
+|           profile.ts
+|           
++---pages
+|   +---home
+|   |       home.css
+|   |       home.html
+|   |       home.spec.ts
+|   |       home.ts
+|   |       
+|   +---login
+|   |       login.css
+|   |       login.html
+|   |       login.spec.ts
+|   |       login.ts
+|   |       
+|   +---logout
+|   |       logout.css
+|   |       logout.html
+|   |       logout.spec.ts
+|   |       logout.ts
+|   |       
+|   +---not-found
+|   |       not-found.css
+|   |       not-found.html
+|   |       not-found.spec.ts
+|   |       not-found.ts
+|   |       
+|   \---register
+|           register.css
+|           register.html
+|           register.spec.ts
+|           register.ts
+|           
++---patient
+|   +---appointments
+|   |       appointments.css
+|   |       appointments.html
+|   |       appointments.spec.ts
+|   |       appointments.ts
+|   |       
+|   +---book-appointment
+|   |       book-appointment.css
+|   |       book-appointment.html
+|   |       book-appointment.spec.ts
+|   |       book-appointment.ts
+|   |       
+|   +---dashboard
+|   |       dashboard.css
+|   |       dashboard.html
+|   |       dashboard.spec.ts
+|   |       dashboard.ts
+|   |       
+|   +---doctors
+|   |       doctors.css
+|   |       doctors.html
+|   |       doctors.spec.ts
+|   |       doctors.ts
+|   |       
+|   +---health-history
+|   |       health-history.css
+|   |       health-history.html
+|   |       health-history.spec.ts
+|   |       health-history.ts
+|   |       
+|   \---profile
+|           profile.css
+|           profile.html
+|           profile.spec.ts
+|           profile.ts
+|           
+\---shared
+    +---components
+    |   \---doctor-slot-search
+    |           doctor-slot-search.css
+    |           doctor-slot-search.html
+    |           doctor-slot-search.spec.ts
+    |           doctor-slot-search.ts
+    |           
+    +---models
+    |       auth-models.ts
+    |       health-axis.models.ts
+    |       role.model.ts
+    |       
+    \---utils
+            appointment-utils.ts
+            date-utils.ts
+            doctor-utils.ts
+            paged-result-utils.ts
+            

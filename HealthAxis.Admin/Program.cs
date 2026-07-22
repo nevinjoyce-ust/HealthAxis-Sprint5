@@ -28,6 +28,10 @@ if (string.IsNullOrWhiteSpace(angularLoginUrl))
         "AngularLoginUrl is missing from wwwroot/appsettings.json.");
 }
 
+var applicationOrigin = new Uri(
+    new Uri(builder.HostEnvironment.BaseAddress),
+    apiBaseUrl);
+
 builder.Services.AddSingleton(new AppUrls
 {
     AngularLoginUrl = angularLoginUrl
@@ -38,19 +42,21 @@ builder.Services.AddTransient<AuthTokenHandler>();
 builder.Services
     .AddHttpClient("Api", client =>
     {
-        client.BaseAddress = new Uri(apiBaseUrl);
+        client.BaseAddress = applicationOrigin;
     })
     .AddHttpMessageHandler<AuthTokenHandler>();
 
-builder.Services.AddScoped(sp =>
-    sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
+builder.Services.AddScoped(serviceProvider =>
+    serviceProvider
+        .GetRequiredService<IHttpClientFactory>()
+        .CreateClient("Api"));
 
 builder.Services.AddAuthorizationCore();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<CustomAuthenticationStateProvider>();
-builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
-    sp.GetRequiredService<CustomAuthenticationStateProvider>());
+builder.Services.AddScoped<AuthenticationStateProvider>(serviceProvider =>
+    serviceProvider.GetRequiredService<CustomAuthenticationStateProvider>());
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDoctorAdminService, DoctorAdminService>();
 builder.Services.AddScoped<IAdminReportService, AdminReportService>();

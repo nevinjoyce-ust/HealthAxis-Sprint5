@@ -13,8 +13,7 @@ namespace HealthAxis.API.Services.Impl;
 public class DoctorService(
     IDoctorRepository doctorRepository,
     IMapper mapper,
-    IAppointmentRepository appointmentRepository,
-    IDoctorAvailabilityCacheService availabilityCacheService) : IDoctorService
+    IAppointmentRepository appointmentRepository) : IDoctorService
 {
     private static readonly TimeOnly WorkDayStart = new(9, 0);
     private static readonly TimeOnly LunchStart = new(12, 0);
@@ -23,9 +22,9 @@ public class DoctorService(
     private static readonly TimeSpan SlotDuration = TimeSpan.FromMinutes(30);
 
     private const int MinimumBookingHoursBeforeAppointment = 48;
-    private const int AvailabilityCacheInvalidationMonthsAhead = 6;
 
-    public async Task<PagedResultDto<PublicDoctorDto>> GetAllDoctorsAsync(DoctorSearchQueryDto query)
+    public async Task<PagedResultDto<PublicDoctorDto>> GetAllDoctorsAsync(
+        DoctorSearchQueryDto query)
     {
         var doctors = await doctorRepository.GetAllDoctorsAsync(
             query.PageNumber,
@@ -82,15 +81,10 @@ public class DoctorService(
         };
     }
 
-    public async Task<DoctorAvailableSlotsDto> GetDoctorSlotsAsync(int id, DateOnly date)
+    public async Task<DoctorAvailableSlotsDto> GetDoctorSlotsAsync(
+        int id,
+        DateOnly date)
     {
-        var cachedSlots = await availabilityCacheService.GetDoctorSlotsAsync(id, date);
-
-        if (cachedSlots != null)
-        {
-            return cachedSlots;
-        }
-
         var doctor = await doctorRepository.GetDoctorByIdAsync(id);
 
         if (doctor == null)
@@ -98,7 +92,7 @@ public class DoctorService(
             throw new NotFoundException(ErrorMessages.DoctorNotFound);
         }
 
-        return await BuildAndCacheDoctorSlotsAsync(doctor, date);
+        return await BuildDoctorSlotsAsync(doctor, date);
     }
 
     public async Task<PagedResultDto<DoctorAvailableSlotsDto>> GetAvailableSlotsAsync(
@@ -111,7 +105,7 @@ public class DoctorService(
 
         foreach (var doctor in doctors)
         {
-            var doctorSlots = await GetCachedOrBuildDoctorSlotsAsync(doctor, date);
+            var doctorSlots = await BuildDoctorSlotsAsync(doctor, date);
 
             if (doctorSlots.AvailableSlots.Count > 0)
             {
@@ -170,10 +164,6 @@ public class DoctorService(
             throw new NotFoundException(ErrorMessages.DoctorNotFound);
         }
 
-        await availabilityCacheService.RemoveDoctorAvailabilityRangeAsync(
-            updatedDoctor.Id,
-            AvailabilityCacheInvalidationMonthsAhead);
-
         return CreateAvailabilityDto(updatedDoctor.Id, updatedDoctor.IsAvailable);
     }
 
@@ -189,26 +179,12 @@ public class DoctorService(
         return mapper.Map<DoctorDto>(doctor);
     }
 
-    private async Task<DoctorAvailableSlotsDto> GetCachedOrBuildDoctorSlotsAsync(Doctor doctor, DateOnly date)
-    {
-        var cachedSlots = await availabilityCacheService.GetDoctorSlotsAsync(doctor.Id, date);
-
-        if (cachedSlots != null)
-        {
-            return cachedSlots;
-        }
-
-        return await BuildAndCacheDoctorSlotsAsync(doctor, date);
-    }
-
-    private async Task<DoctorAvailableSlotsDto> BuildAndCacheDoctorSlotsAsync(Doctor doctor, DateOnly date)
+    private async Task<DoctorAvailableSlotsDto> BuildDoctorSlotsAsync(
+        Doctor doctor,
+        DateOnly date)
     {
         var bookedTimes = await GetBookedTimesAsync(doctor.Id, date);
-        var slots = CreateDoctorAvailableSlotsDto(doctor, date, bookedTimes);
-
-        await availabilityCacheService.SetDoctorSlotsAsync(doctor.Id, date, slots);
-
-        return slots;
+        return CreateDoctorAvailableSlotsDto(doctor, date, bookedTimes);
     }
 
     private static DoctorAvailableSlotsDto CreateDoctorAvailableSlotsDto(
@@ -224,7 +200,10 @@ public class DoctorService(
             YearsOfExperience = doctor.CalculateYearsOfExperience(),
             ConsultationFee = doctor.ConsultationFee,
             IsAvailable = doctor.IsAvailable,
-            AvailableSlots = GenerateAvailableSlots(date, doctor.IsAvailable, bookedTimes)
+            AvailableSlots = GenerateAvailableSlots(
+                date,
+                doctor.IsAvailable,
+                bookedTimes)
         };
     }
 
@@ -232,9 +211,10 @@ public class DoctorService(
         int doctorId,
         DateOnly date)
     {
-        var appointments = await appointmentRepository.GetNonCancelledAppointmentsByDoctorIdAndDateAsync(
-            doctorId,
-            date);
+        var appointments = await appointmentRepository
+            .GetNonCancelledAppointmentsByDoctorIdAndDateAsync(
+                doctorId,
+                date);
 
         return appointments
             .Select(appointment => appointment.AppointmentTime)
@@ -253,14 +233,19 @@ public class DoctorService(
             return slots;
         }
 
-        for (var current = WorkDayStart; current < WorkDayEnd; current = current.Add(SlotDuration))
+        for (var current = WorkDayStart;
+             current < WorkDayEnd;
+             current = current.Add(SlotDuration))
         {
             if (current >= LunchStart && current < LunchEnd)
             {
                 continue;
             }
 
-            if (!IsAtLeastHoursAhead(date, current, MinimumBookingHoursBeforeAppointment))
+            if (!IsAtLeastHoursAhead(
+                    date,
+                    current,
+                    MinimumBookingHoursBeforeAppointment))
             {
                 continue;
             }
@@ -276,10 +261,12 @@ public class DoctorService(
         return slots;
     }
 
-    private static bool IsAtLeastHoursAhead(DateOnly date, TimeOnly time, int minimumHours)
+    private static bool IsAtLeastHoursAhead(
+        DateOnly date,
+        TimeOnly time,
+        int minimumHours)
     {
         var scheduledAt = date.ToDateTime(time);
-
         return scheduledAt >= DateTime.Now.AddHours(minimumHours);
     }
 
@@ -303,16 +290,20 @@ public class DoctorService(
     {
         if (currentRole == AppRoles.Doctor && currentDoctorId != doctorId)
         {
-            throw new ForbiddenException(ErrorMessages.DoctorsCanUpdateOnlyOwnAvailability);
+            throw new ForbiddenException(
+                ErrorMessages.DoctorsCanUpdateOnlyOwnAvailability);
         }
 
         if (currentRole != AppRoles.Doctor && currentRole != AppRoles.Admin)
         {
-            throw new ForbiddenException(ErrorMessages.UnsupportedAppointmentStatusTransition);
+            throw new ForbiddenException(
+                ErrorMessages.UnsupportedAppointmentStatusTransition);
         }
     }
 
-    private static DoctorAvailabilityDto CreateAvailabilityDto(int doctorId, bool isAvailable)
+    private static DoctorAvailabilityDto CreateAvailabilityDto(
+        int doctorId,
+        bool isAvailable)
     {
         return new DoctorAvailabilityDto
         {
@@ -338,7 +329,9 @@ public class DoctorService(
 
         if (currentRole == AppRoles.Admin)
         {
-            await CancelTodaysAppointmentsForAdminDeactivationAsync(doctorId, today);
+            await CancelTodaysAppointmentsForAdminDeactivationAsync(
+                doctorId,
+                today);
         }
     }
 
@@ -351,7 +344,8 @@ public class DoctorService(
 
         if (hasConfirmedAppointmentsToday)
         {
-            throw new BusinessRuleException(ErrorMessages.DoctorCannotDeactivateWithConfirmedAppointmentsToday);
+            throw new BusinessRuleException(
+                ErrorMessages.DoctorCannotDeactivateWithConfirmedAppointmentsToday);
         }
     }
 
@@ -360,12 +354,15 @@ public class DoctorService(
         DateOnly today)
     {
         var appointmentsToCancel = await appointmentRepository
-            .GetPendingOrConfirmedAppointmentsByDoctorIdAndDateAsync(doctorId, today);
+            .GetPendingOrConfirmedAppointmentsByDoctorIdAndDateAsync(
+                doctorId,
+                today);
 
         foreach (var appointment in appointmentsToCancel)
         {
             appointment.Status = AppointmentStatus.Cancelled;
-            appointment.CancellationReason = ErrorMessages.DoctorEmergencyCancellationReason;
+            appointment.CancellationReason =
+                ErrorMessages.DoctorEmergencyCancellationReason;
 
             await appointmentRepository.UpdateAsync(appointment);
         }

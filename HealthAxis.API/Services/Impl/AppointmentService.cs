@@ -17,29 +17,36 @@ public class AppointmentService(
     IPatientRepository patientRepository,
     IDoctorRepository doctorRepository,
     IMapper mapper,
-    IPublishEndpoint publisher,
-    IDoctorAvailabilityCacheService availabilityCacheService) : IAppointmentService
+    IPublishEndpoint publisher) : IAppointmentService
 {
     private const int MinimumBookingHoursBeforeAppointment = 48;
     private const int MinimumCancellationHoursBeforeAppointment = 24;
     private const int MaximumBookingMonthsAhead = 6;
 
-    public async Task<PagedResultDto<AppointmentDto>> GetAllAppointmentsAsync(PaginationQueryDto pagination)
+    public async Task<PagedResultDto<AppointmentDto>> GetAllAppointmentsAsync(
+        PaginationQueryDto pagination)
     {
-        var appointments = await appointmentRepository.GetAllAppointmentsAsync(pagination.PageNumber, pagination.PageSize);
+        var appointments = await appointmentRepository.GetAllAppointmentsAsync(
+            pagination.PageNumber,
+            pagination.PageSize);
+
         return MapPagedResult<Appointment, AppointmentDto>(appointments);
     }
 
     public async Task<AppointmentDto> GetAppointmentByIdAsync(int id)
     {
-        var appointment = await appointmentRepository.GetAppointmentByIdWithDetailsAsync(id)
+        var appointment = await appointmentRepository
+            .GetAppointmentByIdWithDetailsAsync(id)
             ?? throw new NotFoundException(ErrorMessages.AppointmentNotFound);
+
         return mapper.Map<AppointmentDto>(appointment);
     }
 
-    public async Task<AppointmentDto?> CreateAppointmentAsync(CreateAppointmentDto dto)
+    public async Task<AppointmentDto?> CreateAppointmentAsync(
+        CreateAppointmentDto dto)
     {
         await ValidateAppointmentCanBeCreatedAsync(dto);
+
         var appointment = new Appointment
         {
             PatientId = dto.PatientId,
@@ -50,10 +57,10 @@ public class AppointmentService(
         };
 
         var createdAppointment = await appointmentRepository.AddAsync(appointment);
-        var appointmentWithDetails = await appointmentRepository.GetAppointmentByIdWithDetailsAsync(createdAppointment.Id)
-            ?? throw new NotFoundException(ErrorMessages.AppointmentNotFoundAfterCreation);
-
-        await availabilityCacheService.RemoveDoctorSlotsAsync(appointmentWithDetails.DoctorId, appointmentWithDetails.AppointmentDate);
+        var appointmentWithDetails = await appointmentRepository
+            .GetAppointmentByIdWithDetailsAsync(createdAppointment.Id)
+            ?? throw new NotFoundException(
+                ErrorMessages.AppointmentNotFoundAfterCreation);
 
         await publisher.Publish(new AppointmentBookedEvent
         {
@@ -68,33 +75,79 @@ public class AppointmentService(
         return mapper.Map<AppointmentDto>(appointmentWithDetails);
     }
 
-    public async Task<PagedResultDto<AppointmentDto>> GetAppointmentsByDoctorIdAsync(int doctorId, AppointmentStatus? status, PaginationQueryDto pagination)
+    public async Task<PagedResultDto<AppointmentDto>>
+        GetAppointmentsByDoctorIdAsync(
+            int doctorId,
+            AppointmentStatus? status,
+            PaginationQueryDto pagination)
     {
-        var appointments = await appointmentRepository.GetAppointmentsByDoctorIdAsync(doctorId, status, pagination.PageNumber, pagination.PageSize);
+        var appointments = await appointmentRepository
+            .GetAppointmentsByDoctorIdAsync(
+                doctorId,
+                status,
+                pagination.PageNumber,
+                pagination.PageSize);
+
         return MapPagedResult<Appointment, AppointmentDto>(appointments);
     }
 
-    public async Task<PagedResultDto<AppointmentDto>> GetAppointmentsByPatientIdAsync(int patientId, AppointmentStatus? status, PaginationQueryDto pagination)
+    public async Task<PagedResultDto<AppointmentDto>>
+        GetAppointmentsByPatientIdAsync(
+            int patientId,
+            AppointmentStatus? status,
+            PaginationQueryDto pagination)
     {
-        var appointments = await appointmentRepository.GetAppointmentsByPatientIdAsync(patientId, status, pagination.PageNumber, pagination.PageSize);
+        var appointments = await appointmentRepository
+            .GetAppointmentsByPatientIdAsync(
+                patientId,
+                status,
+                pagination.PageNumber,
+                pagination.PageSize);
+
         return MapPagedResult<Appointment, AppointmentDto>(appointments);
     }
 
-    public async Task<PagedResultDto<AppointmentDto>> GetAppointmentsByDoctorIdAndDateAsync(int doctorId, DateOnly date, PaginationQueryDto pagination)
+    public async Task<PagedResultDto<AppointmentDto>>
+        GetAppointmentsByDoctorIdAndDateAsync(
+            int doctorId,
+            DateOnly date,
+            PaginationQueryDto pagination)
     {
-        var appointments = await appointmentRepository.GetAppointmentsByDoctorIdAndDateAsync(doctorId, date, pagination.PageNumber, pagination.PageSize);
+        var appointments = await appointmentRepository
+            .GetAppointmentsByDoctorIdAndDateAsync(
+                doctorId,
+                date,
+                pagination.PageNumber,
+                pagination.PageSize);
+
         return MapPagedResult<Appointment, AppointmentDto>(appointments);
     }
 
-    public async Task<PagedResultDto<AppointmentDto>> GetAppointmentsByDateAndStatusAsync(DateOnly date, AppointmentStatus? status, PaginationQueryDto pagination)
+    public async Task<PagedResultDto<AppointmentDto>>
+        GetAppointmentsByDateAndStatusAsync(
+            DateOnly date,
+            AppointmentStatus? status,
+            PaginationQueryDto pagination)
     {
-        var appointments = await appointmentRepository.GetAppointmentsByDateAndStatusAsync(date, status, pagination.PageNumber, pagination.PageSize);
+        var appointments = await appointmentRepository
+            .GetAppointmentsByDateAndStatusAsync(
+                date,
+                status,
+                pagination.PageNumber,
+                pagination.PageSize);
+
         return MapPagedResult<Appointment, AppointmentDto>(appointments);
     }
 
-    public async Task<AppointmentDto?> UpdateAppointmentStatusAsync(int id, UpdateAppointmentStatusDto dto, string currentRole, int? currentPatientId, int? currentDoctorId)
+    public async Task<AppointmentDto?> UpdateAppointmentStatusAsync(
+        int id,
+        UpdateAppointmentStatusDto dto,
+        string currentRole,
+        int? currentPatientId,
+        int? currentDoctorId)
     {
-        var appointment = await appointmentRepository.GetAppointmentByIdWithDetailsAsync(id)
+        var appointment = await appointmentRepository
+            .GetAppointmentByIdWithDetailsAsync(id)
             ?? throw new NotFoundException(ErrorMessages.AppointmentNotFound);
 
         switch (dto.Status)
@@ -103,96 +156,253 @@ public class AppointmentService(
                 ConfirmAppointment(appointment, currentRole, currentDoctorId);
                 break;
             case AppointmentStatus.Cancelled:
-                CancelAppointment(appointment, dto, currentRole, currentPatientId, currentDoctorId);
+                CancelAppointment(
+                    appointment,
+                    dto,
+                    currentRole,
+                    currentPatientId,
+                    currentDoctorId);
                 break;
             case AppointmentStatus.Completed:
-                throw new BusinessRuleException(ErrorMessages.AppointmentCompletedOnlyThroughHealthRecord);
+                throw new BusinessRuleException(
+                    ErrorMessages.AppointmentCompletedOnlyThroughHealthRecord);
             default:
-                throw new BusinessRuleException(ErrorMessages.UnsupportedAppointmentStatusTransition);
+                throw new BusinessRuleException(
+                    ErrorMessages.UnsupportedAppointmentStatusTransition);
         }
 
         await appointmentRepository.UpdateAsync(appointment);
 
-        if (dto.Status == AppointmentStatus.Cancelled)
-        {
-            await availabilityCacheService.RemoveDoctorSlotsAsync(appointment.DoctorId, appointment.AppointmentDate);
-        }
+        var appointmentWithDetails = await appointmentRepository
+            .GetAppointmentByIdWithDetailsAsync(id);
 
-        var appointmentWithDetails = await appointmentRepository.GetAppointmentByIdWithDetailsAsync(id);
         return appointmentWithDetails == null
             ? throw new NotFoundException(ErrorMessages.AppointmentNotFound)
             : mapper.Map<AppointmentDto>(appointmentWithDetails);
     }
 
-    public Task<List<AppointmentReportDto>> GetAppointmentReportsAsync() => appointmentRepository.GetAppointmentReportsAsync();
-
-    private async Task ValidateAppointmentCanBeCreatedAsync(CreateAppointmentDto dto)
+    public Task<List<AppointmentReportDto>> GetAppointmentReportsAsync()
     {
-        if (await patientRepository.GetByIdAsync(dto.PatientId) == null) throw new NotFoundException(ErrorMessages.PatientNotFound);
-        var doctor = await doctorRepository.GetDoctorByIdAsync(dto.DoctorId) ?? throw new NotFoundException(ErrorMessages.DoctorNotFound);
-        if (!doctor.IsAvailable) throw new BusinessRuleException(ErrorMessages.DoctorUnavailable);
-        if (!IsAtLeastHoursAhead(dto.AppointmentDate, dto.AppointmentTime, MinimumBookingHoursBeforeAppointment)) throw new BusinessRuleException(ErrorMessages.AppointmentMustBeBookedAtLeast48HoursAhead);
-        if (IsMoreThanMonthsAhead(dto.AppointmentDate, MaximumBookingMonthsAhead)) throw new BusinessRuleException(ErrorMessages.AppointmentCannotBeBookedMoreThanSixMonthsAhead);
-        if (await appointmentRepository.DoctorHasNonCancelledAppointmentAtAsync(dto.DoctorId, dto.AppointmentDate, dto.AppointmentTime)) throw new ConflictException(ErrorMessages.DoctorSlotAlreadyBooked);
-        if (await appointmentRepository.PatientHasNonCancelledAppointmentAtAsync(dto.PatientId, dto.AppointmentDate, dto.AppointmentTime)) throw new ConflictException(ErrorMessages.PatientSlotAlreadyBooked);
-        if (await appointmentRepository.PatientHasNonCancelledAppointmentWithDoctorOnDateAsync(dto.PatientId, dto.DoctorId, dto.AppointmentDate)) throw new ConflictException(ErrorMessages.PatientAlreadyHasAppointmentWithDoctorOnDate);
+        return appointmentRepository.GetAppointmentReportsAsync();
     }
 
-    private static void ConfirmAppointment(Appointment appointment, string currentRole, int? currentDoctorId)
+    private async Task ValidateAppointmentCanBeCreatedAsync(
+        CreateAppointmentDto dto)
     {
-        if (appointment.Status != AppointmentStatus.Pending) throw new BusinessRuleException(ErrorMessages.OnlyPendingAppointmentsCanBeConfirmed);
-        if (currentRole == AppRoles.Patient) throw new ForbiddenException(ErrorMessages.UnsupportedAppointmentStatusTransition);
-        if (currentRole == AppRoles.Doctor && currentDoctorId != appointment.DoctorId) throw new ForbiddenException(ErrorMessages.DoctorsCanManageOnlyOwnAppointments);
+        if (await patientRepository.GetByIdAsync(dto.PatientId) == null)
+        {
+            throw new NotFoundException(ErrorMessages.PatientNotFound);
+        }
+
+        var doctor = await doctorRepository.GetDoctorByIdAsync(dto.DoctorId)
+            ?? throw new NotFoundException(ErrorMessages.DoctorNotFound);
+
+        if (!doctor.IsAvailable)
+        {
+            throw new BusinessRuleException(ErrorMessages.DoctorUnavailable);
+        }
+
+        if (!IsAtLeastHoursAhead(
+                dto.AppointmentDate,
+                dto.AppointmentTime,
+                MinimumBookingHoursBeforeAppointment))
+        {
+            throw new BusinessRuleException(
+                ErrorMessages.AppointmentMustBeBookedAtLeast48HoursAhead);
+        }
+
+        if (IsMoreThanMonthsAhead(
+                dto.AppointmentDate,
+                MaximumBookingMonthsAhead))
+        {
+            throw new BusinessRuleException(
+                ErrorMessages.AppointmentCannotBeBookedMoreThanSixMonthsAhead);
+        }
+
+        if (await appointmentRepository.DoctorHasNonCancelledAppointmentAtAsync(
+                dto.DoctorId,
+                dto.AppointmentDate,
+                dto.AppointmentTime))
+        {
+            throw new ConflictException(
+                ErrorMessages.DoctorSlotAlreadyBooked);
+        }
+
+        if (await appointmentRepository.PatientHasNonCancelledAppointmentAtAsync(
+                dto.PatientId,
+                dto.AppointmentDate,
+                dto.AppointmentTime))
+        {
+            throw new ConflictException(
+                ErrorMessages.PatientSlotAlreadyBooked);
+        }
+
+        if (await appointmentRepository
+                .PatientHasNonCancelledAppointmentWithDoctorOnDateAsync(
+                    dto.PatientId,
+                    dto.DoctorId,
+                    dto.AppointmentDate))
+        {
+            throw new ConflictException(
+                ErrorMessages.PatientAlreadyHasAppointmentWithDoctorOnDate);
+        }
+    }
+
+    private static void ConfirmAppointment(
+        Appointment appointment,
+        string currentRole,
+        int? currentDoctorId)
+    {
+        if (appointment.Status != AppointmentStatus.Pending)
+        {
+            throw new BusinessRuleException(
+                ErrorMessages.OnlyPendingAppointmentsCanBeConfirmed);
+        }
+
+        if (currentRole == AppRoles.Patient)
+        {
+            throw new ForbiddenException(
+                ErrorMessages.UnsupportedAppointmentStatusTransition);
+        }
+
+        if (currentRole == AppRoles.Doctor &&
+            currentDoctorId != appointment.DoctorId)
+        {
+            throw new ForbiddenException(
+                ErrorMessages.DoctorsCanManageOnlyOwnAppointments);
+        }
+
         appointment.Status = AppointmentStatus.Confirmed;
         appointment.CancellationReason = null;
     }
 
-    private static void CancelAppointment(Appointment appointment, UpdateAppointmentStatusDto dto, string currentRole, int? currentPatientId, int? currentDoctorId)
+    private static void CancelAppointment(
+        Appointment appointment,
+        UpdateAppointmentStatusDto dto,
+        string currentRole,
+        int? currentPatientId,
+        int? currentDoctorId)
     {
         EnsureAppointmentCanBeCancelled(appointment, dto);
         var reason = dto.CancellationReason!.Trim();
+
         appointment.CancellationReason = currentRole switch
         {
-            AppRoles.Patient => BuildPatientCancellationReason(appointment, reason, currentPatientId),
-            AppRoles.Doctor => BuildDoctorCancellationReason(appointment, reason, currentDoctorId),
+            AppRoles.Patient => BuildPatientCancellationReason(
+                appointment,
+                reason,
+                currentPatientId),
+            AppRoles.Doctor => BuildDoctorCancellationReason(
+                appointment,
+                reason,
+                currentDoctorId),
             AppRoles.Admin => reason + ErrorMessages.CancelledByAdminSuffix,
-            _ => throw new ForbiddenException(ErrorMessages.UnsupportedAppointmentStatusTransition)
+            _ => throw new ForbiddenException(
+                ErrorMessages.UnsupportedAppointmentStatusTransition)
         };
+
         appointment.Status = AppointmentStatus.Cancelled;
     }
 
-    private static void EnsureAppointmentCanBeCancelled(Appointment appointment, UpdateAppointmentStatusDto dto)
+    private static void EnsureAppointmentCanBeCancelled(
+        Appointment appointment,
+        UpdateAppointmentStatusDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.CancellationReason)) throw new BusinessRuleException(ErrorMessages.CancellationReasonRequired);
-        if (appointment.Status == AppointmentStatus.Completed) throw new BusinessRuleException(ErrorMessages.CompletedAppointmentsCannotBeCancelled);
-        if (appointment.Status == AppointmentStatus.Cancelled) throw new BusinessRuleException(ErrorMessages.CancelledAppointmentsCannotBeCancelledAgain);
+        if (string.IsNullOrWhiteSpace(dto.CancellationReason))
+        {
+            throw new BusinessRuleException(
+                ErrorMessages.CancellationReasonRequired);
+        }
+
+        if (appointment.Status == AppointmentStatus.Completed)
+        {
+            throw new BusinessRuleException(
+                ErrorMessages.CompletedAppointmentsCannotBeCancelled);
+        }
+
+        if (appointment.Status == AppointmentStatus.Cancelled)
+        {
+            throw new BusinessRuleException(
+                ErrorMessages.CancelledAppointmentsCannotBeCancelledAgain);
+        }
     }
 
-    private static string BuildPatientCancellationReason(Appointment appointment, string reason, int? currentPatientId)
+    private static string BuildPatientCancellationReason(
+        Appointment appointment,
+        string reason,
+        int? currentPatientId)
     {
-        if (currentPatientId != appointment.PatientId) throw new ForbiddenException(ErrorMessages.PatientsCanManageOnlyOwnAppointments);
-        if (appointment.Status != AppointmentStatus.Pending) throw new BusinessRuleException(ErrorMessages.PatientsCanCancelOnlyPendingAppointments);
+        if (currentPatientId != appointment.PatientId)
+        {
+            throw new ForbiddenException(
+                ErrorMessages.PatientsCanManageOnlyOwnAppointments);
+        }
+
+        if (appointment.Status != AppointmentStatus.Pending)
+        {
+            throw new BusinessRuleException(
+                ErrorMessages.PatientsCanCancelOnlyPendingAppointments);
+        }
+
         return reason + ErrorMessages.CancelledByPatientSuffix;
     }
 
-    private static string BuildDoctorCancellationReason(Appointment appointment, string reason, int? currentDoctorId)
+    private static string BuildDoctorCancellationReason(
+        Appointment appointment,
+        string reason,
+        int? currentDoctorId)
     {
-        if (currentDoctorId != appointment.DoctorId) throw new ForbiddenException(ErrorMessages.DoctorsCanManageOnlyOwnAppointments);
-        if (appointment.Status != AppointmentStatus.Pending && appointment.Status != AppointmentStatus.Confirmed) throw new BusinessRuleException(ErrorMessages.DoctorsCanCancelOnlyPendingOrConfirmedAppointments);
-        if (!IsAtLeastHoursAhead(appointment.AppointmentDate, appointment.AppointmentTime, MinimumCancellationHoursBeforeAppointment)) throw new BusinessRuleException(ErrorMessages.AppointmentCannotBeCancelledWithin24Hours);
+        if (currentDoctorId != appointment.DoctorId)
+        {
+            throw new ForbiddenException(
+                ErrorMessages.DoctorsCanManageOnlyOwnAppointments);
+        }
+
+        if (appointment.Status != AppointmentStatus.Pending &&
+            appointment.Status != AppointmentStatus.Confirmed)
+        {
+            throw new BusinessRuleException(
+                ErrorMessages.DoctorsCanCancelOnlyPendingOrConfirmedAppointments);
+        }
+
+        if (!IsAtLeastHoursAhead(
+                appointment.AppointmentDate,
+                appointment.AppointmentTime,
+                MinimumCancellationHoursBeforeAppointment))
+        {
+            throw new BusinessRuleException(
+                ErrorMessages.AppointmentCannotBeCancelledWithin24Hours);
+        }
+
         return reason + ErrorMessages.CancelledByDoctorSuffix;
     }
 
-    private static bool IsAtLeastHoursAhead(DateOnly date, TimeOnly time, int minimumHours) => date.ToDateTime(time) >= DateTime.Now.AddHours(minimumHours);
-
-    private static bool IsMoreThanMonthsAhead(DateOnly date, int maximumMonths) => date > DateOnly.FromDateTime(DateTime.Today).AddMonths(maximumMonths);
-
-    private PagedResultDto<TDestination> MapPagedResult<TSource, TDestination>(PagedResult<TSource> pagedResult) => new()
+    private static bool IsAtLeastHoursAhead(
+        DateOnly date,
+        TimeOnly time,
+        int minimumHours)
     {
-        Items = mapper.Map<List<TDestination>>(pagedResult.Items),
-        PageNumber = pagedResult.PageNumber,
-        PageSize = pagedResult.PageSize,
-        TotalCount = pagedResult.TotalCount,
-        TotalPages = pagedResult.TotalPages
-    };
+        return date.ToDateTime(time) >= DateTime.Now.AddHours(minimumHours);
+    }
+
+    private static bool IsMoreThanMonthsAhead(
+        DateOnly date,
+        int maximumMonths)
+    {
+        return date > DateOnly.FromDateTime(DateTime.Today)
+            .AddMonths(maximumMonths);
+    }
+
+    private PagedResultDto<TDestination> MapPagedResult<TSource, TDestination>(
+        PagedResult<TSource> pagedResult)
+    {
+        return new PagedResultDto<TDestination>
+        {
+            Items = mapper.Map<List<TDestination>>(pagedResult.Items),
+            PageNumber = pagedResult.PageNumber,
+            PageSize = pagedResult.PageSize,
+            TotalCount = pagedResult.TotalCount,
+            TotalPages = pagedResult.TotalPages
+        };
+    }
 }

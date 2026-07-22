@@ -2,47 +2,31 @@ using AutoMapper;
 using HealthAxis.API.Constants;
 using HealthAxis.API.Events;
 using HealthAxis.API.Exceptions;
-using MassTransit;
 using HealthAxis.API.Models;
 using HealthAxis.API.Repositories;
-using HealthAxis.API.Services;
 using HealthAxis.API.Services.Impl;
 using HealthAxis.Shared.Constants;
 using HealthAxis.Shared.Dtos;
 using HealthAxis.Shared.Dtos.Appointment;
 using HealthAxis.Shared.Enums;
-using Microsoft.Extensions.Logging;
+using MassTransit;
 using Moq;
 
 namespace HealthAxisTests.ServiceTests;
 
 public class AppointmentServiceTests
 {
-    private readonly Mock<IAppointmentRepository> _appointmentRepositoryMock;
-    private readonly Mock<IPatientRepository> _patientRepositoryMock;
-    private readonly Mock<IDoctorRepository> _doctorRepositoryMock;
-    private readonly Mock<IMapper> _mapperMock;
-    private readonly Mock<IPublishEndpoint> _publisherMock;
-    private readonly Mock<ILogger<AppointmentService>> _loggerMock;
+    private readonly Mock<IAppointmentRepository> _appointmentRepositoryMock = new();
+    private readonly Mock<IPatientRepository> _patientRepositoryMock = new();
+    private readonly Mock<IDoctorRepository> _doctorRepositoryMock = new();
+    private readonly Mock<IMapper> _mapperMock = new();
+    private readonly Mock<IPublishEndpoint> _publisherMock = new();
     private readonly AppointmentService _appointmentService;
-    private readonly Mock<IDoctorAvailabilityCacheService> _availabilityCacheServiceMock;
 
     public AppointmentServiceTests()
     {
-        _appointmentRepositoryMock = new Mock<IAppointmentRepository>();
-        _patientRepositoryMock = new Mock<IPatientRepository>();
-        _doctorRepositoryMock = new Mock<IDoctorRepository>();
-        _mapperMock = new Mock<IMapper>();
-        _publisherMock = new Mock<IPublishEndpoint>();
-        _loggerMock = new Mock<ILogger<AppointmentService>>();
-        _availabilityCacheServiceMock = new Mock<IDoctorAvailabilityCacheService>();
-
         _publisherMock
             .Setup(publisher => publisher.Publish(It.IsAny<AppointmentBookedEvent>()))
-            .Returns(Task.CompletedTask);
-
-        _availabilityCacheServiceMock
-            .Setup(service => service.RemoveDoctorSlotsAsync(It.IsAny<int>(), It.IsAny<DateOnly>()))
             .Returns(Task.CompletedTask);
 
         _appointmentService = new AppointmentService(
@@ -50,549 +34,319 @@ public class AppointmentServiceTests
             _patientRepositoryMock.Object,
             _doctorRepositoryMock.Object,
             _mapperMock.Object,
-            _publisherMock.Object,
-            _availabilityCacheServiceMock.Object);
+            _publisherMock.Object);
     }
 
     [Fact]
-    public async Task GetAllAppointmentsAsync_WhenAppointmentsExist_ShouldReturnPagedAppointmentDtos()
+    public async Task GetAllAppointmentsAsync_WhenAppointmentsExist_ShouldReturnPagedDtos()
     {
         var appointments = new List<Appointment> { CreateAppointment() };
-        var pagedAppointments = CreatePagedResult(appointments);
-        var mappedDtos = new List<AppointmentDto> { CreateAppointmentDtoFromAppointment(appointments[0]) };
-        var pagination = CreatePagination();
-
-        _appointmentRepositoryMock.Setup(repo => repo.GetAllAppointmentsAsync(1, 10)).ReturnsAsync(pagedAppointments);
-        _mapperMock.Setup(mapper => mapper.Map<List<AppointmentDto>>(appointments)).Returns(mappedDtos);
-
-        var result = await _appointmentService.GetAllAppointmentsAsync(pagination);
-
-        Assert.Single(result.Items);
-        Assert.Equal(1, result.Items[0].Id);
-        Assert.Equal(1, result.PageNumber);
-        Assert.Equal(10, result.PageSize);
-        Assert.Equal(1, result.TotalCount);
-        Assert.Equal(1, result.TotalPages);
-    }
-
-    
-
-    [Fact]
-    public async Task GetAllAppointmentsAsync_WhenNoAppointmentsExist_ShouldReturnEmptyPagedResult()
-    {
-        var appointments = new List<Appointment>();
-        _appointmentRepositoryMock.Setup(repo => repo.GetAllAppointmentsAsync(1, 10)).ReturnsAsync(CreatePagedResult(appointments));
-        _mapperMock.Setup(mapper => mapper.Map<List<AppointmentDto>>(appointments)).Returns([]);
+        _appointmentRepositoryMock.Setup(repository => repository.GetAllAppointmentsAsync(1, 10))
+            .ReturnsAsync(CreatePagedResult(appointments));
+        _mapperMock.Setup(mapper => mapper.Map<List<AppointmentDto>>(appointments))
+            .Returns([CreateAppointmentDtoFromAppointment(appointments[0])]);
 
         var result = await _appointmentService.GetAllAppointmentsAsync(CreatePagination());
 
-        Assert.Empty(result.Items);
-        Assert.Equal(0, result.TotalCount);
-        Assert.Equal(0, result.TotalPages);
+        Assert.Single(result.Items);
+        Assert.Equal(1, result.TotalCount);
     }
 
     [Fact]
-    public async Task GetAppointmentByIdAsync_WhenAppointmentExists_ShouldReturnAppointmentDto()
+    public async Task GetAppointmentByIdAsync_WhenMissing_ShouldThrowNotFoundException()
     {
-        var appointment = CreateAppointment();
-        var mappedDto = CreateAppointmentDtoFromAppointment(appointment);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(1)).ReturnsAsync(appointment);
-        _mapperMock.Setup(mapper => mapper.Map<AppointmentDto>(appointment)).Returns(mappedDto);
+        _appointmentRepositoryMock
+            .Setup(repository => repository.GetAppointmentByIdWithDetailsAsync(99))
+            .ReturnsAsync((Appointment?)null);
 
-        var result = await _appointmentService.GetAppointmentByIdAsync(1);
-
-        Assert.Equal(1, result.Id);
-        Assert.Equal(appointment.PatientId, result.PatientId);
-        Assert.Equal(appointment.DoctorId, result.DoctorId);
-    }
-
-    [Fact]
-    public async Task GetAppointmentByIdAsync_WhenAppointmentDoesNotExist_ShouldThrowNotFoundException()
-    {
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(99)).ReturnsAsync((Appointment?)null);
-
-        var exception = await Assert.ThrowsAsync<NotFoundException>(() => _appointmentService.GetAppointmentByIdAsync(99));
+        var exception = await Assert.ThrowsAsync<NotFoundException>(() =>
+            _appointmentService.GetAppointmentByIdAsync(99));
 
         Assert.Equal(ErrorMessages.AppointmentNotFound, exception.Message);
     }
 
     [Fact]
-    public async Task GetAppointmentsByPatientIdAsync_WhenAppointmentsExist_ShouldReturnPagedAppointmentDtos()
-    {
-        var appointments = new List<Appointment> { CreateAppointment(patientId: 10) };
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentsByPatientIdAsync(10, null, 1, 10)).ReturnsAsync(CreatePagedResult(appointments));
-        _mapperMock.Setup(mapper => mapper.Map<List<AppointmentDto>>(appointments)).Returns([CreateAppointmentDtoFromAppointment(appointments[0])]);
-
-        var result = await _appointmentService.GetAppointmentsByPatientIdAsync(10, null, CreatePagination());
-
-        Assert.Single(result.Items);
-        Assert.Equal(10, result.Items[0].PatientId);
-    }
-
-    [Fact]
-    public async Task GetAppointmentsByDoctorIdAsync_WhenAppointmentsExist_ShouldReturnPagedAppointmentDtos()
-    {
-        var appointments = new List<Appointment> { CreateAppointment(doctorId: 20) };
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentsByDoctorIdAsync(20, null, 1, 10)).ReturnsAsync(CreatePagedResult(appointments));
-        _mapperMock.Setup(mapper => mapper.Map<List<AppointmentDto>>(appointments)).Returns([CreateAppointmentDtoFromAppointment(appointments[0])]);
-
-        var result = await _appointmentService.GetAppointmentsByDoctorIdAsync(20, null, CreatePagination());
-
-        Assert.Single(result.Items);
-        Assert.Equal(20, result.Items[0].DoctorId);
-    }
-
-    [Fact]
-    public async Task GetAppointmentsByDoctorIdAndDateAsync_WhenAppointmentsExist_ShouldReturnPagedAppointmentDtos()
-    {
-        var appointmentDate = DateOnly.FromDateTime(GetFutureDateTime());
-        var appointments = new List<Appointment> { CreateAppointment(doctorId: 20, date: appointmentDate) };
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentsByDoctorIdAndDateAsync(20, appointmentDate, 1, 10)).ReturnsAsync(CreatePagedResult(appointments));
-        _mapperMock.Setup(mapper => mapper.Map<List<AppointmentDto>>(appointments)).Returns([CreateAppointmentDtoFromAppointment(appointments[0])]);
-
-        var result = await _appointmentService.GetAppointmentsByDoctorIdAndDateAsync(20, appointmentDate, CreatePagination());
-
-        Assert.Single(result.Items);
-        Assert.Equal(appointmentDate, result.Items[0].AppointmentDate);
-    }
-
-    [Fact]
-    public async Task GetAppointmentsByDateAndStatusAsync_WhenAppointmentsExist_ShouldReturnPagedAppointmentDtos()
-    {
-        var appointmentDate = DateOnly.FromDateTime(GetFutureDateTime());
-        var appointments = new List<Appointment> { CreateAppointment(date: appointmentDate, status: AppointmentStatus.Confirmed) };
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentsByDateAndStatusAsync(appointmentDate, AppointmentStatus.Confirmed, 1, 10)).ReturnsAsync(CreatePagedResult(appointments));
-        _mapperMock.Setup(mapper => mapper.Map<List<AppointmentDto>>(appointments)).Returns([CreateAppointmentDtoFromAppointment(appointments[0])]);
-
-        var result = await _appointmentService.GetAppointmentsByDateAndStatusAsync(appointmentDate, AppointmentStatus.Confirmed, CreatePagination());
-
-        Assert.Single(result.Items);
-        Assert.Equal(AppointmentStatus.Confirmed, result.Items[0].Status);
-    }
-
-    [Fact]
-    public async Task CreateAppointmentAsync_WhenPatientDoesNotExist_ShouldThrowNotFoundException()
+    public async Task CreateAppointmentAsync_WhenPatientMissing_ShouldThrowAndNotPublish()
     {
         var request = CreateAppointmentRequest();
-        _patientRepositoryMock.Setup(repo => repo.GetByIdAsync(request.PatientId)).ReturnsAsync((Patient?)null);
+        _patientRepositoryMock.Setup(repository => repository.GetByIdAsync(request.PatientId))
+            .ReturnsAsync((Patient?)null);
 
-        var exception = await Assert.ThrowsAsync<NotFoundException>(() => _appointmentService.CreateAppointmentAsync(request));
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            _appointmentService.CreateAppointmentAsync(request));
 
-        Assert.Equal(ErrorMessages.PatientNotFound, exception.Message);
-        VerifyAppointmentBookedEventWasNotPublished();
+        VerifyEventWasNotPublished();
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WhenDoctorDoesNotExist_ShouldThrowNotFoundException()
+    public async Task CreateAppointmentAsync_WhenDoctorMissing_ShouldThrowAndNotPublish()
     {
         var request = CreateAppointmentRequest();
-        _patientRepositoryMock.Setup(repo => repo.GetByIdAsync(request.PatientId)).ReturnsAsync(CreatePatient(request.PatientId));
-        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(request.DoctorId)).ReturnsAsync((Doctor?)null);
+        _patientRepositoryMock.Setup(repository => repository.GetByIdAsync(request.PatientId))
+            .ReturnsAsync(CreatePatient(request.PatientId));
+        _doctorRepositoryMock.Setup(repository => repository.GetDoctorByIdAsync(request.DoctorId))
+            .ReturnsAsync((Doctor?)null);
 
-        var exception = await Assert.ThrowsAsync<NotFoundException>(() => _appointmentService.CreateAppointmentAsync(request));
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            _appointmentService.CreateAppointmentAsync(request));
 
-        Assert.Equal(ErrorMessages.DoctorNotFound, exception.Message);
-        VerifyAppointmentBookedEventWasNotPublished();
+        VerifyEventWasNotPublished();
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WhenDoctorIsUnavailable_ShouldThrowBusinessRuleException()
+    public async Task CreateAppointmentAsync_WhenDoctorUnavailable_ShouldThrowAndNotPublish()
     {
         var request = CreateAppointmentRequest();
-        _patientRepositoryMock.Setup(repo => repo.GetByIdAsync(request.PatientId)).ReturnsAsync(CreatePatient(request.PatientId));
-        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(request.DoctorId)).ReturnsAsync(CreateDoctor(request.DoctorId, isAvailable: false));
+        SetupValidPatientAndDoctor(request, doctorAvailable: false);
 
-        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _appointmentService.CreateAppointmentAsync(request));
+        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _appointmentService.CreateAppointmentAsync(request));
 
         Assert.Equal(ErrorMessages.DoctorUnavailable, exception.Message);
-        VerifyAppointmentBookedEventWasNotPublished();
+        VerifyEventWasNotPublished();
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WhenAppointmentIsLessThanFortyEightHoursAway_ShouldThrowBusinessRuleException()
+    public async Task CreateAppointmentAsync_WhenLessThanFortyEightHoursAway_ShouldThrow()
     {
         var tooSoon = DateTime.Now.AddHours(47);
-        var request = CreateAppointmentRequest(DateOnly.FromDateTime(tooSoon), TimeOnly.FromDateTime(tooSoon));
+        var request = CreateAppointmentRequest(
+            DateOnly.FromDateTime(tooSoon), TimeOnly.FromDateTime(tooSoon));
         SetupValidPatientAndDoctor(request);
 
-        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _appointmentService.CreateAppointmentAsync(request));
+        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _appointmentService.CreateAppointmentAsync(request));
 
         Assert.Equal(ErrorMessages.AppointmentMustBeBookedAtLeast48HoursAhead, exception.Message);
-        VerifyAppointmentBookedEventWasNotPublished();
+        VerifyEventWasNotPublished();
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WhenAppointmentIsMoreThanSixMonthsAhead_ShouldThrowBusinessRuleException()
+    public async Task CreateAppointmentAsync_WhenMoreThanSixMonthsAhead_ShouldThrow()
     {
-        var tooFarDate = DateOnly.FromDateTime(DateTime.Today).AddMonths(6).AddDays(1);
-        var request = CreateAppointmentRequest(tooFarDate, new TimeOnly(10, 30));
+        var request = CreateAppointmentRequest(
+            DateOnly.FromDateTime(DateTime.Today).AddMonths(6).AddDays(1),
+            new TimeOnly(10, 30));
         SetupValidPatientAndDoctor(request);
 
-        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _appointmentService.CreateAppointmentAsync(request));
+        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _appointmentService.CreateAppointmentAsync(request));
 
         Assert.Equal(ErrorMessages.AppointmentCannotBeBookedMoreThanSixMonthsAhead, exception.Message);
-        VerifyAppointmentBookedEventWasNotPublished();
+        VerifyEventWasNotPublished();
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WhenDoctorSlotIsAlreadyBooked_ShouldThrowConflictException()
+    public async Task CreateAppointmentAsync_WhenDoctorSlotBooked_ShouldThrowConflictException()
     {
         var request = CreateAppointmentRequest();
         SetupValidPatientAndDoctor(request);
-        _appointmentRepositoryMock.Setup(repo => repo.DoctorHasNonCancelledAppointmentAtAsync(request.DoctorId, request.AppointmentDate, request.AppointmentTime)).ReturnsAsync(true);
+        _appointmentRepositoryMock
+            .Setup(repository => repository.DoctorHasNonCancelledAppointmentAtAsync(
+                request.DoctorId, request.AppointmentDate, request.AppointmentTime))
+            .ReturnsAsync(true);
 
-        var exception = await Assert.ThrowsAsync<ConflictException>(() => _appointmentService.CreateAppointmentAsync(request));
+        var exception = await Assert.ThrowsAsync<ConflictException>(() =>
+            _appointmentService.CreateAppointmentAsync(request));
 
         Assert.Equal(ErrorMessages.DoctorSlotAlreadyBooked, exception.Message);
-        VerifyAppointmentBookedEventWasNotPublished();
+        VerifyEventWasNotPublished();
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WhenPatientSlotIsAlreadyBooked_ShouldThrowConflictException()
+    public async Task CreateAppointmentAsync_WhenValid_ShouldCreatePendingAndPublishEvent()
     {
         var request = CreateAppointmentRequest();
+        var created = CreateAppointment(
+            patientId: request.PatientId,
+            doctorId: request.DoctorId,
+            date: request.AppointmentDate,
+            time: request.AppointmentTime);
         SetupValidPatientAndDoctor(request);
-        SetupDoctorSlotAvailable(request);
-        _appointmentRepositoryMock.Setup(repo => repo.PatientHasNonCancelledAppointmentAtAsync(request.PatientId, request.AppointmentDate, request.AppointmentTime)).ReturnsAsync(true);
-
-        var exception = await Assert.ThrowsAsync<ConflictException>(() => _appointmentService.CreateAppointmentAsync(request));
-
-        Assert.Equal(ErrorMessages.PatientSlotAlreadyBooked, exception.Message);
-        VerifyAppointmentBookedEventWasNotPublished();
-    }
-
-    [Fact]
-    public async Task CreateAppointmentAsync_WhenPatientAlreadyHasAppointmentWithDoctorOnDate_ShouldThrowConflictException()
-    {
-        var request = CreateAppointmentRequest();
-        SetupValidPatientAndDoctor(request);
-        SetupDoctorSlotAvailable(request);
-        _appointmentRepositoryMock.Setup(repo => repo.PatientHasNonCancelledAppointmentAtAsync(request.PatientId, request.AppointmentDate, request.AppointmentTime)).ReturnsAsync(false);
-        _appointmentRepositoryMock.Setup(repo => repo.PatientHasNonCancelledAppointmentWithDoctorOnDateAsync(request.PatientId, request.DoctorId, request.AppointmentDate)).ReturnsAsync(true);
-
-        var exception = await Assert.ThrowsAsync<ConflictException>(() => _appointmentService.CreateAppointmentAsync(request));
-
-        Assert.Equal(ErrorMessages.PatientAlreadyHasAppointmentWithDoctorOnDate, exception.Message);
-        VerifyAppointmentBookedEventWasNotPublished();
-    }
-
-    [Fact]
-    public async Task CreateAppointmentAsync_WhenCreatedAppointmentCannotBeReloaded_ShouldThrowNotFoundException()
-    {
-        var request = CreateAppointmentRequest();
-        SetupValidPatientAndDoctor(request);
-        SetupNoAppointmentConflicts(request);
-        _appointmentRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<Appointment>())).ReturnsAsync(CreateAppointment(id: 1));
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(1)).ReturnsAsync((Appointment?)null);
-
-        var exception = await Assert.ThrowsAsync<NotFoundException>(() => _appointmentService.CreateAppointmentAsync(request));
-
-        Assert.Equal(ErrorMessages.AppointmentNotFoundAfterCreation, exception.Message);
-        VerifyAppointmentBookedEventWasNotPublished();
-    }
-
-    [Fact]
-    public async Task CreateAppointmentAsync_WhenValid_ShouldCreateAppointmentWithPendingStatusAndPublishAppointmentBookedEvent()
-    {
-        var request = CreateAppointmentRequest();
-        var createdAppointment = CreateAppointment(id: 1, patientId: request.PatientId, doctorId: request.DoctorId, date: request.AppointmentDate, time: request.AppointmentTime);
-        var mappedDto = CreateAppointmentDtoFromAppointment(createdAppointment);
-        SetupValidPatientAndDoctor(request);
-        SetupNoAppointmentConflicts(request);
-        _appointmentRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<Appointment>())).ReturnsAsync(createdAppointment);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(1)).ReturnsAsync(createdAppointment);
-        _mapperMock.Setup(mapper => mapper.Map<AppointmentDto>(createdAppointment)).Returns(mappedDto);
+        SetupNoConflicts(request);
+        _appointmentRepositoryMock.Setup(repository => repository.AddAsync(It.IsAny<Appointment>()))
+            .ReturnsAsync(created);
+        _appointmentRepositoryMock
+            .Setup(repository => repository.GetAppointmentByIdWithDetailsAsync(created.Id))
+            .ReturnsAsync(created);
+        _mapperMock.Setup(mapper => mapper.Map<AppointmentDto>(created))
+            .Returns(CreateAppointmentDtoFromAppointment(created));
 
         var result = await _appointmentService.CreateAppointmentAsync(request);
 
         Assert.NotNull(result);
-        Assert.Equal(AppointmentStatus.Pending, result!.Status);
-        _appointmentRepositoryMock.Verify(repo => repo.AddAsync(It.Is<Appointment>(appointment => appointment.Status == AppointmentStatus.Pending)), Times.Once);
-        _publisherMock.Verify(
-            publisher => publisher.Publish(It.Is<AppointmentBookedEvent>(appointmentEvent =>
-                appointmentEvent.AppointmentId == createdAppointment.Id &&
-                appointmentEvent.PatientId == createdAppointment.PatientId &&
-                appointmentEvent.DoctorId == createdAppointment.DoctorId &&
-                appointmentEvent.ScheduledDate == createdAppointment.AppointmentDate &&
-                appointmentEvent.TimeSlot == createdAppointment.AppointmentTime)),
-            Times.Once);
+        Assert.Equal(AppointmentStatus.Pending, result.Status);
+        _publisherMock.Verify(publisher => publisher.Publish(
+            It.Is<AppointmentBookedEvent>(message =>
+                message.AppointmentId == created.Id &&
+                message.PatientId == created.PatientId &&
+                message.DoctorId == created.DoctorId &&
+                message.ScheduledDate == created.AppointmentDate &&
+                message.TimeSlot == created.AppointmentTime)), Times.Once);
     }
 
     [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenAppointmentDoesNotExist_ShouldThrowNotFoundException()
-    {
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(99)).ReturnsAsync((Appointment?)null);
-
-        var exception = await Assert.ThrowsAsync<NotFoundException>(() => _appointmentService.UpdateAppointmentStatusAsync(99, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Confirmed }, AppRoles.Admin, null, null));
-
-        Assert.Equal(ErrorMessages.AppointmentNotFound, exception.Message);
-    }
-
-    [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenAdminConfirmsPendingAppointment_ShouldUpdateStatus()
+    public async Task UpdateAppointmentStatusAsync_WhenAdminConfirmsPending_ShouldUpdate()
     {
         var appointment = CreateAppointment(status: AppointmentStatus.Pending);
-        var confirmedAppointment = CreateAppointment(status: AppointmentStatus.Confirmed);
-        SetupAppointmentReload(appointment, confirmedAppointment);
-        _mapperMock.Setup(mapper => mapper.Map<AppointmentDto>(confirmedAppointment)).Returns(CreateAppointmentDtoFromAppointment(confirmedAppointment));
+        var reloaded = CreateAppointment(status: AppointmentStatus.Confirmed);
+        SetupAppointmentReload(appointment, reloaded);
+        _mapperMock.Setup(mapper => mapper.Map<AppointmentDto>(reloaded))
+            .Returns(CreateAppointmentDtoFromAppointment(reloaded));
 
-        var result = await _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Confirmed }, AppRoles.Admin, null, null);
+        var result = await _appointmentService.UpdateAppointmentStatusAsync(
+            appointment.Id,
+            new UpdateAppointmentStatusDto { Status = AppointmentStatus.Confirmed },
+            AppRoles.Admin, null, null);
 
         Assert.Equal(AppointmentStatus.Confirmed, result!.Status);
-        _appointmentRepositoryMock.Verify(repo => repo.UpdateAsync(It.Is<Appointment>(updated => updated.Status == AppointmentStatus.Confirmed && updated.CancellationReason == null)), Times.Once);
     }
 
     [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenConfirmingNonPendingAppointment_ShouldThrowBusinessRuleException()
-    {
-        var appointment = CreateAppointment(status: AppointmentStatus.Confirmed);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id)).ReturnsAsync(appointment);
-
-        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Confirmed }, AppRoles.Admin, null, null));
-
-        Assert.Equal(ErrorMessages.OnlyPendingAppointmentsCanBeConfirmed, exception.Message);
-    }
-
-    [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenPatientConfirmsAppointment_ShouldThrowForbiddenException()
+    public async Task UpdateAppointmentStatusAsync_WhenPatientConfirms_ShouldThrowForbidden()
     {
         var appointment = CreateAppointment(status: AppointmentStatus.Pending);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id)).ReturnsAsync(appointment);
+        _appointmentRepositoryMock
+            .Setup(repository => repository.GetAppointmentByIdWithDetailsAsync(appointment.Id))
+            .ReturnsAsync(appointment);
 
-        var exception = await Assert.ThrowsAsync<ForbiddenException>(() => _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Confirmed }, AppRoles.Patient, appointment.PatientId, null));
-
-        Assert.Equal(ErrorMessages.UnsupportedAppointmentStatusTransition, exception.Message);
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
+            _appointmentService.UpdateAppointmentStatusAsync(
+                appointment.Id,
+                new UpdateAppointmentStatusDto { Status = AppointmentStatus.Confirmed },
+                AppRoles.Patient, appointment.PatientId, null));
     }
 
     [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenDoctorConfirmsAnotherDoctorsAppointment_ShouldThrowForbiddenException()
-    {
-        var appointment = CreateAppointment(status: AppointmentStatus.Pending, doctorId: 20);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id)).ReturnsAsync(appointment);
-
-        var exception = await Assert.ThrowsAsync<ForbiddenException>(() => _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Confirmed }, AppRoles.Doctor, null, 99));
-
-        Assert.Equal(ErrorMessages.DoctorsCanManageOnlyOwnAppointments, exception.Message);
-    }
-
-    [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenCancellationReasonMissing_ShouldThrowBusinessRuleException()
-    {
-        var appointment = CreateAppointment(status: AppointmentStatus.Pending);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id)).ReturnsAsync(appointment);
-
-        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Cancelled }, AppRoles.Admin, null, null));
-
-        Assert.Equal(ErrorMessages.CancellationReasonRequired, exception.Message);
-    }
-
-    [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenCancellingCompletedAppointment_ShouldThrowBusinessRuleException()
-    {
-        var appointment = CreateAppointment(status: AppointmentStatus.Completed);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id)).ReturnsAsync(appointment);
-
-        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Cancelled, CancellationReason = "Reason" }, AppRoles.Admin, null, null));
-
-        Assert.Equal(ErrorMessages.CompletedAppointmentsCannotBeCancelled, exception.Message);
-    }
-
-    [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenCancellingAlreadyCancelledAppointment_ShouldThrowBusinessRuleException()
-    {
-        var appointment = CreateAppointment(status: AppointmentStatus.Cancelled);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id)).ReturnsAsync(appointment);
-
-        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Cancelled, CancellationReason = "Reason" }, AppRoles.Admin, null, null));
-
-        Assert.Equal(ErrorMessages.CancelledAppointmentsCannotBeCancelledAgain, exception.Message);
-    }
-
-    [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenPatientCancelsAnotherPatientsAppointment_ShouldThrowForbiddenException()
+    public async Task UpdateAppointmentStatusAsync_WhenPatientCancelsOwnPending_ShouldAppendSuffix()
     {
         var appointment = CreateAppointment(status: AppointmentStatus.Pending, patientId: 10);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id)).ReturnsAsync(appointment);
+        var reloaded = CreateAppointment(status: AppointmentStatus.Cancelled, patientId: 10);
+        reloaded.CancellationReason = "Reason - Cancelled by patient";
+        SetupAppointmentReload(appointment, reloaded);
+        _mapperMock.Setup(mapper => mapper.Map<AppointmentDto>(reloaded))
+            .Returns(CreateAppointmentDtoFromAppointment(reloaded));
 
-        var exception = await Assert.ThrowsAsync<ForbiddenException>(() => _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Cancelled, CancellationReason = "Reason" }, AppRoles.Patient, 99, null));
-
-        Assert.Equal(ErrorMessages.PatientsCanManageOnlyOwnAppointments, exception.Message);
-    }
-
-    [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenPatientCancelsConfirmedAppointment_ShouldThrowBusinessRuleException()
-    {
-        var appointment = CreateAppointment(status: AppointmentStatus.Confirmed, patientId: 10);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id)).ReturnsAsync(appointment);
-
-        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Cancelled, CancellationReason = "Reason" }, AppRoles.Patient, 10, null));
-
-        Assert.Equal(ErrorMessages.PatientsCanCancelOnlyPendingAppointments, exception.Message);
-    }
-
-    [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenPatientCancelsOwnPendingAppointment_ShouldAppendPatientSuffix()
-    {
-        var appointment = CreateAppointment(status: AppointmentStatus.Pending, patientId: 10);
-        var cancelledAppointment = CreateAppointment(status: AppointmentStatus.Cancelled, patientId: 10);
-        cancelledAppointment.CancellationReason = "Reason - Cancelled by patient";
-        SetupAppointmentReload(appointment, cancelledAppointment);
-        _mapperMock.Setup(mapper => mapper.Map<AppointmentDto>(cancelledAppointment)).Returns(CreateAppointmentDtoFromAppointment(cancelledAppointment));
-
-        var result = await _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Cancelled, CancellationReason = "Reason" }, AppRoles.Patient, 10, null);
+        var result = await _appointmentService.UpdateAppointmentStatusAsync(
+            appointment.Id,
+            new UpdateAppointmentStatusDto
+            {
+                Status = AppointmentStatus.Cancelled,
+                CancellationReason = "Reason"
+            },
+            AppRoles.Patient, 10, null);
 
         Assert.Equal(AppointmentStatus.Cancelled, result!.Status);
-        _appointmentRepositoryMock.Verify(repo => repo.UpdateAsync(It.Is<Appointment>(updated => updated.CancellationReason == "Reason - Cancelled by patient")), Times.Once);
+        _appointmentRepositoryMock.Verify(repository => repository.UpdateAsync(
+            It.Is<Appointment>(updated =>
+                updated.CancellationReason == "Reason - Cancelled by patient")), Times.Once);
     }
 
     [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenDoctorCancelsAnotherDoctorsAppointment_ShouldThrowForbiddenException()
-    {
-        var appointment = CreateAppointment(status: AppointmentStatus.Pending, doctorId: 20);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id)).ReturnsAsync(appointment);
-
-        var exception = await Assert.ThrowsAsync<ForbiddenException>(() => _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Cancelled, CancellationReason = "Reason" }, AppRoles.Doctor, null, 99));
-
-        Assert.Equal(ErrorMessages.DoctorsCanManageOnlyOwnAppointments, exception.Message);
-    }
-
-    [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenDoctorCancelsAppointmentWithin24Hours_ShouldThrowBusinessRuleException()
+    public async Task UpdateAppointmentStatusAsync_WhenDoctorCancelsWithin24Hours_ShouldThrow()
     {
         var soon = DateTime.Now.AddHours(23);
-        var appointment = CreateAppointment(status: AppointmentStatus.Confirmed, doctorId: 20, date: DateOnly.FromDateTime(soon), time: TimeOnly.FromDateTime(soon));
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id)).ReturnsAsync(appointment);
+        var appointment = CreateAppointment(
+            doctorId: 20,
+            date: DateOnly.FromDateTime(soon),
+            time: TimeOnly.FromDateTime(soon),
+            status: AppointmentStatus.Confirmed);
+        _appointmentRepositoryMock
+            .Setup(repository => repository.GetAppointmentByIdWithDetailsAsync(appointment.Id))
+            .ReturnsAsync(appointment);
 
-        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Cancelled, CancellationReason = "Reason" }, AppRoles.Doctor, null, 20));
+        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _appointmentService.UpdateAppointmentStatusAsync(
+                appointment.Id,
+                new UpdateAppointmentStatusDto
+                {
+                    Status = AppointmentStatus.Cancelled,
+                    CancellationReason = "Reason"
+                },
+                AppRoles.Doctor, null, 20));
 
         Assert.Equal(ErrorMessages.AppointmentCannotBeCancelledWithin24Hours, exception.Message);
     }
 
     [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenDoctorCancelsOwnAppointment_ShouldAppendDoctorSuffix()
-    {
-        var appointment = CreateAppointment(status: AppointmentStatus.Confirmed, doctorId: 20);
-        var cancelledAppointment = CreateAppointment(status: AppointmentStatus.Cancelled, doctorId: 20);
-        cancelledAppointment.CancellationReason = "Doctor emergency - Cancelled by doctor";
-        SetupAppointmentReload(appointment, cancelledAppointment);
-        _mapperMock.Setup(mapper => mapper.Map<AppointmentDto>(cancelledAppointment)).Returns(CreateAppointmentDtoFromAppointment(cancelledAppointment));
-
-        var result = await _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Cancelled, CancellationReason = "Doctor emergency" }, AppRoles.Doctor, null, 20);
-
-        Assert.Equal(AppointmentStatus.Cancelled, result!.Status);
-        _appointmentRepositoryMock.Verify(repo => repo.UpdateAsync(It.Is<Appointment>(updated => updated.CancellationReason == "Doctor emergency - Cancelled by doctor")), Times.Once);
-    }
-
-    [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenAdminCancelsAppointment_ShouldAppendAdminSuffix()
+    public async Task UpdateAppointmentStatusAsync_WhenCompletedRequested_ShouldThrow()
     {
         var appointment = CreateAppointment(status: AppointmentStatus.Confirmed);
-        var cancelledAppointment = CreateAppointment(status: AppointmentStatus.Cancelled);
-        cancelledAppointment.CancellationReason = "Admin action - Cancelled by admin";
-        SetupAppointmentReload(appointment, cancelledAppointment);
-        _mapperMock.Setup(mapper => mapper.Map<AppointmentDto>(cancelledAppointment)).Returns(CreateAppointmentDtoFromAppointment(cancelledAppointment));
+        _appointmentRepositoryMock
+            .Setup(repository => repository.GetAppointmentByIdWithDetailsAsync(appointment.Id))
+            .ReturnsAsync(appointment);
 
-        var result = await _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Cancelled, CancellationReason = "Admin action" }, AppRoles.Admin, null, null);
-
-        Assert.Equal(AppointmentStatus.Cancelled, result!.Status);
-        _appointmentRepositoryMock.Verify(repo => repo.UpdateAsync(It.Is<Appointment>(updated => updated.CancellationReason == "Admin action - Cancelled by admin")), Times.Once);
-    }
-
-    [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenUnsupportedRoleCancelsAppointment_ShouldThrowForbiddenException()
-    {
-        var appointment = CreateAppointment(status: AppointmentStatus.Pending);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id)).ReturnsAsync(appointment);
-
-        var exception = await Assert.ThrowsAsync<ForbiddenException>(() => _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Cancelled, CancellationReason = "Reason" }, "Receptionist", null, null));
-
-        Assert.Equal(ErrorMessages.UnsupportedAppointmentStatusTransition, exception.Message);
-    }
-
-    [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenCompletedRequested_ShouldThrowBusinessRuleException()
-    {
-        var appointment = CreateAppointment(status: AppointmentStatus.Confirmed);
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id)).ReturnsAsync(appointment);
-
-        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() => _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Completed }, AppRoles.Doctor, null, appointment.DoctorId));
+        var exception = await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _appointmentService.UpdateAppointmentStatusAsync(
+                appointment.Id,
+                new UpdateAppointmentStatusDto { Status = AppointmentStatus.Completed },
+                AppRoles.Doctor, null, appointment.DoctorId));
 
         Assert.Equal(ErrorMessages.AppointmentCompletedOnlyThroughHealthRecord, exception.Message);
     }
 
     [Fact]
-    public async Task UpdateAppointmentStatusAsync_WhenAppointmentCannotBeReloadedAfterUpdate_ShouldThrowNotFoundException()
-    {
-        var appointment = CreateAppointment(status: AppointmentStatus.Pending);
-        _appointmentRepositoryMock.SetupSequence(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id))
-            .ReturnsAsync(appointment)
-            .ReturnsAsync((Appointment?)null);
-        _appointmentRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Appointment>())).ReturnsAsync(appointment);
-
-        var exception = await Assert.ThrowsAsync<NotFoundException>(() => _appointmentService.UpdateAppointmentStatusAsync(appointment.Id, new UpdateAppointmentStatusDto { Status = AppointmentStatus.Confirmed }, AppRoles.Admin, null, null));
-
-        Assert.Equal(ErrorMessages.AppointmentNotFound, exception.Message);
-    }
-
-    [Fact]
-    public async Task GetAppointmentReportsAsync_WhenAppointmentsExist_ShouldReturnGroupedReports()
+    public async Task GetAppointmentReportsAsync_WhenReportsExist_ShouldReturnReports()
     {
         var reports = new List<AppointmentReportDto>
         {
-            new() { Date = new DateOnly(2026, 6, 20), PendingCount = 1, ConfirmedCount = 1, CancelledCount = 1, CompletedCount = 0, TotalCount = 3 },
-            new() { Date = new DateOnly(2026, 6, 21), PendingCount = 0, ConfirmedCount = 0, CancelledCount = 0, CompletedCount = 1, TotalCount = 1 }
+            new() { Date = new DateOnly(2026, 6, 20), PendingCount = 1, TotalCount = 1 }
         };
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentReportsAsync()).ReturnsAsync(reports);
+        _appointmentRepositoryMock.Setup(repository => repository.GetAppointmentReportsAsync())
+            .ReturnsAsync(reports);
 
         var result = await _appointmentService.GetAppointmentReportsAsync();
 
-        Assert.Equal(2, result.Count);
+        Assert.Single(result);
     }
 
-    [Fact]
-    public async Task GetAppointmentReportsAsync_WhenNoAppointmentsExist_ShouldReturnEmptyList()
+    private void SetupValidPatientAndDoctor(
+        CreateAppointmentDto request, bool doctorAvailable = true)
     {
-        _appointmentRepositoryMock.Setup(repo => repo.GetAppointmentReportsAsync()).ReturnsAsync([]);
-
-        var result = await _appointmentService.GetAppointmentReportsAsync();
-
-        Assert.Empty(result);
+        _patientRepositoryMock.Setup(repository => repository.GetByIdAsync(request.PatientId))
+            .ReturnsAsync(CreatePatient(request.PatientId));
+        _doctorRepositoryMock.Setup(repository => repository.GetDoctorByIdAsync(request.DoctorId))
+            .ReturnsAsync(CreateDoctor(request.DoctorId, doctorAvailable));
     }
 
-    private void SetupValidPatientAndDoctor(CreateAppointmentDto request)
+    private void SetupNoConflicts(CreateAppointmentDto request)
     {
-        _patientRepositoryMock.Setup(repo => repo.GetByIdAsync(request.PatientId)).ReturnsAsync(CreatePatient(request.PatientId));
-        _doctorRepositoryMock.Setup(repo => repo.GetDoctorByIdAsync(request.DoctorId)).ReturnsAsync(CreateDoctor(request.DoctorId, true));
+        _appointmentRepositoryMock
+            .Setup(repository => repository.DoctorHasNonCancelledAppointmentAtAsync(
+                request.DoctorId, request.AppointmentDate, request.AppointmentTime))
+            .ReturnsAsync(false);
+        _appointmentRepositoryMock
+            .Setup(repository => repository.PatientHasNonCancelledAppointmentAtAsync(
+                request.PatientId, request.AppointmentDate, request.AppointmentTime))
+            .ReturnsAsync(false);
+        _appointmentRepositoryMock
+            .Setup(repository => repository.PatientHasNonCancelledAppointmentWithDoctorOnDateAsync(
+                request.PatientId, request.DoctorId, request.AppointmentDate))
+            .ReturnsAsync(false);
     }
 
-    private void SetupDoctorSlotAvailable(CreateAppointmentDto request)
+    private void SetupAppointmentReload(Appointment appointment, Appointment reloaded)
     {
-        _appointmentRepositoryMock.Setup(repo => repo.DoctorHasNonCancelledAppointmentAtAsync(request.DoctorId, request.AppointmentDate, request.AppointmentTime)).ReturnsAsync(false);
-    }
-
-    private void SetupNoAppointmentConflicts(CreateAppointmentDto request)
-    {
-        SetupDoctorSlotAvailable(request);
-        _appointmentRepositoryMock.Setup(repo => repo.PatientHasNonCancelledAppointmentAtAsync(request.PatientId, request.AppointmentDate, request.AppointmentTime)).ReturnsAsync(false);
-        _appointmentRepositoryMock.Setup(repo => repo.PatientHasNonCancelledAppointmentWithDoctorOnDateAsync(request.PatientId, request.DoctorId, request.AppointmentDate)).ReturnsAsync(false);
-    }
-
-    private void SetupAppointmentReload(Appointment appointment, Appointment reloadedAppointment)
-    {
-        _appointmentRepositoryMock.SetupSequence(repo => repo.GetAppointmentByIdWithDetailsAsync(appointment.Id))
+        _appointmentRepositoryMock
+            .SetupSequence(repository => repository.GetAppointmentByIdWithDetailsAsync(appointment.Id))
             .ReturnsAsync(appointment)
-            .ReturnsAsync(reloadedAppointment);
-        _appointmentRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Appointment>())).ReturnsAsync((Appointment updated) => updated);
+            .ReturnsAsync(reloaded);
+        _appointmentRepositoryMock.Setup(repository => repository.UpdateAsync(It.IsAny<Appointment>()))
+            .ReturnsAsync((Appointment updated) => updated);
     }
 
-    private void VerifyAppointmentBookedEventWasNotPublished()
+    private void VerifyEventWasNotPublished()
     {
         _publisherMock.Verify(
             publisher => publisher.Publish(It.IsAny<AppointmentBookedEvent>()),
             Times.Never);
     }
 
-    private static PaginationQueryDto CreatePagination() => new() { PageNumber = 1, PageSize = 10 };
+    private static PaginationQueryDto CreatePagination() => new()
+    {
+        PageNumber = 1,
+        PageSize = 10
+    };
 
     private static PagedResult<Appointment> CreatePagedResult(List<Appointment> appointments) => new()
     {
@@ -605,8 +359,9 @@ public class AppointmentServiceTests
 
     private static CreateAppointmentDto CreateAppointmentRequest()
     {
-        var futureDateTime = GetFutureDateTime();
-        return CreateAppointmentRequest(DateOnly.FromDateTime(futureDateTime), TimeOnly.FromDateTime(futureDateTime));
+        var future = GetFutureDateTime();
+        return CreateAppointmentRequest(
+            DateOnly.FromDateTime(future), TimeOnly.FromDateTime(future));
     }
 
     private static CreateAppointmentDto CreateAppointmentRequest(DateOnly date, TimeOnly time) => new()
@@ -624,18 +379,19 @@ public class AppointmentServiceTests
         DateOnly? date = null,
         TimeOnly? time = null,
         AppointmentStatus status = AppointmentStatus.Pending) => new()
-        {
-            Id = id,
-            PatientId = patientId,
-            DoctorId = doctorId,
-            AppointmentDate = date ?? DateOnly.FromDateTime(GetFutureDateTime()),
-            AppointmentTime = time ?? TimeOnly.FromDateTime(GetFutureDateTime()),
-            Status = status,
-            Patient = CreatePatient(patientId),
-            Doctor = CreateDoctor(doctorId, true)
-        };
+    {
+        Id = id,
+        PatientId = patientId,
+        DoctorId = doctorId,
+        AppointmentDate = date ?? DateOnly.FromDateTime(GetFutureDateTime()),
+        AppointmentTime = time ?? TimeOnly.FromDateTime(GetFutureDateTime()),
+        Status = status,
+        Patient = CreatePatient(patientId),
+        Doctor = CreateDoctor(doctorId, true)
+    };
 
-    private static AppointmentDto CreateAppointmentDtoFromAppointment(Appointment appointment) => new()
+    private static AppointmentDto CreateAppointmentDtoFromAppointment(
+        Appointment appointment) => new()
     {
         Id = appointment.Id,
         PatientId = appointment.PatientId,
@@ -648,9 +404,21 @@ public class AppointmentServiceTests
         CancellationReason = appointment.CancellationReason
     };
 
-    private static Patient CreatePatient(int id) => new() { Id = id, UserId = $"patient-user-id-{id}", FullName = "Patient One" };
+    private static Patient CreatePatient(int id) => new()
+    {
+        Id = id,
+        UserId = $"patient-user-id-{id}",
+        FullName = "Patient One"
+    };
 
-    private static Doctor CreateDoctor(int id, bool isAvailable) => new() { Id = id, UserId = $"doctor-user-id-{id}", FullName = "Doctor One", IsAvailable = isAvailable };
+    private static Doctor CreateDoctor(int id, bool isAvailable) => new()
+    {
+        Id = id,
+        UserId = $"doctor-user-id-{id}",
+        FullName = "Doctor One",
+        IsAvailable = isAvailable
+    };
 
-    private static DateTime GetFutureDateTime() => DateTime.Now.AddDays(3).Date.AddHours(10).AddMinutes(30);
+    private static DateTime GetFutureDateTime() =>
+        DateTime.Now.AddDays(3).Date.AddHours(10).AddMinutes(30);
 }

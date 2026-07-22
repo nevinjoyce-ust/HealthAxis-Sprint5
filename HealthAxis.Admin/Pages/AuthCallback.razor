@@ -1,10 +1,10 @@
 ﻿@page "/auth/callback"
 
 @using System.Net.Http.Json
-@using Microsoft.AspNetCore.WebUtilities
 @using HealthAxis.Admin.Auth
 @using HealthAxis.Admin.Services
 @using HealthAxis.Shared.Dtos.Auth
+@using Microsoft.AspNetCore.WebUtilities
 
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
@@ -14,14 +14,15 @@
 <section class="p-4">
     <h1>Signing you in...</h1>
 
-    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
     {
-        <p class="text-danger">@errorMessage</p>
+        <p class="text-danger">@_errorMessage</p>
+        <a href="/login">Return to login</a>
     }
 </section>
 
 @code {
-    private string errorMessage = string.Empty;
+    private string _errorMessage = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -30,7 +31,7 @@
 
         if (!query.TryGetValue("code", out var codeValues))
         {
-            errorMessage = "Missing admin handoff code.";
+            _errorMessage = "Missing admin handoff code.";
             return;
         }
 
@@ -38,7 +39,7 @@
 
         if (string.IsNullOrWhiteSpace(code))
         {
-            errorMessage = "Invalid admin handoff code.";
+            _errorMessage = "Invalid admin handoff code.";
             return;
         }
 
@@ -51,21 +52,24 @@
 
         if (!response.IsSuccessStatusCode)
         {
-            errorMessage = "Unable to complete admin sign-in.";
+            _errorMessage = "Unable to complete admin sign-in.";
             return;
         }
 
-        var authResponse = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+        var authResponse = await response.Content
+            .ReadFromJsonAsync<AuthResponseDto>();
 
-        if (authResponse == null || string.IsNullOrWhiteSpace(authResponse.AccessToken))
+        if (authResponse == null ||
+            string.IsNullOrWhiteSpace(authResponse.AccessToken))
         {
-            errorMessage = "Admin sign-in response did not include an access token.";
+            _errorMessage =
+                "Admin sign-in response did not include an access token.";
             return;
         }
 
         await TokenService.SetAccessTokenAsync(authResponse.AccessToken);
         AuthStateProvider.NotifyUserLoggedIn(authResponse.AccessToken);
 
-        NavigationManager.NavigateTo("/dashboard", forceLoad: false);
+        NavigationManager.NavigateTo("dashboard", replace: true);
     }
 }

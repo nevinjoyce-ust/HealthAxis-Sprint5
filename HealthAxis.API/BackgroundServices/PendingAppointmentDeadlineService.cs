@@ -1,6 +1,5 @@
 using HealthAxis.API.Constants;
 using HealthAxis.API.Repositories;
-using HealthAxis.API.Services;
 using HealthAxis.Shared.Enums;
 
 namespace HealthAxis.API.BackgroundServices;
@@ -43,8 +42,6 @@ public class PendingAppointmentDeadlineService(
             await using var scope = scopeFactory.CreateAsyncScope();
             var repository = scope.ServiceProvider
                 .GetRequiredService<IAppointmentRepository>();
-            var cache = scope.ServiceProvider
-                .GetRequiredService<IDoctorAvailabilityCacheService>();
 
             var cutoff = DateTime.Now.AddHours(ConfirmationDeadlineHours);
             var appointments = await repository
@@ -66,18 +63,12 @@ public class PendingAppointmentDeadlineService(
 
             await repository.UpdateRangeAsync(appointments);
 
-            foreach (var appointment in appointments)
-            {
-                await cache.RemoveDoctorSlotsAsync(
-                    appointment.DoctorId,
-                    appointment.AppointmentDate);
-            }
-
             logger.LogInformation(
                 "Automatically cancelled {AppointmentCount} pending appointments after their confirmation deadline passed.",
                 appointments.Count);
         }
-        catch (OperationCanceledException exception) when (stoppingToken.IsCancellationRequested)
+        catch (OperationCanceledException exception)
+            when (stoppingToken.IsCancellationRequested)
         {
             logger.LogDebug(
                 exception,
@@ -85,7 +76,9 @@ public class PendingAppointmentDeadlineService(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Pending appointment deadline check failed.");
+            logger.LogError(
+                exception,
+                "Pending appointment deadline check failed.");
         }
     }
 
@@ -93,9 +86,22 @@ public class PendingAppointmentDeadlineService(
     {
         var now = DateTime.Now;
         var nextRun = now.Minute < 30
-            ? new DateTime(now.Year, now.Month, now.Day, now.Hour, 30, 0, now.Kind)
-            : new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0, now.Kind)
-                .AddHours(1);
+            ? new DateTime(
+                now.Year,
+                now.Month,
+                now.Day,
+                now.Hour,
+                30,
+                0,
+                now.Kind)
+            : new DateTime(
+                now.Year,
+                now.Month,
+                now.Day,
+                now.Hour,
+                0,
+                0,
+                now.Kind).AddHours(1);
 
         return nextRun - now;
     }

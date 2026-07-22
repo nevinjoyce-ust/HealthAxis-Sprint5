@@ -1,6 +1,5 @@
 using HealthAxis.API.Constants;
 using HealthAxis.API.Repositories;
-using HealthAxis.API.Services;
 using HealthAxis.Shared.Enums;
 
 namespace HealthAxis.API.BackgroundServices;
@@ -42,8 +41,6 @@ public class ExpiredConfirmedAppointmentService(
             await using var scope = scopeFactory.CreateAsyncScope();
             var repository = scope.ServiceProvider
                 .GetRequiredService<IAppointmentRepository>();
-            var cache = scope.ServiceProvider
-                .GetRequiredService<IDoctorAvailabilityCacheService>();
 
             var today = DateOnly.FromDateTime(DateTime.Today);
             var appointments = await repository
@@ -65,18 +62,12 @@ public class ExpiredConfirmedAppointmentService(
 
             await repository.UpdateRangeAsync(appointments);
 
-            foreach (var appointment in appointments)
-            {
-                await cache.RemoveDoctorSlotsAsync(
-                    appointment.DoctorId,
-                    appointment.AppointmentDate);
-            }
-
             logger.LogInformation(
                 "Automatically cancelled {AppointmentCount} confirmed appointments that passed without completion.",
                 appointments.Count);
         }
-        catch (OperationCanceledException exception) when (stoppingToken.IsCancellationRequested)
+        catch (OperationCanceledException exception)
+            when (stoppingToken.IsCancellationRequested)
         {
             logger.LogDebug(
                 exception,
@@ -84,7 +75,9 @@ public class ExpiredConfirmedAppointmentService(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Expired confirmed appointment check failed.");
+            logger.LogError(
+                exception,
+                "Expired confirmed appointment check failed.");
         }
     }
 

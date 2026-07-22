@@ -3,7 +3,6 @@ using HealthAxis.API.Data;
 using HealthAxis.API.Mappings;
 using HealthAxis.API.Messaging;
 using HealthAxis.API.Middlewares;
-using HealthAxis.API.Options;
 using HealthAxis.API.Repositories;
 using HealthAxis.API.Repositories.Impl;
 using HealthAxis.API.Services;
@@ -11,7 +10,9 @@ using HealthAxis.API.Services.Impl;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Serilog;
@@ -28,25 +29,14 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
-    const string HealthAxisAdminCorsPolicy = "HealthAxisAdminCorsPolicy";
-    var appName = builder.Configuration["AppSettings:AppName"] ?? "HealthAxis API";
+    var appName = builder.Configuration["AppSettings:AppName"] ??
+        "HealthAxis API";
 
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
         .Enrich.FromLogContext()
         .Enrich.WithProperty("Application", appName));
-
-    builder.Services.AddCors(options => options.AddPolicy(
-        HealthAxisAdminCorsPolicy,
-        policy => policy
-            .WithOrigins(
-                "https://localhost:7041",
-                "http://localhost:5291",
-                "http://localhost:4200",
-                "https://localhost:4200")
-            .AllowAnyHeader()
-            .AllowAnyMethod()));
 
     builder.Services.AddControllers()
         .AddJsonOptions(options =>
@@ -78,6 +68,7 @@ try
 
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
+    builder.Services.AddHealthChecks();
 
     builder.Services.AddDbContext<HealthAxisDbContext>(options =>
         options.UseSqlServer(
@@ -135,8 +126,6 @@ try
     builder.Services.AddScoped<IHealthRecordService, HealthRecordService>();
     builder.Services.AddScoped<IAdminService, AdminService>();
     builder.Services.AddScoped<IAdminHandoffService, AdminHandoffService>();
-    builder.Services.AddScoped<IDoctorAvailabilityCacheService,
-        DoctorAvailabilityCacheService>();
 
     builder.Services.AddMemoryCache();
 
@@ -152,9 +141,11 @@ try
         options.UsingRabbitMq((context, configuration) =>
         {
             var rabbit = builder.Configuration.GetSection("RabbitMq");
+            var rabbitPort = rabbit.GetValue<ushort>("Port", 5672);
 
             configuration.Host(
                 rabbit["HostName"] ?? "localhost",
+                rabbitPort,
                 rabbit["VirtualHost"] ?? "/",
                 host =>
                 {
@@ -168,19 +159,6 @@ try
                 endpoint => endpoint.ConfigureConsumer<AppointmentBookedConsumer>(
                     context));
         });
-    });
-
-    builder.Services.Configure<GarnetOptions>(
-        builder.Configuration.GetSection("Garnet"));
-
-    builder.Services.AddStackExchangeRedisCache(options =>
-    {
-        var garnet = builder.Configuration
-            .GetSection("Garnet")
-            .Get<GarnetOptions>() ?? new GarnetOptions();
-
-        options.Configuration = garnet.ConnectionString;
-        options.InstanceName = garnet.InstanceName;
     });
 
     builder.Services.AddAutoMapper(configuration =>
@@ -214,15 +192,35 @@ try
         app.UseSwaggerUI();
     }
 
-    if (!app.Environment.IsDevelopment())
-    {
-        app.UseHttpsRedirection();
-    }
+    app.UseDefaultFiles();
 
-    app.UseCors(HealthAxisAdminCorsPolicy);
+    var blazorContentTypes = new FileExtensionContentTypeProvider();
+    blazorContentTypes.Mappings[".dat"] = "application/octet-stream";
+    blazorContentTypes.Mappings[".wasm"] = "application/wasm";
+
+    var adminWebRoot = Path.Combine(
+        app.Environment.WebRootPath,
+        "admin");
+
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(adminWebRoot),
+        RequestPath = "/admin",
+        ContentTypeProvider = blazorContentTypes
+    });
+
+    // Serves Angular from the root wwwroot folder.
+    app.UseStaticFiles();
+
     app.UseAuthentication();
     app.UseAuthorization();
+
+    app.MapHealthChecks("/health");
     app.MapControllers();
+
+    app.MapFallback("/api/{**path}", () => Results.NotFound());
+    app.MapFallbackToFile("/admin/{*path:nonfile}", "admin/index.html");
+    app.MapFallbackToFile("{*path:nonfile}", "index.html");
 
     Log.Information("Starting {ApplicationName}", appName);
 
