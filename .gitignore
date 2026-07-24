@@ -42,3 +42,7 @@ logs/
 # Sonar
 .sonarqube/
 .sonar-temp/
+
+TestResults/
+coverage.xml
+solution-inventory.txt
