@@ -184,7 +184,7 @@
 
 <CancelAppointmentModal IsOpen="_showCancelModal"
                         Appointment="_appointmentPendingCancellation"
-                        CancellationReason="_cancellationReason"
+                        CancellationReason="@_cancellationReason"
                         CancellationReasonChanged="@((string value) => _cancellationReason = value)"
                         IsSaving="_isSavingStatus"
                         OnConfirm="CancelAppointmentAsync"
